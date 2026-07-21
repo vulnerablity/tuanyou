@@ -5,6 +5,26 @@ import prodConfig from './prod'
 
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
 export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
+  const currentMode = mode || process.env.NODE_ENV || 'development'
+  const rawEnv = {
+    command,
+    mode,
+    nodeEnv: process.env.NODE_ENV,
+    taroEnv: process.env.TARO_ENV,
+    appEnv: process.env.TARO_APP_ENV,
+    appId: process.env.TARO_APP_ID,
+    apiBase: process.env.TARO_APP_API_BASE
+  }
+  const currentEnv = {
+    mode: currentMode,
+    isDevelopmentMode: currentMode === 'development',
+    isTestEnv: currentMode === 'test',
+    isProductionEnv: currentMode === 'production'
+  }
+
+  console.log('rawEnv', rawEnv)
+  console.log('currentEnv', currentEnv)
+
   const baseConfig: UserConfigExport<'webpack5'> = {
     projectName: 'tuyou-web',
     date: '2026-7-21',
