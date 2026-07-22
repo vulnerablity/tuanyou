@@ -1,69 +1,39 @@
+//+ Token管理工具，封装Token的获取、存储和清除
 import Taro from '@tarojs/taro'
 
-//Token管理工具，封装本地存储操作
-class TokenManager{
-    private readonly TOKEN_KEY = 'tuyou-token'
-    private readonly USER_INFO_KEY='tuyou-user-info'
-    //获取Token
-    getToken():string|null{
-        try{
-            return Taro.getStorageSync(this.TOKEN_KEY)
-        }catch(error){
-            console.error('获取token失败：',error)
-            return null
-        }
-    }
-    //设置token
-    setToken(token:string):void{
-        try{
-            Taro.setStorageSync(this.TOKEN_KEY,token)
-        }catch(error){
-            console.error('设置token失败：',error)
-        }
-    }
-    //清除token
-    clearToken():void{
-        try{
-            Taro.removeStorageSync(this.TOKEN_KEY)
-        }catch(error){
-            console.error('清除Token失败：',error)
-        }
-    }
-    //获取用户信息
-    getUserInfo<T>():T|null{
-        try{
-            const userInfo=Taro.getStorageSync(this.USER_INFO_KEY)
-            return userInfo ? JSON.parse(userInfo):null
-        }catch(error){
-            console.error('获取用户信息失败：',error)
-            return null
-        }
-    }
-    //设置用户信息
-    setUserInfo<T>(userInfo:T):void{
-        try{
-            Taro.setStorageSync(this.USER_INFO_KEY,JSON.stringify(userInfo))
-        }catch(error){
-            console.error('设置用户信息失败：',error)
-        }
-    }
-    //清除用户信息
-    clearUserInfo():void{
-        try{
-            Taro.removeStorageSync(this.USER_INFO_KEY)
-        }catch(error){
-            console.error('清除用户信息失败：',error)
-        }
-    }
-    //退出登录，清除所有信息
-    logout():void{
-        this.clearToken()
-        this.clearUserInfo()
-    }
-    //判断是否一登录
-    isLoggedIn():boolean{
-        const token=this.getToken()
-        return token !== null && token !== undefined && token !== ''
-    }
+//+ Token存储的key
+const TOKEN_KEY = 'tuyou_token'
+
+//+ 获取Token
+export function getToken(): string | null {
+  try {
+    const token = Taro.getStorageSync(TOKEN_KEY)
+    return token || null
+  } catch (error) {
+    console.error('获取Token失败:', error)
+    return null
+  }
 }
-export const tokenManager=new TokenManager()
+
+//+ 设置Token
+export function setToken(token: string): void {
+  try {
+    Taro.setStorageSync(TOKEN_KEY, token)
+  } catch (error) {
+    console.error('设置Token失败:', error)
+  }
+}
+
+//+ 清除Token
+export function clearToken(): void {
+  try {
+    Taro.removeStorageSync(TOKEN_KEY)
+  } catch (error) {
+    console.error('清除Token失败:', error)
+  }
+}
+
+//+ 判断是否已登录
+export function isLoggedIn(): boolean {
+  return !!getToken()
+}

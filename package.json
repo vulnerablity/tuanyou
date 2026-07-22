@@ -44,6 +44,7 @@
   "author": "",
   "dependencies": {
     "@babel/runtime": "^7.24.4",
+    "@nutui/nutui-biz": "1.0.0-beta.2",
     "@reduxjs/toolkit": "^2.12.0",
     "@tarojs/components": "4.2.1",
     "@tarojs/helper": "4.2.1",

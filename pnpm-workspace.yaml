@@ -1,5 +1,6 @@
 allowBuilds:
   '@parcel/watcher': true
+  '@react-spring/core': false
   '@swc/core': true
   '@tarojs/binding': true
   '@tarojs/cli': true
