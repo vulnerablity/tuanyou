@@ -1,0 +1,64 @@
+* {
+  box-sizing: border-box;
+}
+.login-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+.login-container .logo {
+  margin-top: 6rem;
+  text-align: center;
+}
+.login-container .logo img {
+  width: 4.5rem;
+  height: 4.8rem;
+}
+.login-container .logo p {
+  font-size: 0.625rem;
+  letter-spacing: 0.05rem;
+  color: #368848;
+  font-weight: 0.5;
+}
+.login-container .login-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  width: 100%;
+  margin-top: 1rem;
+}
+.login-container .login-form .form-footer {
+  width: 16.5rem;
+}
+.login-container .login-form .form-footer .button {
+  height: 2rem;
+  border-radius: 2rem;
+  background-color: #a0c49a;
+}
+.login-container .login-form .form-item .input {
+  width: 16.5rem;
+  height: 2rem;
+  background-color: #f5f6f7;
+  border-radius: 0.5rem;
+  border: none;
+  padding: 0 0.8rem;
+  font-size: 0.625rem;
+}
+.login-container .login-form .form-item .input .nut-input-native::placeholder {
+  color: #c1c5ca;
+}
+.login-container .register-link {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  margin-top: 1rem;
+  color: #c1c5ca;
+  font-size: 0.625rem;
+}
+.login-container .register-link a {
+  color: rgb(46 125 50 / var(--tw-text-opacity, 1));
+}

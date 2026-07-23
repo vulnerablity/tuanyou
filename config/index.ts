@@ -76,6 +76,10 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
     h5: {
       publicPath: '/',
       staticDirectory: 'static',
+      devServer: {
+        open: true, // 自动打开浏览器
+        port: 10086
+      },
       output: {
         filename: 'js/[name].[hash:8].js',
         chunkFilename: 'js/[name].[chunkhash:8].js'
@@ -100,6 +104,8 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
       },
       webpackChain(chain) {
         chain.resolve.plugin('tsconfig-paths').use(TsconfigPathsPlugin)
+        //+ 关闭 webpack bundle size 警告（NutUI 组件库体积较大）
+        chain.performance.hints(false)
       }
     },
     rn: {
