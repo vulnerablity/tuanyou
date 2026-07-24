@@ -1,6 +1,7 @@
 //+ 用户状态管理Slice
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { setToken, clearToken } from '@/utils/token'
+import { loginAPI, getUserInfoAPI } from '@/apis/user'
 
 //+ 用户信息接口
 export interface UserInfo {
@@ -48,24 +49,18 @@ const userSlice = createSlice({
       state.isLoggedIn = action.payload
     }
   },
-  // extraReducers 用于处理 createAsyncThunk 生成的异步 action
-  // 它接收一个 builder 对象，可以通过 addCase 方法为不同的 action 状态（pending/fulfilled/rejected）添加对应的 reducer 处理逻辑
-  // 作用：将异步操作的状态变化（加载中、成功、失败）映射到 Redux state 的更新
-  // pending: 异步操作进行中/加载中状态
-  // fulfilled: 异步操作成功完成状态
-  // rejected: 异步操作失败/被拒绝状态
   extraReducers: (builder) => {
     builder
-      .addCase(login.pending, (state) => {
+      .addCase(fetchLogin.pending, (state) => {
         state.loading = true
         state.error = null
       })
-      .addCase(login.fulfilled, (state, action) => {
+      .addCase(fetchLogin.fulfilled, (state, action) => {
         state.loading = false
         state.isLoggedIn = true
         state.userInfo = action.payload.userInfo || null
       })
-      .addCase(login.rejected, (state, action) => {
+      .addCase(fetchLogin.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
       })
@@ -81,30 +76,62 @@ const userSlice = createSlice({
         state.loading = false
         state.error = action.payload as string
       })
+      .addCase(fetchRegister.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchRegister.fulfilled, (state, action) => {
+        state.loading = false
+        state.isLoggedIn = true
+        state.userInfo = action.payload.userInfo || null
+      })
+      .addCase(fetchRegister.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
+      })
   }
 })
 
 //+ 登录异步Action
-export const login = createAsyncThunk(
-  'user/login',
-  async (params: { phone: string; password?: string; smsCode?: string; captcha?: string }, { rejectWithValue }) => {
+export const fetchLogin = createAsyncThunk(
+  'user/fetchLogin',
+  async (params: { phone: string; password: string; smsCode?: string; captcha?: string }, { rejectWithValue }) => {
     try {
-      //+ 调用登录接口
-      const response = await fetch('/api/user/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
-      })
-      const data = await response.json()
-      
-      if (data.code === 0 || data.code === 200) {
-        //+ 存储token
-        if (data.data.token) {
-          setToken(data.data.token)
+      //+ 调用登录接口，request.ts已返回解析后的ResponseData
+      const res = await loginAPI(params)
+
+      if (res.code === 0 || res.code === 200) {
+        //+ 存储token到本地存储
+        if (res.data.token) {
+          setToken(res.data.token)
         }
-        return data.data
+        return res.data
       } else {
-        return rejectWithValue(data.message || '登录失败')
+        return rejectWithValue(res.message || '登录失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.message || '网络错误')
+    }
+  }
+)
+
+//+ 注册异步Action
+export const fetchRegister = createAsyncThunk(
+  'user/fetchRegister',
+  async (params: { phone: string; password: string; nickname: string }, { rejectWithValue }) => {
+    try {
+      //+ 导入registerAPI
+      const { registerAPI } = await import('@/apis/user')
+      const res = await registerAPI(params)
+
+      if (res.code === 0 || res.code === 200) {
+        //+ 存储token到本地存储
+        if (res.data.token) {
+          setToken(res.data.token)
+        }
+        return res.data
+      } else {
+        return rejectWithValue(res.message || '注册失败')
       }
     } catch (error: any) {
       return rejectWithValue(error.message || '网络错误')
@@ -117,13 +144,13 @@ export const getUserInfo = createAsyncThunk(
   'user/getUserInfo',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/user/info')
-      const data = await response.json()
-      
-      if (data.code === 0 || data.code === 200) {
-        return data.data
+      //+ 使用封装的API，自动带上token
+      const res = await getUserInfoAPI()
+
+      if (res.code === 0 || res.code === 200) {
+        return res.data
       } else {
-        return rejectWithValue(data.message || '获取用户信息失败')
+        return rejectWithValue(res.message || '获取用户信息失败')
       }
     } catch (error: any) {
       return rejectWithValue(error.message || '网络错误')

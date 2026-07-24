@@ -80,6 +80,15 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
         open: true, // 自动打开浏览器
         port: 10086
       },
+      router: {
+        //+ H5端路由别名配置
+        customRoutes: {
+          '/login': '/pages/Login/index',
+          '/register': '/pages/Register/index',
+          '/home': '/pages/Home/index',
+          '/logout': '/pages/Logout/index'
+        }
+      },
       output: {
         filename: 'js/[name].[hash:8].js',
         chunkFilename: 'js/[name].[chunkhash:8].js'

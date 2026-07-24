@@ -11,6 +11,9 @@ importers:
       '@babel/runtime':
         specifier: ^7.24.4
         version: 7.29.7
+      '@nutui/icons-react':
+        specifier: ^3.0.1
+        version: 3.0.1
       '@nutui/nutui-biz':
         specifier: 1.0.0-beta.2
         version: 1.0.0-beta.2(mobx@6.16.1)(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
@@ -1324,6 +1327,9 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@nutui/icons-react@3.0.1':
+    resolution: {integrity: sha512-n+Zj5CYVwhwAk3Bbwr8thhwQgGlspha5buv9CWW9UDB7Rg2Nb5H5AnQPDx2g+G+0NLSWym9DJnMVkJBJJkBP0Q==}
 
   '@nutui/icons-react@3.0.2-beta.6':
     resolution: {integrity: sha512-zSp+qxzXcwrdkGI2ZRCjcGHOrJmiB4y/lTeG8QjI+O4XN6OeRUJ/rz9qz0VsWTFCmwP/bjVckmSjcgR850ak3g==}
@@ -9410,6 +9416,8 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
+
+  '@nutui/icons-react@3.0.1': {}
 
   '@nutui/icons-react@3.0.2-beta.6': {}
 

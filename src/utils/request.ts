@@ -111,3 +111,13 @@ export function put<T = any>(url: string, data?: any, header?: any): Promise<Res
 export function del<T = any>(url: string, data?: any, header?: any): Promise<ResponseData<T>> {
   return request({ url, method: 'DELETE', data, header })
 }
+
+// src/utils/request.ts
+const isMock = process.env.TARO_APP_USE_MOCK === 'true'
+
+// 在请求拦截器中判断
+if (isMock) {
+  // 返回 Mock 数据
+} else {
+  // 发送真实请求
+}
