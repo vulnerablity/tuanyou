@@ -1,9 +1,17 @@
 export default defineAppConfig({
   pages: [
-    'pages/Login/index',
-    'pages/Register/index',
     'pages/Home/index',
-    'pages/Logout/index'
+    'pages/Login/index',
+
+    'pages/Activity/index',
+    'pages/Message/index',
+    'pages/Profile/index',
+
+    'pages/Register/index',
+    'pages/ForgotPassword/index',
+    'pages/Logout/index',
+    'pages/NoteDetail/index',
+    'pages/GuideDetail/index'
   ],
   window: {
     backgroundTextStyle: 'light',
@@ -11,4 +19,5 @@ export default defineAppConfig({
     navigationBarTitleText: '途友',
     navigationBarTextStyle: 'black'
   }
+  
 })

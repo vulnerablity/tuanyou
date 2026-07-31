@@ -1,0 +1,34 @@
+.tag {
+  display: flex;
+  flex-direction: row;
+  background-color: transparent;
+  border: 0;
+  justify-content: flex-start;
+  align-items: center;
+  /* 平板 */
+  /* 桌面 */
+}
+.tag .nut-tag-text {
+  color: #fff;
+  padding: 0.005rem 0.3rem;
+  border-radius: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  background-color: #fe9d0d;
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tag {
+    /* 针对平板优化 */
+  }
+  .tag .nut-tag-text {
+    font-size: 0.35rem;
+    font-weight: 400;
+    padding: 0.005rem 0.15rem;
+    border-radius: 0.1rem;
+  }
+}
+@media (min-width: 1025px) {
+  .tag {
+    /* 针对桌面优化 */
+  }
+}

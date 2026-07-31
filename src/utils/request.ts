@@ -2,6 +2,7 @@
 
 import Taro from '@tarojs/taro'
 import { getToken } from './token'
+import { mockRoutes } from '@/mock'
 
 //+ 请求方法类型
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
@@ -16,7 +17,7 @@ interface RequestConfig {
 }
 
 //+ 响应数据接口
-interface ResponseData<T = any> {
+export interface ResponseData<T = any> {
   code: number
   message: string
   data: T
@@ -26,6 +27,80 @@ interface ResponseData<T = any> {
 const defaultHeader = {
   'content-type': 'application/json',
   'Accept': 'application/json'
+}
+
+//+ 是否启用Mock数据
+const isMock = process.env.TARO_APP_USE_MOCK === 'true'
+
+//+ Mock请求处理函数
+function mockRequest<T = any>(url: string, method: Method, data?: any): Promise<ResponseData<T>> {
+  return new Promise((resolve) => {
+    //+ 模拟网络延迟
+    setTimeout(() => {
+      //+ 使用 method+url 作为键查找匹配的Mock路由
+      const key = `${method} ${url}`
+      console.log('Mock路由查找:', key)
+      console.log('可用Mock路由:', Object.keys(mockRoutes))
+      
+      let mockHandler = mockRoutes[key]
+      
+      //+ 如果没有精确匹配，尝试参数化路由匹配（如 GET /users/:userId）
+      if (!mockHandler) {
+        console.log('未找到精确匹配，尝试参数化路由匹配...')
+        for (const [pattern, handler] of Object.entries(mockRoutes)) {
+          if (pattern.includes(':') && matchRoute(pattern, key)) {
+            console.log('参数化路由匹配成功:', pattern)
+            mockHandler = handler
+            break
+          }
+        }
+      }
+      
+      //+ 返回Mock数据或默认错误
+      if (mockHandler) {
+        const result = mockHandler(data, url)
+        console.log('Mock响应:', result)
+        resolve(result as ResponseData<T>)
+      } else {
+        console.error('未找到Mock接口:', key)
+        resolve({
+          code: -1,
+          message: '未找到Mock接口',
+          data: null as any
+        })
+      }
+    }, 300 + Math.random() * 500)
+  })
+}
+
+//+ 路由匹配辅助函数（支持 method+url 格式）
+function matchRoute(pattern: string, key: string): boolean {
+  const [patternMethod, ...patternPathParts] = pattern.split(' ')
+  const [keyMethod, ...keyPathParts] = key.split(' ')
+  
+  //+ 方法必须匹配
+  if (patternMethod !== keyMethod) {
+    return false
+  }
+  
+  const patternUrl = patternPathParts.join(' ')
+  const keyUrl = keyPathParts.join(' ')
+  
+  const patternParts = patternUrl.split('/')
+  const urlParts = keyUrl.split('/')
+  
+  if (patternParts.length !== urlParts.length) {
+    return false
+  }
+  
+  for (let i = 0; i < patternParts.length; i++) {
+    if (patternParts[i].startsWith(':') || patternParts[i] === urlParts[i]) {
+      continue
+    }
+    return false
+  }
+  
+  return true
 }
 
 //+ 请求拦截器：添加token
@@ -80,6 +155,17 @@ export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>
   const baseURL = process.env.TARO_APP_API_BASE || ''
   const fullUrl = url.startsWith('http') ? url : `${baseURL}${url}`
   
+  //+ 如果启用Mock，直接返回Mock数据（使用相对路径）
+  if (isMock) {
+    //+ 获取相对路径：去掉协议和域名部分
+    const basePath = baseURL.replace(/^https?:\/\/[^/]+/, '')
+    const relativeUrl = url.startsWith('http') 
+      ? url.replace(/^https?:\/\/[^/]+/, '') 
+      : `${basePath}${url}`
+    console.log('Mock请求:', method, relativeUrl, data)
+    return mockRequest(relativeUrl, method, data)
+  }
+  
   const requestConfig = requestInterceptor({
     url: fullUrl,
     method,
@@ -92,7 +178,6 @@ export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>
 }
 
 //+ GET请求
-
 export function get<T = any>(url: string, data?: any, header?: any): Promise<ResponseData<T>> {
   return request({ url, method: 'GET', data, header })
 }
@@ -110,14 +195,4 @@ export function put<T = any>(url: string, data?: any, header?: any): Promise<Res
 //+ DELETE请求
 export function del<T = any>(url: string, data?: any, header?: any): Promise<ResponseData<T>> {
   return request({ url, method: 'DELETE', data, header })
-}
-
-// src/utils/request.ts
-const isMock = process.env.TARO_APP_USE_MOCK === 'true'
-
-// 在请求拦截器中判断
-if (isMock) {
-  // 返回 Mock 数据
-} else {
-  // 发送真实请求
 }

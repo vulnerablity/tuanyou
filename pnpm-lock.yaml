@@ -68,6 +68,9 @@ importers:
       '@tarojs/taro':
         specifier: 4.2.1
         version: 4.2.1(70aa9a8301570a8b0a7b5ba728efcd77)
+      dayjs:
+        specifier: ^1.11.21
+        version: 1.11.21
       react:
         specifier: ^18.0.0
         version: 18.0.0
@@ -3314,6 +3317,9 @@ packages:
   datauri@3.0.0:
     resolution: {integrity: sha512-NeDFuUPV1YCpCn8MUIcDk1QnuyenUHs7f4Q5P0n9FFA0neKFrfEH9esR+YMW95BplbYfdmjbs0Pl/ZGAaM2QHQ==}
     engines: {node: '>= 8'}
+
+  dayjs@1.11.21:
+    resolution: {integrity: sha512-98IT+HOahAisibz/yjKbzuOBwYcjJ7BCLPzARyHiyEBmRz4fatF+KPJszEHXsGYjUG234aH/cOjW1wwTbKUZlA==}
 
   debug@2.6.9:
     resolution: {integrity: sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==}
@@ -11853,6 +11859,8 @@ snapshots:
     dependencies:
       image-size: 0.8.3
       mimer: 1.1.0
+
+  dayjs@1.11.21: {}
 
   debug@2.6.9(supports-color@8.1.1):
     dependencies:

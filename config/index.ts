@@ -78,15 +78,26 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
       staticDirectory: 'static',
       devServer: {
         open: true, // 自动打开浏览器
-        port: 10086
+        port: 10086,
+        //+ 支持HTML5 History模式，所有路由都指向index.html
+        historyApiFallback: true
       },
       router: {
-        //+ H5端路由别名配置
+
+        //+ 路由模式：browser模式使用HTML5 history API，去掉#号
+        mode: 'browser',
+        //+ H5端路由别名配置（key为实际页面路径，value为别名）
         customRoutes: {
-          '/login': '/pages/Login/index',
-          '/register': '/pages/Register/index',
-          '/home': '/pages/Home/index',
-          '/logout': '/pages/Logout/index'
+          '/pages/Login/index': '/login',
+          '/pages/Register/index': '/register',
+          '/pages/Home/index': '/home',
+          '/pages/ForgotPassword/index': '/forgot-password',
+          '/pages/Logout/index': '/logout',
+          '/pages/Activity/index': '/activity',
+          '/pages/Message/index': '/message',
+          '/pages/Profile/index': '/profile',
+          '/pages/NoteDetail/index': '/note-detail',
+          '/pages/GuideDetail/index': '/guide-detail',
         }
       },
       output: {

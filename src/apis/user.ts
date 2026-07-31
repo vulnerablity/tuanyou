@@ -1,30 +1,79 @@
 //+ 导入请求工具
-import { get, post } from '@/utils/request'
+import { get, post, put } from '@/utils/request'
+
+//+ ========== 认证模块 ==========
+
+//+ 发送验证码
+export function sendCodeAPI(params: {
+  phone: string
+  scene: 'register' | 'login' | 'reset-password'
+}) {
+  return post('/auth/send-code', params)
+}
+
+//+ 注册请求（新增 code + confirmPassword）
+export function registerAPI(params: {
+  phone: string
+  code: string
+  nickname: string
+  password: string
+  confirmPassword: string
+}) {
+  return post('/auth/register', params)
+}
+
+//+ 登录请求（支持密码登录和验证码登录）
+//+ type 为 "password" 时需传 password
+//+ type 为 "code" 时需传 code
+export function loginAPI(params: {
+  phone: string
+  password?: string
+  code?: string
+  type?: 'password' | 'code'
+}) {
+  return post('/auth/login', params)
+}
+
+//+ 重置密码
+export function resetPasswordAPI(params: {
+  phone: string
+  code: string
+  newPassword: string
+  confirmPassword: string
+}) {
+  return post('/auth/reset-password', params)
+}
+
+//+ ========== 用户模块 ==========
 
 //+ 健康检查接口
 export function healthCheck() {
   return get('/health')
 }
-//+ 登录请求
-export function loginAPI(params: {
-  phone: string
-  password: string
-  smsCode?: string
-  captcha?: string
-}) {
-  return post('/auth/login', params)
-}
 
 //+ 获取用户信息
 export function getUserProfileAPI() {
-  return get('/auth/profile')
+  return get('/user/profile')
 }
 
-//+ 注册请求
-export function registerAPI(params: {
-  phone: string
-  password: string
-  nickname: string
+//+ 更新用户资料
+export function updateUserProfileAPI(params: {
+  nickname?: string
+  bio?: string
+  avatar?: string
+  bgImg?: string
 }) {
-  return post('/auth/register', params)
+  return put('/user/profile', params)
+}
+
+//+ 更新用户设置
+export function updateUserSettingsAPI(params: {
+  notificationEnabled?: boolean
+}) {
+  return put('/user/settings', params)
+}
+
+//+ 获取指定用户公开资料
+export function getUserInfoAPI(userId: string) {
+  return get(`/users/${userId}`)
 }

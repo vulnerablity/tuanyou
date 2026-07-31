@@ -1,101 +1,22 @@
-* {
-  box-sizing: border-box;
-}
-.register-container {
+.code-input-row {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  flex-direction: row;
   align-items: center;
-  height: 100vh;
-  position: relative;
-}
-.register-container .register-header {
-  position: absolute;
-  z-index: 1;
-  top: 0.5rem;
-  height: 1rem;
-  line-height: 1rem;
-  text-align: center;
-  font-size: 0.9rem;
-  color: black;
-  font-weight: 700;
   width: 100%;
+  gap: 0.3rem;
 }
-.register-container .register-header .arrow-left {
-  position: absolute;
-  left: 0.5rem;
-  height: 1rem;
-  line-height: 1rem;
-  font-weight: 700;
-  color: #368848;
-  font-size: 0.9rem;
+.code-input-row .auth-input-code {
+  flex: 1;
 }
-.register-container .logo {
-  text-align: center;
-  position: absolute;
-  top: 15vh;
-  z-index: 1;
-  width: 100%;
+.code-input-row .send-code-btn {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  color: #2e7d32;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 0.2rem 0;
+  cursor: pointer;
 }
-.register-container .logo img {
-  width: 4.5rem;
-  height: 4.8rem;
-}
-.register-container .logo p {
-  font-size: 0.625rem;
-  letter-spacing: 0.05rem;
-  color: #368848;
-  font-weight: 0.5;
-}
-.register-container .register-form {
-  text-align: center;
-  width: 100%;
-  position: absolute;
-  z-index: 1;
-  top: 37vh;
-  height: 35vh;
-}
-.register-container .register-form .form-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 5.5vh;
-  margin-bottom: 2.5vh;
-}
-.register-container .register-form .form-item .nut-input-native {
-  width: 90vw;
-  height: 5.5vh;
-  background-color: #f5f6f7;
-  border-radius: 0.5rem;
-  border: none;
-  padding: 0 0.8rem;
-  font-size: 1.5vh;
-}
-.register-container .register-form .form-item .nut-input-native::placeholder {
+.code-input-row .send-code-btn--disabled {
   color: #c1c5ca;
-}
-.register-container .register-form .form-item .nut-input-native:focus {
-  outline: none;
-}
-.register-container .register-form .register-btn {
-  width: 90vw;
-  border: none;
-  color: #fff;
-  font-size: 1.5vh;
-  height: 5.5vh;
-  border-radius: 5.5vh;
-  background-color: #a0c49a;
-}
-.register-container .register-link {
-  position: absolute;
-  top: 94vh;
-  text-align: center;
-  color: #b2b6bb;
-  font-size: 1.5vh;
-  line-height: 1.25vh;
-  font-weight: 400;
-  height: 1.25vh;
-}
-.register-container .register-link a {
-  color: rgb(46 125 50 / var(--tw-text-opacity, 1));
 }

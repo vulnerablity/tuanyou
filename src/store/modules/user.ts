@@ -1,17 +1,11 @@
 //+ 用户状态管理Slice
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { setToken, clearToken } from '@/utils/token'
-import { loginAPI, getUserInfoAPI } from '@/apis/user'
+import { loginAPI, getUserProfileAPI, registerAPI, sendCodeAPI, resetPasswordAPI } from '@/apis/user'
+import type { User } from '@/types'
 
-//+ 用户信息接口
-export interface UserInfo {
-  id: string
-  nickname: string
-  avatar: string
-  phone: string
-  role: 'member' | 'leader'
-  tags: string[]
-}
+//+ 用户信息类型，与API文档一致
+export type UserInfo = User
 
 //+ 用户状态接口
 export interface UserState {
@@ -28,6 +22,102 @@ const initialState: UserState = {
   loading: false,
   error: null
 }
+
+//+ 发送验证码异步Action
+export const fetchSendCode = createAsyncThunk(
+  'user/fetchSendCode',
+  async (params: { phone: string; scene: 'register' | 'login' | 'reset-password' }, { rejectWithValue }) => {
+    try {
+      const res = await sendCodeAPI(params)
+      if (res.code === 0 || res.code === 200) {
+        return res.data
+      } else {
+        return rejectWithValue(res.message || '发送验证码失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.message || '网络错误')
+    }
+  }
+)
+
+//+ 登录异步Action（支持密码登录和验证码登录）
+export const fetchLogin = createAsyncThunk(
+  'user/fetchLogin',
+  async (params: { phone: string; password?: string; code?: string; type?: 'password' | 'code' }, { rejectWithValue }) => {
+    try {
+      const res = await loginAPI(params)
+
+      if (res.code === 0 || res.code === 200) {
+        //+ 响应字段 member（与API文档一致）
+        if (res.data.token) {
+          setToken(res.data.token)
+        }
+        return res.data
+      } else {
+        return rejectWithValue(res.message || '登录失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.message || '网络错误')
+    }
+  }
+)
+
+//+ 注册异步Action（新增 code + confirmPassword）
+export const fetchRegister = createAsyncThunk(
+  'user/fetchRegister',
+  async (params: { phone: string; code: string; nickname: string; password: string; confirmPassword: string }, { rejectWithValue }) => {
+    try {
+      const res = await registerAPI(params)
+
+      if (res.code === 0 || res.code === 200) {
+        //+ 响应字段 member（与API文档一致）
+        if (res.data.token) {
+          setToken(res.data.token)
+        }
+        return res.data
+      } else {
+        return rejectWithValue(res.message || '注册失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.message || '网络错误')
+    }
+  }
+)
+
+//+ 重置密码异步Action
+export const fetchResetPassword = createAsyncThunk(
+  'user/fetchResetPassword',
+  async (params: { phone: string; code: string; newPassword: string; confirmPassword: string }, { rejectWithValue }) => {
+    try {
+      const res = await resetPasswordAPI(params)
+      if (res.code === 0 || res.code === 200) {
+        return res.data
+      } else {
+        return rejectWithValue(res.message || '重置密码失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.message || '网络错误')
+    }
+  }
+)
+
+//+ 获取用户信息异步Action
+export const getUserInfo = createAsyncThunk(
+  'user/getUserInfo',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await getUserProfileAPI()
+
+      if (res.code === 0 || res.code === 200) {
+        return res.data
+      } else {
+        return rejectWithValue(res.message || '获取用户信息失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.message || '网络错误')
+    }
+  }
+)
 
 //+ 用户Slice
 const userSlice = createSlice({
@@ -51,6 +141,19 @@ const userSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      //+ 发送验证码
+      .addCase(fetchSendCode.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchSendCode.fulfilled, (state) => {
+        state.loading = false
+      })
+      .addCase(fetchSendCode.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
+      })
+      //+ 登录
       .addCase(fetchLogin.pending, (state) => {
         state.loading = true
         state.error = null
@@ -58,12 +161,41 @@ const userSlice = createSlice({
       .addCase(fetchLogin.fulfilled, (state, action) => {
         state.loading = false
         state.isLoggedIn = true
-        state.userInfo = action.payload.userInfo || null
+        //+ 响应中的 member 字段映射到 userInfo
+        state.userInfo = action.payload.member || action.payload.user || null
       })
       .addCase(fetchLogin.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
       })
+      //+ 注册
+      .addCase(fetchRegister.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchRegister.fulfilled, (state, action) => {
+        state.loading = false
+        state.isLoggedIn = true
+        //+ 响应中的 member 字段映射到 userInfo
+        state.userInfo = action.payload.member || action.payload.user || null
+      })
+      .addCase(fetchRegister.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
+      })
+      //+ 重置密码
+      .addCase(fetchResetPassword.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchResetPassword.fulfilled, (state) => {
+        state.loading = false
+      })
+      .addCase(fetchResetPassword.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
+      })
+      //+ 获取用户信息
       .addCase(getUserInfo.pending, (state) => {
         state.loading = true
       })
@@ -76,87 +208,8 @@ const userSlice = createSlice({
         state.loading = false
         state.error = action.payload as string
       })
-      .addCase(fetchRegister.pending, (state) => {
-        state.loading = true
-        state.error = null
-      })
-      .addCase(fetchRegister.fulfilled, (state, action) => {
-        state.loading = false
-        state.isLoggedIn = true
-        state.userInfo = action.payload.userInfo || null
-      })
-      .addCase(fetchRegister.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload as string
-      })
   }
 })
-
-//+ 登录异步Action
-export const fetchLogin = createAsyncThunk(
-  'user/fetchLogin',
-  async (params: { phone: string; password: string; smsCode?: string; captcha?: string }, { rejectWithValue }) => {
-    try {
-      //+ 调用登录接口，request.ts已返回解析后的ResponseData
-      const res = await loginAPI(params)
-
-      if (res.code === 0 || res.code === 200) {
-        //+ 存储token到本地存储
-        if (res.data.token) {
-          setToken(res.data.token)
-        }
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '登录失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
-  }
-)
-
-//+ 注册异步Action
-export const fetchRegister = createAsyncThunk(
-  'user/fetchRegister',
-  async (params: { phone: string; password: string; nickname: string }, { rejectWithValue }) => {
-    try {
-      //+ 导入registerAPI
-      const { registerAPI } = await import('@/apis/user')
-      const res = await registerAPI(params)
-
-      if (res.code === 0 || res.code === 200) {
-        //+ 存储token到本地存储
-        if (res.data.token) {
-          setToken(res.data.token)
-        }
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '注册失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
-  }
-)
-
-//+ 获取用户信息异步Action
-export const getUserInfo = createAsyncThunk(
-  'user/getUserInfo',
-  async (_, { rejectWithValue }) => {
-    try {
-      //+ 使用封装的API，自动带上token
-      const res = await getUserInfoAPI()
-
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取用户信息失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
-  }
-)
 
 //+ 导出Action
 export const { logout, updateUserInfo, setLoggedIn } = userSlice.actions
