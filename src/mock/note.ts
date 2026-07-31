@@ -76,6 +76,7 @@ export const mockNoteDetailPost: Record<string, any> = {
     "https://picsum.photos/seed/post5-img2/800/450",
     "https://picsum.photos/seed/post5-img3/800/450"
   ],
+  "isFollowed":false,
   "videoUrl": "",
   "content": "详细的攻略来了，包含路线规划和装备推荐。",
   "viewCount": 2341,
