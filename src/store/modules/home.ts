@@ -6,7 +6,7 @@ import type { SlideItem, FeedItem, PageResult } from '@/types'
 
 //+ Feed查询参数接口
 export interface FeedQueryParams {
-  category?: string
+  category?: number
   sort?: string
   page: number
   size: number

@@ -6,6 +6,41 @@
   "description": "",
   "glyphs": [
     {
+      "icon_id": "845792",
+      "name": "likefill",
+      "font_class": "likefill",
+      "unicode": "e64e",
+      "unicode_decimal": 58958
+    },
+    {
+      "icon_id": "673795",
+      "name": "shoucangfill",
+      "font_class": "shoucangfill",
+      "unicode": "e6c9",
+      "unicode_decimal": 59081
+    },
+    {
+      "icon_id": "6119258",
+      "name": "like",
+      "font_class": "like",
+      "unicode": "e634",
+      "unicode_decimal": 58932
+    },
+    {
+      "icon_id": "9148964",
+      "name": "shoucang",
+      "font_class": "shoucang",
+      "unicode": "e639",
+      "unicode_decimal": 58937
+    },
+    {
+      "icon_id": "10157619",
+      "name": "zhuanfa",
+      "font_class": "zhuanfa",
+      "unicode": "e63d",
+      "unicode_decimal": 58941
+    },
+    {
       "icon_id": "1276831",
       "name": "message",
       "font_class": "message",

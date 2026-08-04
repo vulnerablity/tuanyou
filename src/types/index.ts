@@ -37,11 +37,11 @@ export function getCategoryName(categoryId?: number): string {
 }
 
 //+ Post数据结构（笔记/攻略详情）
-//+ 笔记和攻略共用此结构，通过 type 区分（"笔记"/"攻略"）
+//+ 笔记和攻略共用此结构，通过 type 区分（'note'/'guide'）
 //+ 攻略额外包含 routeInfo
 export interface Post {
   id: string
-  type: '笔记' | '攻略'
+  type: 'note' | 'guide'
   author: {
     id: string
     nickname: string
@@ -58,7 +58,8 @@ export interface Post {
   commentCount: number
   isLiked: boolean
   isFavorited: boolean
-  category: string
+  isFollowed: boolean
+  category: number
   tags: string[]
   status: number
   publishTime: string

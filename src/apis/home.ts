@@ -8,7 +8,7 @@ export function getSlidesAPI() {
 
 //+ 获取Feed流列表（笔记/攻略混合瀑布流）
 export function getFeedAPI(params: {
-  category?: string
+  category?: number
   sort?: string
   page: number
   size: number

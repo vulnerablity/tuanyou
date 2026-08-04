@@ -32,6 +32,7 @@
       }
     }
 
+
         //发布
         .publish {
           position: relative;
@@ -73,6 +74,23 @@
         }
 
   }
+ .nut-popup{
+  border-radius:var(--nutui-popup-border-radius, var(--nutui-radius-xl, calc(30px * var(--nut-scale-f, 1)))) var(--nutui-popup-border-radius, var(--nutui-radius-xl, calc(30px * var(--nut-scale-f, 1)))) 0 0 !important;
+  .action-sheet {
+  
+      // 面板
+      .nut-actionsheet-item-name {
+        font-size: var(--nutui-font-size-base, calc(0.8rem * var(--nut-scale-font, var(--nut-scale-f, 1))));
+        color: var(--nutui-actionsheet-item-color, var(--nutui-color-title, #363636));
+      }
+  
+      // 取消
+      .nut-actionsheet-cancel {
+        border-top: calc(0.4rem * var(--nut-scale-f, 1)) solid var(--nutui-actionsheet-border-color, var(--nutui-color-border, rgba(247, 248, 250, 1)));
+        font-size: var(--nutui-font-size-base, calc(0.8rem * var(--nut-scale-font, var(--nut-scale-f, 1))));
+      }
+    }
+ }
 
 @media screen and (min-width: 768px) {
   //底部
@@ -102,6 +120,24 @@
         }
       }
     }
+        .nut-popup {
+          border-radius: var(--nutui-popup-border-radius, var(--nutui-radius-xl, calc(20px * var(--nut-scale-f, 1)))) var(--nutui-popup-border-radius, var(--nutui-radius-xl, calc(20px * var(--nut-scale-f, 1)))) 0 0 !important;
+    
+          .action-sheet {
+    
+            // 面板
+            .nut-actionsheet-item-name {
+              font-size: var(--nutui-font-size-base, calc(0.45rem * var(--nut-scale-font, var(--nut-scale-f, 1))));
+              color: var(--nutui-actionsheet-item-color, var(--nutui-color-title, #363636));
+            }
+    
+            // 取消
+            .nut-actionsheet-cancel {
+              border-top: calc(0.18rem * var(--nut-scale-f, 1)) solid var(--nutui-actionsheet-border-color, var(--nutui-color-border, rgba(247, 248, 250, 1)));
+              font-size: var(--nutui-font-size-base, calc(0.45rem * var(--nut-scale-font, var(--nut-scale-f, 1))));
+            }
+          }
+        }
 }
 
 

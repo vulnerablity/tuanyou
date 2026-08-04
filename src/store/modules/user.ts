@@ -21,6 +21,7 @@ const initialState: UserState = {
   isLoggedIn: false,
   loading: false,
   error: null
+  
 }
 
 //+ 发送验证码异步Action
@@ -35,7 +36,8 @@ export const fetchSendCode = createAsyncThunk(
         return rejectWithValue(res.message || '发送验证码失败')
       }
     } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
+      //+ 响应拦截器透传的 ResponseData 或 Error
+      return rejectWithValue(error?.message || '网络错误')
     }
   }
 )
@@ -57,7 +59,7 @@ export const fetchLogin = createAsyncThunk(
         return rejectWithValue(res.message || '登录失败')
       }
     } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
+      return rejectWithValue(error?.message || '网络错误')
     }
   }
 )
@@ -68,7 +70,6 @@ export const fetchRegister = createAsyncThunk(
   async (params: { phone: string; code: string; nickname: string; password: string; confirmPassword: string }, { rejectWithValue }) => {
     try {
       const res = await registerAPI(params)
-
       if (res.code === 0 || res.code === 200) {
         //+ 响应字段 member（与API文档一致）
         if (res.data.token) {
@@ -79,7 +80,7 @@ export const fetchRegister = createAsyncThunk(
         return rejectWithValue(res.message || '注册失败')
       }
     } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
+      return rejectWithValue(error?.message || '网络错误')
     }
   }
 )
@@ -96,7 +97,7 @@ export const fetchResetPassword = createAsyncThunk(
         return rejectWithValue(res.message || '重置密码失败')
       }
     } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
+      return rejectWithValue(error?.message || '网络错误')
     }
   }
 )
@@ -114,7 +115,7 @@ export const getUserInfo = createAsyncThunk(
         return rejectWithValue(res.message || '获取用户信息失败')
       }
     } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
+      return rejectWithValue(error?.message || '网络错误')
     }
   }
 )

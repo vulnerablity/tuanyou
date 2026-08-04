@@ -1,4 +1,4 @@
-import { Tabbar } from '@nutui/nutui-react'
+import { Tabbar ,ActionSheet} from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
 import { useEffect, useState } from 'react'
 import Taro from '@tarojs/taro'
@@ -31,24 +31,57 @@ function getCurrentTabIndex(): number {
 const TabList = () => {
   const [currentIndex, setCurrentIndex] = useState(() => getCurrentTabIndex())
 
-  // 每次 TabList 挂载时同步 tab 高亮状态
-  useEffect(() => {
-    setCurrentIndex(getCurrentTabIndex())
-  }, [])
-
+ 
+  const [isVisible, setIsVisible] = useState(false)
+  const [val,setVal] = useState('')
   const tabNavigate = (index: number) => {
     if (index === 0) {
       Taro.switchTab({ url: '/pages/Home/index' })
     } else if (index === 1) {
       Taro.switchTab({ url: '/pages/Activity/index' })
-    } else if (index === 3) {
+    }else if(index===2){
+      setIsVisible(true)
+    }else if (index === 3) {
       Taro.switchTab({ url: '/pages/Message/index' })
     } else if (index === 4) {
       Taro.switchTab({ url: '/pages/Profile/index' })
     }
     setCurrentIndex(index)
   }
-
+  
+  const options=[
+    {
+      name:'发笔记'
+    },
+    {
+      name: '写攻略',
+    
+    },
+    {
+      name: '发起活动',
+     
+    }
+  ]
+  const handleSelect=(item:any)=>{
+    setVal(item.name)
+    setIsVisible(false)
+    // 根据 option name 跳转到对应的发布页
+    switch (item.name) {
+      case '发笔记':
+        Taro.navigateTo({ url: '/pages/PublishNote/index' })
+        break
+      case '写攻略':
+        Taro.navigateTo({ url: '/pages/PublishGuide/index' })
+        break
+      case '发起活动':
+        Taro.navigateTo({ url: '/pages/PublishActivity/index' })
+        break
+    }
+  }
+   // 每次 TabList 挂载时同步 tab 高亮状态
+  useEffect(() => {
+    setCurrentIndex(getCurrentTabIndex())
+  }, [])
   return (
     <div className='tab-container '>
       <Tabbar value={currentIndex} fixed={true} activeColor="#428a46 !important" inactiveColor="#bfbfbf !important" onSwitch={tabNavigate}>
@@ -58,7 +91,7 @@ const TabList = () => {
         <Tabbar.Item title="活动" icon={
           <IconFont name="activity" fontClassName="iconfont" classPrefix="icon" />
         } />
-        <Tabbar.Item className="publish" title="+" />
+        <Tabbar.Item className="publish" title="+"  />
         <Tabbar.Item title="消息" icon={
           <IconFont name="message" fontClassName="iconfont" classPrefix="icon" />
         } value={3} />
@@ -66,7 +99,17 @@ const TabList = () => {
           <IconFont name="wode" fontClassName="iconfont" classPrefix="icon" />
         } />
       </Tabbar>
-    </div>
+      {/* 发布动作面板 */}
+      <ActionSheet
+        className='action-sheet'
+        visible={isVisible}
+        cancelText="取消"
+        options={options}
+        onSelect={handleSelect}
+        onCancel={()=>{setIsVisible(false)}}
+        
+      />
+         </div>
   )
 }
 

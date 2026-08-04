@@ -1,12 +1,12 @@
 //+ 笔记模块Redux状态管理
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import { getNotesAPI, toggleNoteLikeAPI, toggleNoteFavoriteAPI ,getNoteDetailAPI} from '@/apis/note'
-import type {Post,PageResult } from '@/types'
+import { getNotesAPI, toggleNoteLikeAPI, toggleNoteFavoriteAPI ,getNoteDetailAPI,getNoteCommentsAPI} from '@/apis/note'
+import type {Post,PageResult ,Comment} from '@/types'
 
 //+ 笔记查询参数接口
-//+ type为后端检索字段：笔记/攻略/视频
+//+ type为后端检索字段：note/guide
 export interface NoteQueryParams {
-  category?: string   
+  category?: number   
   sort?: string
   type?: string
   page: number
@@ -31,6 +31,8 @@ export interface NoteState {
   error: string | null
   //+ 笔记详情
   noteDetail: Post | null
+  //+ 笔记评论列表
+  comments: Comment[] | null
 }
 
 //+ 初始状态
@@ -46,6 +48,9 @@ const initialState: NoteState = {
   error: null,
   //+ 笔记详情
   noteDetail: null,
+  //+ 笔记评论列表
+  comments: null,
+  
  
 }
 //获取笔记详情异步Action
@@ -116,6 +121,23 @@ export const toggleFavorite = createAsyncThunk(
   }
 )
 
+//+ 获取笔记评论列表异步Action
+export const fetchNoteComments = createAsyncThunk(
+  'note/fetchNoteComments',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const res = await getNoteCommentsAPI(id)
+      if (res.code === 0 || res.code === 200) {
+        return res.data
+      } else {
+        return rejectWithValue(res.message || '获取笔记评论列表失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.message || '网络错误')
+    }
+  }
+)
+
 //+ 笔记Slice
 const noteSlice = createSlice({
   name: 'note',
@@ -140,6 +162,10 @@ const noteSlice = createSlice({
     //+ 用于在获取笔记详情成功后，更新状态中的noteDetail
     setNoteDetail: (state, action: PayloadAction<Post>) => {
       state.noteDetail = action.payload
+    },
+    //+ 更新笔记评论列表
+    setNoteComments: (state, action: PayloadAction<Comment[]>) => {
+      state.comments = action.payload
     },
 
   },
@@ -193,11 +219,23 @@ const noteSlice = createSlice({
         state.loading = false
         state.error = action.payload as string
       })
+      .addCase(fetchNoteComments.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchNoteComments.fulfilled, (state, action: PayloadAction<Comment[]>) => {
+        state.loading = false
+        state.comments = action.payload
+      })
+      .addCase(fetchNoteComments.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
+      })
   }
 })
 
 //+ 导出Action
-export const { resetNotes, setNotes, appendNotes } = noteSlice.actions
+export const { resetNotes, setNotes, appendNotes,setNoteDetail,setNoteComments } = noteSlice.actions
 
 //+ 导出Reducer
 export default noteSlice.reducer

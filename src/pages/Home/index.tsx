@@ -42,7 +42,7 @@ const sorts=["推荐","最新","最热"]
     dispatch(resetFeed())
     
     dispatch(fetchFeed({
-      category: categoryName === '全部' ? undefined : categoryName,
+      category: categoryName === '全部' ? undefined : categories.indexOf(categoryName),
       sort: sortName,
       page: 1,
       size: 10
@@ -55,7 +55,7 @@ const sorts=["推荐","最新","最热"]
     setLoadingMore(true)
     
     dispatch(fetchFeed({
-      category: categoryName === '全部' ? undefined : categoryName,
+      category: categoryName === '全部' ? undefined : categories.indexOf(categoryName),
       sort: sortName,
       page: feedPage + 1,
       size: 10

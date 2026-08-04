@@ -7,7 +7,7 @@ import './index.less'
 interface DetailBannerProps {
     loop?: boolean
     touchable?: boolean
-    type?: string  // '活动' | '笔记' | '攻略'
+    type?: string  // '活动' | 'note' | 'guide'
     videoUrl?: string
     images?: string[]
 }
@@ -29,8 +29,8 @@ const DetailBanner = (props: DetailBannerProps) => {
       return images.length > 0 ? [{ type: 'image' as const, url: images[0] }] : []
     }
 
-    // 笔记或攻略：视频优先，没有视频则显示图片
-    if (type === '笔记' || type === '攻略') {
+    ////+ 笔记或攻略：视频优先，没有视频则显示图片
+    if (type === 'note' || type === 'guide') {
       if (videoUrl) {
         return [{ type: 'video' as const, url: videoUrl }]
       }

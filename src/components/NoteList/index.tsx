@@ -50,20 +50,11 @@ const FeedCard = ({ item, onClick }: { item: FeedItem; onClick?: () => void }) =
   //+ 点击跳转详情（note→NoteDetail, guide→GuideDetail）
   const handleClick = () => {
     if (onClick) {
-      // console.log('onClick', onClick)
-      
-// 调用父组件传入的自定义点击回调函数，用于接管卡片点击行为（如跳转自定义页面或执行其他业务逻辑）
-// 当父组件没有传入 onClick 时，会走下方默认的详情页跳转逻辑
-
-// onClick()
-
-    
       const pagePath = item.type === 'guide'
         ? '/pages/GuideDetail/index'
         : '/pages/NoteDetail/index'
-      const typeLabel = item.type === 'guide' ? '攻略' : '笔记'
       
-      Taro.navigateTo({ url: `${pagePath}?id=${item.id}&type=${typeLabel}` })
+      Taro.navigateTo({ url: `${pagePath}?id=${item.id}&type=${item.type}` })
     }
   }
 

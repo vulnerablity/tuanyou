@@ -88,14 +88,21 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
         mode: 'browser',
         //+ H5端路由别名配置（key为实际页面路径，value为别名）
         customRoutes: {
+          //认证界面
           '/pages/Login/index': '/login',
           '/pages/Register/index': '/register',
-          '/pages/Home/index': '/home',
           '/pages/ForgotPassword/index': '/forgot-password',
-          '/pages/Logout/index': '/logout',
+          // 主界面
+          '/pages/Home/index': '/home',
           '/pages/Activity/index': '/activity',
           '/pages/Message/index': '/message',
           '/pages/Profile/index': '/profile',
+          //发布界面
+          '/pages/PublishNote/index': '/publish/note',
+          '/pages/PublishGuide/index': '/publish/guide',
+          '/pages/PublishActivity/index': '/publish/activity',
+          '/pages/Logout/index': '/logout',
+          
           '/pages/NoteDetail/index': '/note-detail',
           '/pages/GuideDetail/index': '/guide-detail',
         }
@@ -112,7 +119,7 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
       postcss: {
         autoprefixer: {
           enable: true,
-          config: {}
+          config: {rootValue:37.5}
         },
         cssModules: {
           enable: false, // 默认为 false，如需使用 css modules 功能，则设为 true

@@ -33,14 +33,40 @@
 .icon-community:before {
   content: "\e609";
 }
+/* 评论图标 */
+.icon-like:before {
+  content: "\e634";
+}
+
+.icon-shoucang:before {
+  content: "\e639";
+
+}
+.icon-likefill:before {
+  content: "\e64e";
+}
+
+.icon-shoucangfill:before {
+  content: "\e6c9";
+}
+.icon-zhuanfa:before {
+  content: "\e63d";
+  font-size: 36px;
+  padding-bottom: 0.2rem;
+
+}
+
 @media screen and (min-width: 768px) {
   .iconfont {
     font-size: 24px;
   }
     .icon-message:before {
-      content: "\e67a";
       font-size: 20px;
       line-height: 0.5rem;
+    }
+    .icon-zhuanfa:before {
+      font-size: 24px;
+      padding-bottom: 0.1rem;
     }
 
 }

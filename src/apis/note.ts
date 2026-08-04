@@ -3,7 +3,7 @@ import { get, post } from '@/utils/request'
 
 //+ 获取笔记列表（瀑布流）
 export function getNotesAPI(params: {
-  category?: string
+  category?: number
   sort?: string
   type?: string
   page: number
@@ -24,7 +24,7 @@ export function createNoteAPI(params: {
   content: string
   images?: string[]
   videoUrl?: string
-  category?: string
+  category?: number
   tags?: string[]
 }) {
   return post('/notes', params)
@@ -38,4 +38,9 @@ export function toggleNoteLikeAPI(id: string) {
 //+ 收藏/取消收藏
 export function toggleNoteFavoriteAPI(id: string) {
   return post(`/notes/${id}/favorite`)
+}
+
+//+ 获取笔记评论列表
+export function getNoteCommentsAPI(id: string) {
+  return get(`/notes/${id}/comments`)
 }

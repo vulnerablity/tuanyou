@@ -116,6 +116,7 @@ function requestInterceptor(config: RequestConfig): RequestConfig {
 }
 
 //+ 响应拦截器：处理错误和数据
+//+ 注意：业务错误（code != 0/200）不再在此处 Toast，由业务层（store/页面）统一处理
 function responseInterceptor<T = any>(res: any): Promise<ResponseData<T>> {
   return new Promise((resolve, reject) => {
     if (res.statusCode === 200) {
@@ -123,11 +124,7 @@ function responseInterceptor<T = any>(res: any): Promise<ResponseData<T>> {
       if (data.code === 0 || data.code === 200) {
         resolve(data)
       } else {
-        //+ 处理业务错误
-        Taro.showToast({
-          title: data.message || '请求失败',
-          icon: 'none'
-        })
+        //+ 业务错误：透传完整的响应数据，由业务层处理 Toast
         reject(data)
       }
     } else if (res.statusCode === 401) {
@@ -139,11 +136,9 @@ function responseInterceptor<T = any>(res: any): Promise<ResponseData<T>> {
       Taro.redirectTo({ url: '/pages/Login/index' })
       reject(res)
     } else {
-      Taro.showToast({
-        title: `请求错误 ${res.statusCode}`,
-        icon: 'none'
-      })
-      reject(res)
+      //+ HTTP 错误：构造标准错误对象，业务层可通过 error.message 获取提示
+      const err = new Error(`请求错误 ${res.statusCode}`)
+      reject(err)
     }
   })
 }

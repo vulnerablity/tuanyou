@@ -1,5 +1,7 @@
 .auth-actions {
-  padding: 0 1.5rem;
+  padding: 0;
+  margin-top: 0.4rem;
+  width: 90%;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;

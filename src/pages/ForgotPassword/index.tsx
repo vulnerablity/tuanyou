@@ -1,174 +1,143 @@
 //+ 忘记密码/重置密码页面
-//+ 步骤：输入手机号 → 发送验证码 → 输入验证码 → 设置新密码 → 完成
-import { Form, Button, Input } from '@nutui/nutui-react'
-import { ArrowLeft } from '@nutui/icons-react'
+//+ 受控表单：用 useState 管理字段值，手写校验，避免 NutUI Form.Item 注入不稳定
+//+ 保留头部 HeaderNavBar、logo
+import { Button, Input } from '@nutui/nutui-react'
 import { useDispatch } from 'react-redux'
 import Taro from '@tarojs/taro'
-import { fetchSendCode, fetchResetPassword } from '@/store/modules/user'
+import { fetchResetPassword } from '@/store/modules/user'
 import type { AppDispatch } from '@/store'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
+import { useSendCode } from '@/hooks/useSendCode'
+import CodeInput from '@/components/CodeInput'
+//+ 封装组件
+import HeaderNavBar from '@/components/HeaderNavBar'
 //+ 导入公共认证样式
 import '@/styles/auth.less'
 import './index.less'
 
 const ForgotPassword = () => {
   const dispatch: AppDispatch = useDispatch<AppDispatch>()
-  const formRef = useRef<any>(null)
 
-  //+ 验证码发送状态
-  const [codeCountdown, setCodeCountdown] = useState(0)
-  const countdownTimer = useRef<any>(null)
+  //+ 表单字段（受控）
+  const [phone, setPhone] = useState('')
+  const [code, setCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
-  //+ 发送验证码
-  const handleSendCode = async () => {
-    const phoneValue = formRef.current?.getFieldValue?.('phone')
-    if (!phoneValue) {
-      Taro.showToast({ title: '请先输入手机号', icon: 'none' })
+  //+ 验证码发送逻辑复用（场景为重置密码）
+  const { codeSent, codeCountdown, sendCode } = useSendCode('reset-password')
+
+  //+ 重置密码提交：校验 → 调接口 → 反馈
+  const handleSubmit = async () => {
+    if (!phone) {
+      Taro.showToast({ title: '请输入手机号', icon: 'none' })
       return
     }
-    if (!/^1[3-9]\d{9}$/.test(phoneValue)) {
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
       Taro.showToast({ title: '请输入正确的手机号', icon: 'none' })
       return
     }
-    if (codeCountdown > 0) return
-
-    try {
-      const result: any = await dispatch(fetchSendCode({ phone: phoneValue, scene: 'reset-password' }))
-      if (result.type === 'user/fetchSendCode/fulfilled') {
-        Taro.showToast({ title: '验证码已发送', icon: 'success' })
-        setCodeCountdown(60)
-        countdownTimer.current = setInterval(() => {
-          setCodeCountdown(prev => {
-            if (prev <= 1) {
-              clearInterval(countdownTimer.current)
-              return 0
-            }
-            return prev - 1
-          })
-        }, 1000)
-      }
-    } catch (error) {
-      console.error('发送验证码失败:', error)
+    if (!code) {
+      Taro.showToast({ title: '请输入验证码', icon: 'none' })
+      return
     }
-  }
-
-  //+ 重置密码提交
-  const onFinish = async (values: { phone: string; code: string; newPassword: string; confirmPassword: string }) => {
-    try {
-      const result: any = await dispatch(fetchResetPassword({
-        phone: values.phone,
-        code: values.code,
-        newPassword: values.newPassword,
-        confirmPassword: values.confirmPassword
-      }))
-
-      if (result.type === 'user/fetchResetPassword/fulfilled') {
-        Taro.showToast({
-          title: '密码重置成功',
-          icon: 'success'
-        })
-        setTimeout(() => {
-          //+ 跳转到登录页使用新密码登录
-          Taro.redirectTo({ url: '/pages/Login/index' })
-        }, 1500)
-      }
-    } catch (error) {
-      console.error('重置密码失败:', error)
+    if (!/^\d{6}$/.test(code)) {
+      Taro.showToast({ title: '请输入6位数字验证码', icon: 'none' })
+      return
     }
-  }
+    if (!newPassword) {
+      Taro.showToast({ title: '请输入新密码', icon: 'none' })
+      return
+    }
+    if (newPassword.length < 6) {
+      Taro.showToast({ title: '密码至少6位', icon: 'none' })
+      return
+    }
+    if (!confirmPassword) {
+      Taro.showToast({ title: '请确认新密码', icon: 'none' })
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      Taro.showToast({ title: '两次输入的密码不一致', icon: 'none' })
+      return
+    }
 
-  //+ 返回登录页
-  const handleBack = () => {
-    Taro.navigateBack()
+    const result: any = await dispatch(
+      fetchResetPassword({ phone, code, newPassword, confirmPassword })
+    )
+
+    if (result.type === 'user/fetchResetPassword/fulfilled') {
+      Taro.showToast({ title: '密码重置成功', icon: 'success' })
+      setTimeout(() => {
+        //+ 跳转到登录页使用新密码登录
+        Taro.redirectTo({ url: '/pages/Login/index' })
+      }, 1500)
+    } else {
+      const errMsg = result.payload || '密码重置失败，请重试'
+      Taro.showToast({ title: errMsg, icon: 'none' })
+    }
   }
 
   return (
     <div className="auth-container">
-      {/* 顶部标题和返回箭头 */}
-      <div className="register-header">
-        <ArrowLeft className='arrow-left' onClick={handleBack} />
-        <span>找回密码</span>
-      </div>
+      {/* 顶部导航：使用封装的 HeaderNavBar 组件（含降级返回逻辑） */}
+      <HeaderNavBar title="找回密码" backPageNum={1} />
 
       {/* logo */}
       <div className="auth-logo">
-        <img src='http://192.168.10.7:89/logo.png' alt="logo" />
+        <img src="http://192.168.10.7:89/logo.png" alt="logo" />
         <p>探索自然，结伴前行</p>
       </div>
 
-      <Form
-        className="auth-form"
-        ref={formRef}
-        onFinish={onFinish}
-        footer={
-          <Button type="primary" className="auth-submit-btn" nativeType="submit">
-            确认
-          </Button>
-        }
-      >
+      {/* 表单区域 */}
+      <div className="auth-form">
         {/* 手机号 */}
-        <Form.Item
-          className='auth-form-item'
-          name="phone"
-          rules={[
-            { required: true, message: '请输入手机号' },
-            { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号' }
-          ]}
-        >
-          <Input placeholder="请输入手机号" type="tel" className='auth-input' />
-        </Form.Item>
+        <div className="auth-form-item">
+          <Input
+            value={phone}
+            onChange={setPhone}
+            placeholder="请输入手机号"
+            type="tel"
+            className="auth-input"
+          />
+        </div>
 
         {/* 验证码 */}
-        <Form.Item
-          className='auth-form-item auth-form-item-code'
-          name="code"
-          rules={[
-            { required: true, message: '请输入验证码' },
-            { pattern: /^\d{6}$/, message: '请输入6位数字验证码' }
-          ]}
-        >
-          <div className="code-input-row">
-            <Input placeholder="请输入短信验证码" type="number" maxLength={6} className='auth-input auth-input-code' />
-            <Button
-              className={`send-code-btn ${codeCountdown > 0 ? 'send-code-btn--disabled' : ''}`}
-              onClick={handleSendCode}
-            >
-              {codeCountdown > 0 ? `${codeCountdown}s后重发` : '发送验证码'}
-            </Button>
-          </div>
-        </Form.Item>
+        <CodeInput
+          value={code}
+          onChange={setCode}
+          codeCountdown={codeCountdown}
+          codeSent={codeSent}
+          onSendCode={() => sendCode(phone)}
+        />
 
         {/* 新密码 */}
-        <Form.Item
-          className='auth-form-item'
-          name="newPassword"
-          rules={[
-            { required: true, message: '请输入新密码' },
-            { min: 6, message: '密码至少6位' }
-          ]}
-        >
-          <Input placeholder="请输入新密码（至少六位）" type="password" className='auth-input' />
-        </Form.Item>
+        <div className="auth-form-item">
+          <Input
+            value={newPassword}
+            onChange={setNewPassword}
+            placeholder="请输入新密码（至少六位）"
+            type="password"
+            className="auth-input"
+          />
+        </div>
 
         {/* 确认新密码 */}
-        <Form.Item
-          className='auth-form-item'
-          name="confirmPassword"
-          rules={[
-            { required: true, message: '请确认新密码' },
-            ({ getFieldValue }) => ({
-              validator(_, value) {
-                if (!value || getFieldValue('newPassword') === value) {
-                  return Promise.resolve()
-                }
-                return Promise.reject(new Error('两次输入的密码不一致'))
-              }
-            })
-          ]}
-        >
-          <Input placeholder="请确认新密码" type="password" className='auth-input' />
-        </Form.Item>
-      </Form>
+        <div className="auth-form-item">
+          <Input
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            placeholder="请确认新密码"
+            type="password"
+            className="auth-input"
+          />
+        </div>
+
+        {/* 提交按钮 */}
+        <Button type="primary" className="auth-submit-btn" onClick={handleSubmit}>
+          确认
+        </Button>
+      </div>
     </div>
   )
 }
