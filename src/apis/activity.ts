@@ -25,10 +25,11 @@ export function getActivityDetailAPI(id: string) {
   return get(`/activities/${id}`)
 }
 
-//+ 创建活动（仅领队，与 OpenAPI POST /activities 对齐）
+//+ 创建活动（仅领队，与 API 文档 POST /activities 对齐）
+//+ 字段使用 category（非 activityType），signUpStart/signUpEnd 由后端自动计算
 export function createActivityAPI(params: {
   title: string
-  activityType: string
+  category: string
   coverImg: string
   address: string
   startTime: string

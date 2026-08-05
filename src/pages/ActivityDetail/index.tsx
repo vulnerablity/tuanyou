@@ -166,7 +166,7 @@ const ActivityDetail = () => {
                   {/* 标签 + 标题 */}
                 <div className="title-section">
                   <div className="tag-row">
-                    <Tag tagName={currentActivity.activityType} />
+                    <Tag tagName={currentActivity.category} />
                     <NutuiTag
                       plain  
                     >

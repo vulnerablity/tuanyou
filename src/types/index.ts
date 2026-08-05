@@ -119,8 +119,8 @@ export interface ActivityBanner {
 }
 
 
-//+ 活动数据结构（详情，与 OpenAPI /activities/{id} 对齐）
-//+ 注意：详情用 activityType，列表用 category（字段名不一致，按文档保留）
+//+ 活动数据结构（详情，与 API 文档 GET /activities/{id} 响应对齐）
+//+ 详情和列表均使用 category 字段（API 文档统一）
 export interface Activity {
   id: string
   leader: {
@@ -130,7 +130,7 @@ export interface Activity {
   }
   title: string
   coverImg: string
-  activityType: string
+  category: string
   address: string
   activityContent: string
   startTime: string
