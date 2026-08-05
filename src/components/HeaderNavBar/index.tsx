@@ -2,12 +2,14 @@
 import {NavBar} from '@nutui/nutui-react'
 import {ArrowLeft,More} from '@nutui/icons-react'
 import Taro from '@tarojs/taro'
+import { useState } from 'react'
+import { Dialog } from '@nutui/nutui-react'
 //样式
 import './index.less'
 
 
 
-const HeaderNavBar = ({title='详情',backPageNum=1,more=false,fallbackUrl='/pages/Home/index'}: {title?: string,backPageNum?: number,more?: boolean,fallbackUrl?: string}) => {
+const HeaderNavBar = ({title='详情',backPageNum=1,more=false,fallbackUrl='/pages/Home/index',fixed=true,cancel=false}: {title?: string,backPageNum?: number,more?: boolean,fallbackUrl?: string,fixed?: boolean,cancel?:boolean}) => {
 
   // 健壮的返回逻辑：navigateBack 失败时降级到浏览器 history，再失败则跳转首页
   const handleBack = () => {
@@ -31,17 +33,31 @@ const HeaderNavBar = ({title='详情',backPageNum=1,more=false,fallbackUrl='/pag
     // 3. 兜底：没有任何历史记录（直接通过 URL 打开），跳转到首页
     Taro.redirectTo({ url: fallbackUrl })
   }
-
+  //取消按钮的点击事件
+  const [dialogVisible, setDialogVisible] = useState(false)
   return (
-    <NavBar
+  <>
+ <NavBar
       className='header-nav-bar'
-      back={<ArrowLeft className='arrow-left' />}
+      back={<div onClick={()=>setDialogVisible(true)} className='back-btn'><ArrowLeft className='arrow-left' />{cancel? '取消':''}</div>}
       right={more ? <More onClick={()=>{}}/> : null}
-      fixed={true}
-      onBackClick={handleBack}
+      fixed={fixed}
+      onBackClick={cancel? ()=>{}:handleBack}
       title={title}
-
     />
+    {cancel&&<Dialog
+      visible={dialogVisible}
+      title="确认取消编辑吗？"
+      confirmText="确认"
+      cancelText="取消"
+      onCancel={() => setDialogVisible(false)}
+     
+      onConfirm={handleBack}
+    />}
+  </>
+   
+
+   
   )
 }
 

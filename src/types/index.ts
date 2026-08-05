@@ -1,5 +1,8 @@
 //+ 公共类型定义，与API文档一致
 
+//+ 用户角色：member=普通会员，leader=领队
+export type UserRole = 'member' | 'leader'
+
 //+ 用户信息接口
 export interface User {
   id: string
@@ -12,6 +15,8 @@ export interface User {
   publishCount: number
   followCount: number
   fansCount: number
+  //+ 用户角色（会员/领队）
+  role?: UserRole
 }
 
 //+ 用户公开资料接口（含关注状态）
@@ -114,7 +119,8 @@ export interface ActivityBanner {
 }
 
 
-//+ 活动数据结构
+//+ 活动数据结构（详情，与 OpenAPI /activities/{id} 对齐）
+//+ 注意：详情用 activityType，列表用 category（字段名不一致，按文档保留）
 export interface Activity {
   id: string
   leader: {
@@ -135,13 +141,47 @@ export interface Activity {
   currentPeople: number
   price: number
   difficulty: string
-  activityStatus: number
+  //+ 活动状态：报名中/进行中/已结束（详情接口需展示状态标签）
+  activityStatus?: string
   joined: boolean
   members?: {
     id: string
     nickname: string
     avatar: string
   }[]
+}
+
+//+ 活动列表项（与 OpenAPI GET /activities 响应 list 项对齐）
+//+ activityStatus 为字符串：报名中/进行中/已结束
+export interface ActivityListItem {
+  id: string
+  leader: {
+    id: string
+    nickname: string
+    avatar: string
+  }
+  title: string
+  coverImg: string
+  category: string
+  address: string
+  startTime: string
+  endTime: string
+  signUpEnd: string
+  price: number
+  maxPeople: number
+  currentPeople: number
+  difficulty: string
+  activityStatus: string
+  joined: boolean
+}
+
+//+ 活动列表分页响应 data 结构
+export interface ActivityListResult {
+  list: ActivityListItem[]
+  total: number
+  page: number
+  size: number
+  total_page: number
 }
 
 //+ 评论数据结构

@@ -1,47 +1,54 @@
-//+ 活动API接口封装
-import { get, post } from '@/utils/request'
+//+ 活动API接口封装（与 OpenAPI 文档对齐）
+import { get, post, del } from '@/utils/request'
+import type { ActivityListResult } from '@/types'
 
-//+ 获取首页活动Banner
+//+ 获取活动Banner（首页活动入口轮播）
 export function getActivityBannersAPI() {
   return get('/activities/banners')
 }
 
 //+ 获取活动列表
-export function getActivitiesAPI(params: {
-  type?: string
-  time?: string
+//+ category 不传=全部，传中文字符串（徒步/露营/骑行/登山/跑步/攀岩/溯溪）
+export function getActivityListAPI(params: {
+  category?: string
   page: number
   size: number
 }) {
-  return get('/activities', params)
+  return get<ActivityListResult>('/activities', params)
 }
+
+//+ 兼容旧命名（部分代码可能引用 getActivitiesAPI）
+export const getActivitiesAPI = getActivityListAPI
 
 //+ 获取活动详情
 export function getActivityDetailAPI(id: string) {
   return get(`/activities/${id}`)
 }
 
-//+ 创建活动（仅领队）
+//+ 创建活动（仅领队，与 OpenAPI POST /activities 对齐）
 export function createActivityAPI(params: {
   title: string
   activityType: string
-  cover?: string
+  coverImg: string
+  address: string
   startTime: string
   endTime: string
-  signUpStart: string
-  signUpEnd: string
-  address: string
-  price?: number
-  maxPeople?: number
+  price: number
+  maxPeople: number
   difficulty: string
-  activityContent?: string
+  activityContent: string
 }) {
   return post('/activities', params)
 }
 
-//+ 报名/取消报名
+//+ 报名/取消报名，返回 { isJoined, currentPeople }
 export function toggleActivitySignupAPI(id: string) {
   return post(`/activities/${id}/signup`)
+}
+
+//+ 删除活动（领队）
+export function deleteActivityAPI(id: string) {
+  return del(`/activities/${id}`)
 }
 
 //+ 获取我的活动
