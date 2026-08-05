@@ -6,7 +6,8 @@ export const ROUTE_PATHS = {
   HOME: '/pages/Home/index',
   LOGOUT: '/pages/Logout/index',
   NOTE_DETAIL: '/pages/NoteDetail/index',
-  GUIDE_DETAIL: '/pages/GuideDetail/index'
+  GUIDE_DETAIL: '/pages/GuideDetail/index',
+  ACTIVITY_DETAIL: '/pages/ActivityDetail/index'
 } as const
 
 //+ H5端路由别名

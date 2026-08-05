@@ -1,6 +1,7 @@
 //+ 活动模块Mock数据和路由
+//+ 用户分两类：mockUsers=会员，mockLeaders=领队
 import { randomInt, randomItem, randomDate, createPageResponse, successResponse, errorResponse } from './utils'
-import { mockUsers } from './user'
+import { mockUsers, mockLeaders } from './user'
 
 //+ 活动Banner数据
 export const mockBanners = [
@@ -49,8 +50,11 @@ export const mockBanners = [
 //+ 活动类型列表
 const activityTypes = ['徒步', '露营', '骑行', '登山', '跑步', '攀岩', '溯溪', '自驾']
 
-//+ 难度等级
-const difficulties = ['简单', '中等', '困难', '挑战']
+//+ 难度等级（与 OpenAPI 枚举一致）
+const difficulties = ['入门', '中等', '中高等', '高等']
+
+//+ 活动状态（与 OpenAPI 一致，后端按时间自动计算）
+const activityStatusList = ['报名中', '进行中', '已结束']
 
 //+ 地址列表
 const addresses = [
@@ -74,20 +78,24 @@ const activityTitles = [
   '{type}装备交流'
 ]
 
-//+ 生成活动数据
+//+ 生成活动数据（leader 从 mockLeaders 取，members 从 mockUsers 取）
 function generateActivity(id: number) {
   const type = randomItem(activityTypes)
-  const leader = randomItem(mockUsers)
+  //+ 领队从 mockLeaders 中随机选取，只提取 id/nickname/avatar
+  const leader = randomItem(mockLeaders)
+  const leaderInfo = {
+    id: leader.id,
+    nickname: leader.nickname,
+    avatar: leader.avatar
+  }
 
   return {
     id: String(id),
-    leader: {
-      id: leader.id,
-      nickname: leader.nickname,
-      avatar: leader.avatar
-    },
+    leader: leaderInfo,
     title: activityTitles[randomInt(0, activityTitles.length - 1)].replace('{type}', type),
     coverImg: `https://picsum.photos/seed/activity${id}/400/300`,
+    //+ 列表用 category（与 OpenAPI 列表响应一致），同时保留 activityType 供详情复用
+    category: type,
     activityType: type,
     address: randomItem(addresses),
     activityContent: `这是一个关于${type}的精彩活动，欢迎大家报名参加！`,
@@ -99,9 +107,11 @@ function generateActivity(id: number) {
     currentPeople: randomInt(1, 15),
     price: randomItem([0, 50, 100, 200, 500]),
     difficulty: randomItem(difficulties),
-    activityStatus: randomInt(0, 2),
+    //+ activityStatus 为字符串（报名中/进行中/已结束）
+    activityStatus: randomItem(activityStatusList),
     joined: Math.random() > 0.5,
-    members: Array.from({ length: randomInt(1, 5) }, (_, i) => {
+    //+ 成员从 mockUsers（会员）中随机选取
+    members: Array.from({ length: randomInt(1, 5) }, () => {
       const member = mockUsers[randomInt(0, mockUsers.length - 1)]
       return {
         id: member.id,
@@ -120,38 +130,19 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
   //+ 获取首页活动Banner
   'GET /api/v1/activities/banners': () => successResponse(mockBanners),
 
-  //+ 获取活动列表
+  //+ 获取活动列表（与 OpenAPI 对齐：按 category 筛选）
   'GET /api/v1/activities': (data) => {
-    const page = data?.page || 1
-    const size = data?.size || 10
-    
+    const page = Number(data?.page) || 1
+    const size = Number(data?.size) || 10
+
     let filteredActivities = [...mockActivities]
-    
-    //+ 根据类型筛选
-    const type = data?.type
-    if (type && type !== '全部') {
-      filteredActivities = filteredActivities.filter(a => a.activityType === type)
+
+    //+ 根据分类筛选：'全部' 或不传 = 不过滤，其他按 category 精确匹配
+    const category = data?.category
+    if (category && category !== '全部') {
+      filteredActivities = filteredActivities.filter(a => a.category === category)
     }
-    
-    //+ 根据时间筛选
-    const time = data?.time
-    if (time && time !== '全部') {
-      const now = new Date()
-      if (time === '本周') {
-        const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-        filteredActivities = filteredActivities.filter(a => {
-          const startTime = new Date(a.startTime)
-          return startTime >= now && startTime <= weekEnd
-        })
-      } else if (time === '本月') {
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-        filteredActivities = filteredActivities.filter(a => {
-          const startTime = new Date(a.startTime)
-          return startTime >= now && startTime <= monthEnd
-        })
-      }
-    }
-    
+
     return successResponse(createPageResponse(filteredActivities, page, size))
   },
 
@@ -167,12 +158,19 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
 
   //+ 创建活动（仅领队）
   'POST /api/v1/activities': (data) => {
+    //+ 创建者为领队（mockLeaders[0]），只提取必要字段
+    const creator = mockLeaders[0]
     const newActivity = {
       id: String(mockActivities.length + 1),
-      leader: mockUsers[0],
+      leader: {
+        id: creator.id,
+        nickname: creator.nickname,
+        avatar: creator.avatar
+      },
       title: data?.title || '新活动',
-      coverImg: data?.cover || '',
+      coverImg: data?.coverImg || '',
       activityType: data?.activityType || '徒步',
+      category: data?.activityType || '徒步',
       address: data?.address || '',
       activityContent: data?.activityContent || '',
       startTime: data?.startTime || randomDate(14),
@@ -182,16 +180,16 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
       maxPeople: data?.maxPeople || 20,
       currentPeople: 0,
       price: data?.price || 0,
-      difficulty: data?.difficulty || '简单',
-      activityStatus: 1,
+      difficulty: data?.difficulty || '中等',
+      activityStatus: randomItem(activityStatusList),
       joined: false,
-      members: []
+      members: [] as { id: string; nickname: string; avatar: string }[]
     }
     mockActivities.unshift(newActivity)
     return successResponse(newActivity)
   },
 
-  //+ 报名/取消报名
+  //+ 报名/取消报名（与 OpenAPI 对齐：返回 isJoined + currentPeople）
   'POST /api/v1/activities/:id/signup': (_, url) => {
     const id = (url as string).split('/')[2] || '1'
     const activity = mockActivities.find(a => a.id === id)
@@ -199,7 +197,7 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
       activity.joined = !activity.joined
       activity.currentPeople += activity.joined ? 1 : -1
       return successResponse({
-        joined: activity.joined,
+        isJoined: activity.joined,
         currentPeople: activity.currentPeople
       })
     }

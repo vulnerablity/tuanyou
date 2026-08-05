@@ -21,6 +21,8 @@ export interface ResponseData<T = any> {
   code: number
   message: string
   data: T
+  //+ 标记数据来源：true=Mock 降级，false/undefined=真实后端
+  __fromMock?: boolean
 }
 
 //+ 默认请求头
@@ -39,17 +41,14 @@ function mockRequest<T = any>(url: string, method: Method, data?: any): Promise<
     setTimeout(() => {
       //+ 使用 method+url 作为键查找匹配的Mock路由
       const key = `${method} ${url}`
-      console.log('Mock路由查找:', key)
-      console.log('可用Mock路由:', Object.keys(mockRoutes))
+      console.log('[Mock] 路由查找:', key)
       
       let mockHandler = mockRoutes[key]
       
       //+ 如果没有精确匹配，尝试参数化路由匹配（如 GET /users/:userId）
       if (!mockHandler) {
-        console.log('未找到精确匹配，尝试参数化路由匹配...')
         for (const [pattern, handler] of Object.entries(mockRoutes)) {
           if (pattern.includes(':') && matchRoute(pattern, key)) {
-            console.log('参数化路由匹配成功:', pattern)
             mockHandler = handler
             break
           }
@@ -59,14 +58,15 @@ function mockRequest<T = any>(url: string, method: Method, data?: any): Promise<
       //+ 返回Mock数据或默认错误
       if (mockHandler) {
         const result = mockHandler(data, url)
-        console.log('Mock响应:', result)
-        resolve(result as ResponseData<T>)
+        //+ 标记数据来源为 Mock
+        resolve({ ...result, __fromMock: true } as ResponseData<T>)
       } else {
-        console.error('未找到Mock接口:', key)
+        console.error('[Mock] 未找到Mock接口:', key)
         resolve({
           code: -1,
           message: '未找到Mock接口',
-          data: null as any
+          data: null as any,
+          __fromMock: true
         })
       }
     }, 300 + Math.random() * 500)
@@ -144,23 +144,26 @@ function responseInterceptor<T = any>(res: any): Promise<ResponseData<T>> {
 }
 
 //+ 发起请求
+//+ 策略：先走真实后端，失败自动降级到 Mock（除非全局开启 Mock）
 export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>> {
   const { url, method = 'GET', data, header, timeout = 30000 } = config
   
   const baseURL = process.env.TARO_APP_API_BASE || ''
   const fullUrl = url.startsWith('http') ? url : `${baseURL}${url}`
   
-  //+ 如果启用Mock，直接返回Mock数据（使用相对路径）
+  //+ 获取相对路径（用于 Mock 查找）：去掉协议和域名部分
+  const basePath = baseURL.replace(/^https?:\/\/[^/]+/, '')
+  const relativeUrl = url.startsWith('http') 
+    ? url.replace(/^https?:\/\/[^/]+/, '') 
+    : `${basePath}${url}`
+  
+  //+ 如果全局开启 Mock（TARO_APP_USE_MOCK=true），直接返回 Mock 数据
   if (isMock) {
-    //+ 获取相对路径：去掉协议和域名部分
-    const basePath = baseURL.replace(/^https?:\/\/[^/]+/, '')
-    const relativeUrl = url.startsWith('http') 
-      ? url.replace(/^https?:\/\/[^/]+/, '') 
-      : `${basePath}${url}`
-    console.log('Mock请求:', method, relativeUrl, data)
+    console.log('[Request] 全局 Mock 模式:', method, relativeUrl, data)
     return mockRequest(relativeUrl, method, data)
   }
   
+  //+ 否则先尝试真实请求
   const requestConfig = requestInterceptor({
     url: fullUrl,
     method,
@@ -169,7 +172,13 @@ export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>
     timeout
   })
 
-  return Taro.request(requestConfig).then(responseInterceptor)
+  return Taro.request(requestConfig)
+    .then(responseInterceptor)
+    .catch((error) => {
+      //+ 真实请求失败（网络错误/HTTP错误/业务错误），自动降级到 Mock
+      console.warn('[Request] 真实接口失败，降级使用 Mock:', method, relativeUrl, error?.message || error)
+      return mockRequest<T>(relativeUrl, method, data)
+    })
 }
 
 //+ GET请求

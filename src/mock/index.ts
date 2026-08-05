@@ -21,7 +21,7 @@ export const mockRoutes: Record<string, (data?: any, url?: string) => any> = {
 // 上方的mockRoutes是给HTTP请求拦截器（如axios拦截器或Mock中间件）使用的，用于在开发阶段拦截前端发出的API请求，并根据请求URL匹配对应的Mock路由处理器，返回模拟数据代替真实的后端接口响应
 
 //+ 重新导出各模块的Mock数据供其他模块使用
-export { mockUsers } from './user'
+export { mockUsers, mockLeaders } from './user'
 export { mockPosts ,mockNoteDetailPost,mockNoteCommentsPost} from './note'
 export { mockBanners, mockActivities } from './activity'
 export { mockCategories, mockSorts, mockTypes } from './config'

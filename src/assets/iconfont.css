@@ -56,6 +56,20 @@
 
 }
 
+/* 活动列表字符图标 */
+.icon-weizhi:before {
+  content: "\e60f";
+}
+
+.icon-shijian:before {
+  content: "\e635";
+}
+/* 发布活动图表 */
+.icon-xiangji:before {
+  content: "\e61a";
+  font-size: 37px;
+  color:#dcdee0;
+}
 @media screen and (min-width: 768px) {
   .iconfont {
     font-size: 24px;

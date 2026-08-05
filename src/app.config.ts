@@ -16,7 +16,8 @@ export default defineAppConfig({
     
     'pages/Logout/index',
     'pages/NoteDetail/index',
-    'pages/GuideDetail/index'
+    'pages/GuideDetail/index',
+    'pages/ActivityDetail/index'
   ],
   window: {
     backgroundTextStyle: 'light',
