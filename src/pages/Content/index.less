@@ -1,33 +1,35 @@
 //+ Content 页面样式
 .content-page {
-    min-height: 100vh;
-    background-color: #f5f6f8;
-    display: flex;
+display: flex;
     flex-direction: column;
+    height: 100vh;
+
+    //+ HeaderNavBar 用 fixed={false}，在文档流中占位，无需 padding-top
+    padding-bottom: 60px; // 底部操作栏高度
+    overflow: hidden;
 }
 
 .content-body {
     flex: 1;
-    padding-top: 50px; //+ HeaderNavBar 固定高度
+    overflow-y: auto;
+  
+
 }
 
 //+ Tab 样式
-.content-tabs {
-    background-color: #fff;
-
-    :global(.nut-tabs__titles) {
-        padding: 0 1rem;
+ .content-tabs {
+    .nut-tabs-titles{
+        background:#fff;
+       
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
+.nut-tabs-titles-item-text{
+    color: #333 !important;
+}
+.nut-tabs-titles-item-active .nut-tabs-titles-item-text{
+    color: #428a46 !important;
+}
 
-    :global(.nut-tabs__title) {
-        font-size: 0.95rem;
-        font-weight: 500;
-        padding: 0.8rem 0;
-    }
-
-    :global(.nut-tabs__title-active) {
-        font-weight: 600;
-    }
 }
 
 //+ 瀑布流容器

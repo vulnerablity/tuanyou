@@ -1,7 +1,8 @@
 //+ 发布笔记页
 //+ 笔记字段：多图上传 + 标题 + 分类 + 标签 + 正文内容
 //+ 标签使用习惯：NutUI 组件（Input/Picker/TextArea/Button/Tag）+ 原生 HTML（div/img/span）
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import Taro from '@tarojs/taro'
 import { Button, TextArea, Input, Picker } from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
@@ -9,6 +10,8 @@ import HeaderNavBar from '@/components/HeaderNavBar'
 import { createNoteAPI } from '@/apis/note'
 import { uploadImageAPI } from '@/apis/upload'
 import { CATEGORY_MAP } from '@/types'
+import { fetchTags } from '@/store/modules/tag'
+import type { RootState, AppDispatch } from '@/store'
 import './index.less'
 
 //+ 最大图片数量
@@ -22,20 +25,6 @@ const MAX_CONTENT = 2000
 //+ 分类选项（从 CATEGORY_MAP 生成，value 为数字 ID 的字符串形式供 Picker 使用）
 const CATEGORY_OPTIONS = [
   Object.entries(CATEGORY_MAP).map(([id, name]) => ({ label: name, value: id }))
-]
-
-//+ 所有可选标签（扁平列表，与分类无关）
-const ALL_TAGS = [
-  '徒步', '户外', '登山', '徒步路线', '徒步装备',
-  '露营', '帐篷', '户外露营', '露营美食', '露营装备',
-  '骑行', '自行车', '骑行路线', '长途骑行', '山地车',
-  '雪山', '高山', '登顶',
-  '晨跑', '夜跑', '马拉松', '跑步打卡',
-  '室内攀岩', '户外攀岩', '攀岩装备',
-  '溪水', '清凉', '户外玩水',
-  '自驾游', '公路旅行', '房车',
-  '户外装备', '装备评测', '装备推荐',
-  '户外摄影', '风景摄影', '人像摄影',
 ]
 
 //+ 表单字段类型
@@ -65,6 +54,20 @@ const PublishNote = () => {
   const [uploading, setUploading] = useState(false)
   //+ 分类 Picker 弹窗可见性
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false)
+
+  //+ Redux dispatch
+  const dispatch: AppDispatch = useDispatch()
+  //+ 从 tag store 获取标签列表（GET /common/tags 返回所有启用标签）
+  const { tags: tagList, loading: tagLoading } = useSelector((state: RootState) => state.tag)
+  //+ 可选标签名称列表（tagName 原样作为提交字段传给后端 tags 字段）
+  const tagOptions = tagList.map(t => t.tagName)
+
+  //+ 进入页面拉取标签列表（无缓存数据时才请求，避免重复请求）
+  useEffect(() => {
+    if (tagList.length === 0) {
+      dispatch(fetchTags())
+    }
+  }, [dispatch, tagList.length])
 
   //+ 通用字段更新（泛型，支持 string/number/string[] 等类型）
   const updateField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
@@ -285,15 +288,21 @@ const PublishNote = () => {
             添加标签（{form.tags.length}/{MAX_TAGS}）
           </div>
           <div className="tag-list">
-            {ALL_TAGS.map(tag => (
-              <span
-                key={tag}
-                className={`tag ${form.tags.includes(tag) ? 'tag-active' : ''}`}
-                onClick={() => handleTagToggle(tag)}
-              >
-                <span className="tag-icon">#</span>{tag}
-              </span>
-            ))}
+            {tagLoading && tagOptions.length === 0 ? (
+              <span className="tag-loading">标签加载中...</span>
+            ) : tagOptions.length === 0 ? (
+              <span className="tag-loading">暂无可用标签</span>
+            ) : (
+              tagOptions.map(tag => (
+                <span
+                  key={tag}
+                  className={`tag ${form.tags.includes(tag) ? 'tag-active' : ''}`}
+                  onClick={() => handleTagToggle(tag)}
+                >
+                  <span className="tag-icon">#</span>{tag}
+                </span>
+              ))
+            )}
           </div>
         </div>
 

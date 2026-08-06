@@ -41,6 +41,13 @@ export function getCategoryName(categoryId?: number): string {
   return CATEGORY_MAP[categoryId] || ''
 }
 
+//+ 标签接口（GET /common/tags 返回项）
+//+ 供笔记/攻略发布时选择，tagName 原样传给 POST /notes 或 POST /guides 的 tags 字段
+export interface Tag {
+  id: number
+  tagName: string
+}
+
 //+ Post数据结构（笔记/攻略详情）
 //+ 笔记和攻略共用此结构，通过 type 区分（'note'/'guide'）
 //+ 攻略额外包含 routeInfo

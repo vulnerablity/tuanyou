@@ -75,9 +75,9 @@ const Content = () => {
     <div className="content-page">
       <HeaderNavBar
         title="我的内容"
-        fixed={true}
+        fixed={false}
         cancel={false}
-        right={<More onClick={() => Taro.showToast({ title: '更多功能开发中', icon: 'none' })} />}
+        
       />
 
       <div className="content-body">
@@ -87,6 +87,7 @@ const Content = () => {
           onChange={(v) => setActiveTab(Number(v))}
           activeColor="#428a46"
           className="content-tabs"
+          activeType="card"
         >
           <Tabs.TabPane title="笔记" value={0} />
           <Tabs.TabPane title="攻略" value={1} />

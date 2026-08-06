@@ -7,6 +7,7 @@ import { Tabs } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import type { FeedItem } from '@/types'
 //+ 复用 Favorite 的样式（瀑布流卡片结构一样）
+import './index.less'
 import '../Favorite/index.less'
 
 //+ 生成点赞数据
@@ -115,7 +116,7 @@ const Like = () => {
 
   return (
     <div className="like-page">
-      <HeaderNavBar title="我的点赞" fixed={true} cancel={false} />
+      <HeaderNavBar title="我的点赞" fixed={false} cancel={false} />
 
       <div className="like-body">
         <Tabs

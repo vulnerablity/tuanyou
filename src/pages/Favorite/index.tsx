@@ -116,7 +116,7 @@ const Favorite = () => {
 
   return (
     <div className="favorite-page">
-      <HeaderNavBar title="我的收藏" fixed={true} cancel={false} />
+      <HeaderNavBar title="我的收藏" fixed={false} cancel={false} />
 
       <div className="favorite-body">
         <Tabs

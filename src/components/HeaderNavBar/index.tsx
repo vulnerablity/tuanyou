@@ -40,7 +40,7 @@ const HeaderNavBar = ({title='详情',backPageNum=1,more=false,fallbackUrl='/pag
  <NavBar
       className='header-nav-bar'
       back={<div onClick={()=>setDialogVisible(true)} className='back-btn'><ArrowLeft className='arrow-left' />{cancel? '取消':''}</div>}
-      right={more ? <More onClick={()=>{}}/> : null}
+      right={more ? <More onClick={() => Taro.showToast({ title: '更多功能开发中', icon: 'none' })} /> : null}
       fixed={fixed}
       onBackClick={cancel? ()=>{}:handleBack}
       title={title}
