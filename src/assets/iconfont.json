@@ -6,6 +6,27 @@
   "description": "",
   "glyphs": [
     {
+      "icon_id": "1221567",
+      "name": "shezhi",
+      "font_class": "shezhi",
+      "unicode": "e626",
+      "unicode_decimal": 58918
+    },
+    {
+      "icon_id": "6946958",
+      "name": "neirong",
+      "font_class": "neirong",
+      "unicode": "e64f",
+      "unicode_decimal": 58959
+    },
+    {
+      "icon_id": "12009195",
+      "name": "bianji",
+      "font_class": "bianji",
+      "unicode": "e647",
+      "unicode_decimal": 58951
+    },
+    {
       "icon_id": "21877823",
       "name": "xiangji",
       "font_class": "xiangji",

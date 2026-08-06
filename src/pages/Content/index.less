@@ -1,0 +1,49 @@
+//+ Content 页面样式
+.content-page {
+    min-height: 100vh;
+    background-color: #f5f6f8;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-body {
+    flex: 1;
+    padding-top: 50px; //+ HeaderNavBar 固定高度
+}
+
+//+ Tab 样式
+.content-tabs {
+    background-color: #fff;
+
+    :global(.nut-tabs__titles) {
+        padding: 0 1rem;
+    }
+
+    :global(.nut-tabs__title) {
+        font-size: 0.95rem;
+        font-weight: 500;
+        padding: 0.8rem 0;
+    }
+
+    :global(.nut-tabs__title-active) {
+        font-weight: 600;
+    }
+}
+
+//+ 瀑布流容器
+.feed-wrapper {
+    padding: 0.5rem;
+}
+
+//+ 平板适配
+@media screen and (min-width: 768px) {
+    .content-body {
+        padding-top: 60px;
+    }
+
+    .feed-wrapper {
+        padding: 0.8rem 2rem;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+}

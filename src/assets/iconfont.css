@@ -70,6 +70,20 @@
   font-size: 37px;
   color:#dcdee0;
 }
+/* 设置 */
+.icon-shezhi:before {
+  content: "\e626";
+}
+
+.icon-neirong:before {
+  content: "\e64f";
+  font-size: 36px;
+
+}
+
+.icon-bianji:before {
+  content: "\e647";
+}
 @media screen and (min-width: 768px) {
   .iconfont {
     font-size: 24px;
@@ -81,6 +95,12 @@
     .icon-zhuanfa:before {
       font-size: 24px;
       padding-bottom: 0.1rem;
+    }
+    .icon-neirong:before {
+      font-size: 20px;
+    }
+    .icon-shezhi:before {
+      font-size: 20px;
     }
 
 }
