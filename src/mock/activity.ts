@@ -47,8 +47,8 @@ export const mockBanners = [
   }
 ]
 
-//+ 活动类型列表
-const activityTypes = ['徒步', '露营', '骑行', '登山', '跑步', '攀岩', '溯溪', '自驾']
+//+ 活动类型列表（与 API 文档一致：徒步/露营/骑行/登山/跑步/攀岩/溯溪）
+const activityTypes = ['徒步', '露营', '骑行', '登山', '跑步', '攀岩', '溯溪']
 
 //+ 难度等级（与 OpenAPI 枚举一致）
 const difficulties = ['入门', '中等', '中高等', '高等']
@@ -94,9 +94,8 @@ function generateActivity(id: number) {
     leader: leaderInfo,
     title: activityTitles[randomInt(0, activityTitles.length - 1)].replace('{type}', type),
     coverImg: `https://picsum.photos/seed/activity${id}/400/300`,
-    //+ 列表用 category（与 OpenAPI 列表响应一致），同时保留 activityType 供详情复用
+    //+ 与 API 文档统一使用 category 字段
     category: type,
-    activityType: type,
     address: randomItem(addresses),
     activityContent: `这是一个关于${type}的精彩活动，欢迎大家报名参加！`,
     startTime: randomDate(14),
@@ -169,19 +168,19 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
       },
       title: data?.title || '新活动',
       coverImg: data?.coverImg || '',
-      activityType: data?.activityType || '徒步',
-      category: data?.activityType || '徒步',
+      category: data?.category || '徒步',
       address: data?.address || '',
       activityContent: data?.activityContent || '',
       startTime: data?.startTime || randomDate(14),
       endTime: data?.endTime || randomDate(7),
-      signUpStart: data?.signUpStart || randomDate(30),
-      signUpEnd: data?.signUpEnd || randomDate(1),
+      //+ signUpStart/signUpEnd 由后端自动计算，Mock 仅占位
+      signUpStart: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      signUpEnd: data?.startTime || randomDate(1),
       maxPeople: data?.maxPeople || 20,
       currentPeople: 0,
       price: data?.price || 0,
       difficulty: data?.difficulty || '中等',
-      activityStatus: randomItem(activityStatusList),
+      activityStatus: '报名中',
       joined: false,
       members: [] as { id: string; nickname: string; avatar: string }[]
     }
@@ -189,9 +188,10 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
     return successResponse(newActivity)
   },
 
-  //+ 报名/取消报名（与 OpenAPI 对齐：返回 isJoined + currentPeople）
+  //+ 报名/取消报名（与 API 文档对齐：返回 isJoined + currentPeople）
   'POST /api/v1/activities/:id/signup': (_, url) => {
-    const id = (url as string).split('/')[2] || '1'
+    //+ URL 格式 /api/v1/activities/{id}/signup，提取 id 需去掉 /signup 后取末段
+    const id = (url as string).replace('/signup', '').split('/').pop() || '1'
     const activity = mockActivities.find(a => a.id === id)
     if (activity) {
       activity.joined = !activity.joined

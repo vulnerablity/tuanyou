@@ -17,7 +17,20 @@ export default defineAppConfig({
     'pages/Logout/index',
     'pages/NoteDetail/index',
     'pages/GuideDetail/index',
-    'pages/ActivityDetail/index'
+    'pages/ActivityDetail/index',
+    // 个人中心
+    'pages/EditProfile/index',
+    'pages/EditUserInfo/index',
+    'pages/MyActivity/index',
+    'pages/Content/index',
+    'pages/FollowList/index',
+    'pages/FollowerList/index',
+    'pages/Favorite/index',
+    'pages/Like/index',
+    'pages/Settings/index',
+
+
+
   ],
   window: {
     backgroundTextStyle: 'light',

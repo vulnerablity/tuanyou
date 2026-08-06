@@ -84,20 +84,20 @@ const ActivityDetail = () => {
     if (config.disabled) return
 
     //+ 未登录引导登录（文档第七节）
-    const userInfo = Taro.getStorageSync('userInfo')
-    if (!userInfo) {
-      Taro.showModal({
-        title: '提示',
-        content: '请先登录后再报名',
-        confirmText: '去登录',
-        success: (res) => {
-          if (res.confirm) {
-            Taro.navigateTo({ url: '/pages/Login/index' })
-          }
-        }
-      })
-      return
-    }
+    // const userInfo = Taro.getStorageSync('userInfo')
+    // if (!userInfo) {
+    //   Taro.showModal({
+    //     title: '提示',
+    //     content: '请先登录后再报名',
+    //     confirmText: '去登录',
+    //     success: (res) => {
+    //       if (res.confirm) {
+    //         Taro.navigateTo({ url: '/pages/Login/index' })
+    //       }
+    //     }
+    //   })
+    //   return
+    // }
 
     //+ 记录操作前的 joined 状态，用于 Toast 提示文案
     const wasJoined = currentActivity.joined
@@ -166,7 +166,7 @@ const ActivityDetail = () => {
                   {/* 标签 + 标题 */}
                 <div className="title-section">
                   <div className="tag-row">
-                    <Tag tagName={currentActivity.activityType} />
+                    <Tag tagName={currentActivity.category} />
                     <NutuiTag
                       plain  
                     >

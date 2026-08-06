@@ -175,7 +175,12 @@ export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>
   return Taro.request(requestConfig)
     .then(responseInterceptor)
     .catch((error) => {
-      //+ 真实请求失败（网络错误/HTTP错误/业务错误），自动降级到 Mock
+      //+ 业务错误（HTTP 200 但 code != 0/200）：responseInterceptor reject 的是响应数据对象 {code, message, data}
+      //+ 此类错误不应降级 Mock，直接抛出给业务层处理（如报名满员、不在报名时间等）
+      if (error && typeof error.code === 'number') {
+        return Promise.reject(error)
+      }
+      //+ 网络/HTTP 错误（非 200 状态码、超时、连接失败等）：降级到 Mock
       console.warn('[Request] 真实接口失败，降级使用 Mock:', method, relativeUrl, error?.message || error)
       return mockRequest<T>(relativeUrl, method, data)
     })

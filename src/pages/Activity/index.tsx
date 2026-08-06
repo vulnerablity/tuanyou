@@ -49,7 +49,7 @@ const Activity = () => {
     (targetCategory: string, targetPage: number, loadMore: boolean) => {
       dispatch(
         fetchActivities({
-          category: targetCategory === '全部' ? undefined : targetCategory,
+          category: targetCategory === '全部' ? '' : targetCategory,
           page: targetPage,
           size: PAGE_SIZE,
           loadMore,

@@ -6,6 +6,7 @@ import { noteMockRoutes } from './note'
 import { activityMockRoutes } from './activity'
 import { configMockRoutes } from './config'
 import { homeMockRoutes } from './home'
+import { tagMockRoutes } from './tag'
 
 //+ 合并所有Mock路由
 export const mockRoutes: Record<string, (data?: any, url?: string) => any> = {
@@ -13,7 +14,8 @@ export const mockRoutes: Record<string, (data?: any, url?: string) => any> = {
   ...noteMockRoutes,
   ...activityMockRoutes,
   ...configMockRoutes,
-  ...homeMockRoutes
+  ...homeMockRoutes,
+  ...tagMockRoutes
 }
 // 上方：合并所有模块的Mock路由处理器（函数），用于统一注册Mock接口
 // 下方：重新导出各模块的Mock数据对象，供其他模块直接引用数据本身
@@ -26,4 +28,5 @@ export { mockPosts ,mockNoteDetailPost,mockNoteCommentsPost} from './note'
 export { mockBanners, mockActivities } from './activity'
 export { mockCategories, mockSorts, mockTypes } from './config'
 export { mockSlides, mockFeed } from './home'
+export { mockTags } from './tag'
 export * from './utils'

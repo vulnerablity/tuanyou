@@ -102,9 +102,20 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
           '/pages/PublishGuide/index': '/publish/guide',
           '/pages/PublishActivity/index': '/publish/activity',
           '/pages/Logout/index': '/logout',
-          
+          //详情页
           '/pages/NoteDetail/index': '/note-detail',
           '/pages/GuideDetail/index': '/guide-detail',
+          '/pages/ActivityDetail/index': '/activity-detail',
+          // 个人中心
+          '/pages/Content/index': '/content',
+          '/pages/FollowList/index': '/follow-list',
+          '/pages/FollowerList/index': '/follower-list',
+          '/pages/Favorite/index': '/favorite',
+          '/pages/Like/index': '/like',
+          '/pages/Settings/index': '/settings',
+          '/pages/MyActivity/index': '/my-activity',
+          '/pages/EditProfile/index': '/edit-profile',
+          '/pages/EditUserInfo/index': '/edit-user-info',
         }
       },
       output: {

@@ -20,7 +20,7 @@ const DIFFICULTY_OPTIONS = ['入门', '中等', '中高等', '高等']
 interface FormState {
   coverImg: string
   title: string
-  activityType: string
+  category: string
   startTime: string
   endTime: string
   address: string
@@ -33,7 +33,7 @@ interface FormState {
 const initialForm: FormState = {
   coverImg: '',
   title: '',
-  activityType: '',
+  category: '',
   startTime: '',
   endTime: '',
   address: '',
@@ -113,7 +113,7 @@ const PublishActivity = () => {
 
   //+ 活动类型 Picker 确认
   const handleTypeConfirm = (_options: any, value: any[]) => {
-    updateField('activityType', String(value[0]))
+    updateField('category', String(value[0]))
     setTypePickerVisible(false)
   }
 
@@ -145,7 +145,7 @@ const PublishActivity = () => {
       Taro.showToast({ title: '请输入活动标题（1-50字）', icon: 'none' })
       return false
     }
-    if (!form.activityType) {
+    if (!form.category) {
       Taro.showToast({ title: '请选择活动类型', icon: 'none' })
       return false
     }
@@ -153,20 +153,22 @@ const PublishActivity = () => {
       Taro.showToast({ title: '请选择开始时间', icon: 'none' })
       return false
     }
+    //+ API 文档：startTime 必须晚于当前时间 + 48小时（signUpEnd = startTime - 48h 需为未来时间）
     const now = new Date()
     const start = new Date(form.startTime)
-    if (start.getTime() <= now.getTime()) {
-      Taro.showToast({ title: '开始时间必须晚于当前时间', icon: 'none' })
+    const diffStartHours = (start.getTime() - now.getTime()) / (1000 * 60 * 60)
+    if (diffStartHours <= 48) {
+      Taro.showToast({ title: '开始时间需晚于当前时间48小时以上', icon: 'none' })
       return false
     }
     if (!form.endTime) {
       Taro.showToast({ title: '请选择结束时间', icon: 'none' })
       return false
     }
+    //+ API 文档：endTime 只需晚于 startTime（无 48h 差值要求）
     const end = new Date(form.endTime)
-    const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
-    if (diffHours <= 48) {
-      Taro.showToast({ title: '结束时间需比开始时间晚48小时以上', icon: 'none' })
+    if (end.getTime() <= start.getTime()) {
+      Taro.showToast({ title: '结束时间必须晚于开始时间', icon: 'none' })
       return false
     }
     if (!form.address.trim()) {
@@ -207,7 +209,7 @@ const PublishActivity = () => {
     try {
       const res = await createActivityAPI({
         title: form.title.trim(),
-        activityType: form.activityType,
+        category: form.category,
         coverImg: form.coverImg,
         address: form.address.trim(),
         startTime: formatDateTime(form.startTime),
@@ -293,14 +295,14 @@ const PublishActivity = () => {
         {/* 类型 - 使用 NutUI Picker */}
         <div className="field-section" onClick={() => setTypePickerVisible(true)}>
           <div className="field-label">类型</div>
-          <div className={`field-picker-display ${!form.activityType ? 'placeholder' : ''}`}>
-            {form.activityType || '选择活动类型'}
+          <div className={`field-picker-display ${!form.category ? 'placeholder' : ''}`}>
+            {form.category || '选择活动类型'}
           </div>
           <Picker
             visible={typePickerVisible}
             title="选择活动类型"
             options={typePickerOptions}
-            value={form.activityType ? [form.activityType] : []}
+            value={form.category ? [form.category] : []}
             onConfirm={handleTypeConfirm}
             onCancel={() => setTypePickerVisible(false)}
             onClose={() => setTypePickerVisible(false)}
