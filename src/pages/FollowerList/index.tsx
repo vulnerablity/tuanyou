@@ -60,7 +60,7 @@ const FollowerList = () => {
 
   return (
     <div className="follow-list-page">
-      <HeaderNavBar title="粉丝" fixed={true} cancel={false} />
+      <HeaderNavBar title="粉丝" fixed={false} cancel={false} />
 
       <div className="list-wrapper">
         {list.length === 0 ? (
@@ -68,7 +68,7 @@ const FollowerList = () => {
         ) : (
           list.map(user => (
             <div key={user.id} className="user-item" onClick={() => handleUserClick(user)}>
-              <Avatar url={user.avatar} size="80" />
+              <Avatar url={user.avatar} size="35" />
               <div className="user-info">
                 <span className="user-nickname">{user.nickname}</span>
                 <span className="user-bio">{user.bio}</span>
@@ -85,6 +85,8 @@ const FollowerList = () => {
           ))
         )}
       </div>
+
+      
     </div>
   )
 }

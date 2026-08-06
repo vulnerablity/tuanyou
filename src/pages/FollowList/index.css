@@ -1,11 +1,13 @@
 .follow-list-page {
-  min-height: 100vh;
-  background-color: #f5f6f8;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 .list-wrapper {
-  padding: 50px 0 20px;
-  background-color: #fff;
-  min-height: 100vh;
+  border-top: 1px solid #e9e3e3;
+  flex: 1;
+  overflow-y: auto;
 }
 .empty-state {
   text-align: center;
@@ -27,17 +29,18 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: 0.75rem;
+  align-items: flex-start;
+  margin-left: 0.5rem;
   overflow: hidden;
 }
 .user-item .user-info .user-nickname {
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: #333;
+  font-size: 0.7rem;
+  font-weight: 350;
+  color: #272727;
   line-height: 1.4;
 }
 .user-item .user-info .user-bio {
-  font-size: 0.75rem;
+  font-size: 0.6rem;
   color: #999;
   line-height: 1.3;
   margin-top: 0.2rem;
@@ -46,10 +49,10 @@
   white-space: nowrap;
 }
 .follow-btn {
-  min-width: 4.5rem;
-  height: 1.8rem;
-  border-radius: 1.8rem;
-  font-size: 0.75rem;
+  min-width: 3rem;
+  height: 1.2rem;
+  border-radius: 1.2rem;
+  font-size: 0.65rem;
   font-weight: 300;
   color: #fff;
   background-color: #428a46;
@@ -59,7 +62,7 @@
 }
 .follow-btn.nut-button--default {
   background-color: #f0f0f0;
-  color: #888;
+  color: #5a5959;
 }
 .follow-btn.followed {
   background-color: #f0f0f0;
@@ -68,15 +71,20 @@
 .follow-btn.followed .nut-button__text {
   color: #888;
 }
-.follow-btn :global(.nut-button__text) {
-  color: #fff;
-  font-weight: 300;
-  letter-spacing: 0.05em;
-}
 @media screen and (min-width: 768px) {
   .list-wrapper {
     padding-top: 60px;
-    max-width: 600px;
-    margin: 0 auto;
+  }
+  .user-item .user-info .user-nickname {
+    font-size: 0.5rem;
+  }
+  .user-item .user-info .user-bio {
+    font-size: 0.4rem;
+  }
+  .follow-btn {
+    min-width: 2.5rem;
+    height: 1rem;
+    border-radius: 1rem;
+    font-size: 0.5rem;
   }
 }
