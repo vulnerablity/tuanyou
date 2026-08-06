@@ -108,7 +108,7 @@ const EditProfile = () => {
       {/* 头部导航栏 */}
       <HeaderNavBar
         title="编辑资料"
-        fixed={true}
+        fixed={false}
         cancel={true}
       />
 
@@ -117,8 +117,8 @@ const EditProfile = () => {
         <div className="avatar-section">
           <div className="section-label">头像</div>
           <div className="avatar-upload" onClick={handleChangeAvatar}>
-            <Avatar url={form.avatar} size="100" />
-            <div className="avatar-tip">点击更换头像</div>
+            <Avatar url={form.avatar} size="80" />
+            {/* <div className="avatar-tip">点击更换头像</div> */}
           </div>
         </div>
 
@@ -159,14 +159,12 @@ const EditProfile = () => {
             value={form.signature}
             onChange={(v) => updateField('signature', v)}
             maxLength={MAX_SIGNATURE}
-            rows={3}
+            rows={1}
             showCount={false}
           />
           <span className="form-count right">{form.signature.length}/{MAX_SIGNATURE}</span>
         </div>
-      </div>
-
-      {/* 底部保存按钮 */}
+        {/* 底部保存按钮 */}
       <div className="submit-bar">
         <Button
           type="primary"
@@ -178,6 +176,9 @@ const EditProfile = () => {
           {submitting ? '保存中...' : '保存'}
         </Button>
       </div>
+      </div>
+
+      
     </div>
   )
 }
