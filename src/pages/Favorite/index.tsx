@@ -1,39 +1,33 @@
 //+ Favorite 我的收藏列表页
 //+ 结构：HeaderNavBar + Tabs（笔记/攻略，激活色#428a46） + 瀑布流列表
 //+ 收藏图标：收藏态用 icon-shoucangfill，取消收藏用 icon-shoucang（空心）
-import { useState, useMemo } from 'react'
-import Taro from '@tarojs/taro'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { useDispatch } from 'react-redux'
+import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { Tabs } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
-import type { FeedItem } from '@/types'
+import { fetchFavoriteNotes, fetchFavoriteStrategys } from '@/store/modules/profile'
+import type { FeedItem, ProfilePostItem } from '@/types'
+import type { AppDispatch } from '@/store'
 import './index.less'
 
-//+ 生成收藏数据
-const generateFavoriteData = (type: 'note' | 'guide'): FeedItem[] => {
-  const titles = type === 'note'
-    ? ['秋季最美徒步路线｜北京周边赏红叶', '婺源篁岭晒秋｜一日游徒步路线', '泰山夜爬攻略｜看日出最佳机位', '武功山金顶｜云海草甸露营记', '雁荡山｜奇峰异石徒步一日']
-    : ['新手露营装备清单｜百元级入门必买', '骑行头盔选购指南｜千元内推荐', '徒步鞋 vs 登山鞋怎么选？', '入门级帐篷推荐（附对比表）', '户外急救包必备物品TOP20']
-  return titles.map((title, i) => ({
-    id: `fav-${type}-${i + 1}`,
-    title,
-    images: [`https://picsum.photos/400/500?random=${60 + i + (type === 'guide' ? 20 : 0)}`],
+//+ 将 ProfilePostItem 转换为 FeedItem
+const toFeedItem = (item: ProfilePostItem): FeedItem => {
+  return {
+    id: item.id,
+    title: item.title,
+    images: [item.coverImg],
     videoUrl: '',
-    tags: type === 'note'
-      ? [['徒步', '赏秋'], ['婺源', '一日游'], ['泰山', '日出'], ['武功山', '云海'], ['雁荡山', '徒步']][i]
-      : [['装备', '入门'], ['头盔', '骑行'], ['鞋子', '装备'], ['帐篷', '推荐'], ['急救', '安全']][i],
+    tags: item.tag ? [item.tag] : [],
     member: {
-      nickname: type === 'note' ? ['山系老王', '婺源小导游', '泰山扛把子', '云海追梦', '奇峰摄影'][i] : ['装备党', '骑行家', '选鞋达人', '露营小能手', '户外救援'][i],
-      avatar: `https://picsum.photos/100?random=${80 + i + (type === 'guide' ? 30 : 0)}`,
+      nickname: item.author.nickname,
+      avatar: item.author.avatar
     },
-    likeCount: Math.floor(Math.random() * 500) + 20,
-    isLiked: false,
-    type,
-    category: (i % 7) + 1,
-  }))
+    likeCount: item.likeCount,
+    isLiked: item.isLiked,
+    type: item.type === 'strategy' ? 'guide' : item.type
+  }
 }
-
-const staticFavNotes = generateFavoriteData('note')
-const staticFavGuides = generateFavoriteData('guide')
 
 //+ 单个收藏卡片（复用首页瀑布流布局，但点赞位置换成收藏图标）
 const FavoriteCard = ({
@@ -81,23 +75,96 @@ const FavoriteCard = ({
 }
 
 const Favorite = () => {
+  const dispatch: AppDispatch = useDispatch()
   const [activeTab, setActiveTab] = useState(0)
-  //+ 收藏状态：默认全部已收藏（收藏页嘛）
-  const [favIds, setFavIds] = useState<string[]>(() => [
-    ...staticFavNotes.map(n => n.id),
-    ...staticFavGuides.map(g => g.id),
-  ])
-  const [localFavNotes, setLocalFavNotes] = useState(staticFavNotes)
-  const [localFavGuides, setLocalFavGuides] = useState(staticFavGuides)
+  
+  //+ 笔记收藏列表
+  const [noteList, setNoteList] = useState<FeedItem[]>([])
+  const [noteLoading, setNoteLoading] = useState(false)
+  const [noteHasMore, setNoteHasMore] = useState(true)
+  const notePageRef = useRef(1)
+  
+  //+ 攻略收藏列表
+  const [guideList, setGuideList] = useState<FeedItem[]>([])
+  const [guideLoading, setGuideLoading] = useState(false)
+  const [guideHasMore, setGuideHasMore] = useState(true)
+  const guidePageRef = useRef(1)
+  
+  //+ 全局收藏 ID 列表（用于快速判断状态）
+  const [favIds, setFavIds] = useState<string[]>([])
+
+  //+ 加载笔记收藏
+  const loadFavoriteNotes = useCallback(async (page: number = 1, append: boolean = false) => {
+    if (noteLoading) return
+    setNoteLoading(true)
+    try {
+      const res: any = await dispatch(fetchFavoriteNotes({ page, size: 10 }))
+      if (res.meta.requestStatus === 'fulfilled') {
+        const data = res.payload
+        const items: FeedItem[] = (data.list || []).map(toFeedItem)
+        setNoteList(prev => append ? [...prev, ...items] : items)
+        notePageRef.current = data.page
+        setNoteHasMore(data.page < data.total_page)
+      }
+    } catch (e) {
+      console.error('加载收藏笔记失败:', e)
+    } finally {
+      setNoteLoading(false)
+    }
+  }, [dispatch, noteLoading])
+
+  //+ 加载攻略收藏
+  const loadFavoriteStrategys = useCallback(async (page: number = 1, append: boolean = false) => {
+    if (guideLoading) return
+    setGuideLoading(true)
+    try {
+      const res: any = await dispatch(fetchFavoriteStrategys({ page, size: 10 }))
+      if (res.meta.requestStatus === 'fulfilled') {
+        const data = res.payload
+        const items: FeedItem[] = (data.list || []).map(toFeedItem)
+        setGuideList(prev => append ? [...prev, ...items] : items)
+        guidePageRef.current = data.page
+        setGuideHasMore(data.page < data.total_page)
+      }
+    } catch (e) {
+      console.error('加载收藏攻略失败:', e)
+    } finally {
+      setGuideLoading(false)
+    }
+  }, [dispatch, guideLoading])
+
+  //+ 初始化：加载第一页数据
+  const loadFirstPage = useCallback(() => {
+    loadFavoriteNotes(1, false)
+    loadFavoriteStrategys(1, false)
+  }, [loadFavoriteNotes, loadFavoriteStrategys])
+
+  //+ 页面显示时加载数据
+  useDidShow(() => {
+    loadFirstPage()
+  })
+
+  //+ 下拉刷新
+  usePullDownRefresh(() => {
+    loadFirstPage()
+    Taro.stopPullDownRefresh()
+  })
+
+  //+ 更新收藏 ID 列表（当列表变化时）
+  useEffect(() => {
+    const allIds = [...noteList.map(i => i.id), ...guideList.map(i => i.id)]
+    setFavIds(prev => {
+      //+ 合并并去重
+      const set = new Set([...prev, ...allIds])
+      return Array.from(set)
+    })
+  }, [noteList, guideList])
 
   const currentList = useMemo(() => {
-    const ids = new Set(favIds)
-    const srcList = activeTab === 0 ? localFavNotes : localFavGuides
-    //+ 仅显示还在收藏中的
-    return srcList.filter(item => ids.has(item.id))
-  }, [activeTab, favIds, localFavNotes, localFavGuides])
+    return activeTab === 0 ? noteList : guideList
+  }, [activeTab, noteList, guideList])
 
-  //+ 切换收藏
+  //+ 切换收藏（乐观更新，暂未对接后端）
   const handleToggleFavorite = (id: string) => {
     const isFav = favIds.includes(id)
     if (isFav) {
@@ -108,11 +175,25 @@ const Favorite = () => {
     }
   }
 
+  //+ 加载更多
+  const handleLoadMore = () => {
+    if (activeTab === 0) {
+      if (noteLoading || !noteHasMore) return
+      loadFavoriteNotes(notePageRef.current + 1, true)
+    } else {
+      if (guideLoading || !guideHasMore) return
+      loadFavoriteStrategys(guidePageRef.current + 1, true)
+    }
+  }
+
   //+ 跳转详情
   const handleItemClick = (item: FeedItem) => {
     const pagePath = item.type === 'guide' ? '/pages/GuideDetail/index' : '/pages/NoteDetail/index'
     Taro.navigateTo({ url: `${pagePath}?id=${item.id}&type=${item.type}` })
   }
+
+  const currentLoading = activeTab === 0 ? noteLoading : guideLoading
+  const currentHasMore = activeTab === 0 ? noteHasMore : guideHasMore
 
   return (
     <div className="favorite-page">
@@ -130,7 +211,7 @@ const Favorite = () => {
         </Tabs>
 
         <div className="fav-waterfall">
-          {currentList.length === 0 ? (
+          {currentList.length === 0 && !currentLoading ? (
             <div className="empty-state">还没有收藏的{activeTab === 0 ? '笔记' : '攻略'}</div>
           ) : (
             <>
@@ -156,8 +237,21 @@ const Favorite = () => {
                   />
                 ))}
               </div>
+              
+             {/* 加载更多 */}
+              {currentHasMore && (
+                <div className="load-more" onClick={handleLoadMore}>
+                  {currentLoading ? '加载中...' : '加载更多'}
+                </div>
+              )}
+              {!currentHasMore && currentList.length > 0 && (
+                <div className="no-more">已加载全部</div>
+              )}
             </>
+
+            
           )}
+            
         </div>
       </div>
     </div>

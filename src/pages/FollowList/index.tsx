@@ -1,54 +1,87 @@
 //+ FollowList 关注列表页
 //+ 结构：HeaderNavBar（无取消文字，固定头部） + 关注列表 + 关注按钮切换
 //+ 标签使用习惯：NutUI Button + 原生 HTML（div/img/span）
-import { useState } from 'react'
-import Taro from '@tarojs/taro'
+import { useState, useCallback, useRef } from 'react'
+import { useDispatch } from 'react-redux'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { Button } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import Avatar from '@/components/Avatar'
-import type { UserPublic } from '@/types'
+import { fetchFollowList } from '@/store/modules/profile'
+import type { FollowItem, UserPublic } from '@/types'
+import type { AppDispatch } from '@/store'
 import './index.less'
 
-//+ 生成静态用户数据
-const generateUsers = (): UserPublic[] => {
-  const nicknames = ['山野清风', '星空漫步者', '户外小猫', '登山阿明', '骑行追风', '露营少女', '攀岩老王', '跑者阿杰']
-  const bios = ['热爱户外，享受自然', '周末徒步爱好者', '一个喜欢露营的女孩子', '登山十年，足迹遍布全国', '环华骑行进行中', '美食露营两不误', '攀岩教练，欢迎约课', '半马选手，配速530']
-  return nicknames.map((name, i) => ({
-    id: `u-${i + 1}`,
+//+ 将 FollowItem 转换为 UserPublic（供组件渲染使用）
+//+ 后端用 followeeId/followerId 标识关系，前端统一用 id
+const toUserPublic = (item: FollowItem): UserPublic => {
+  return {
+    id: item.followeeId,
     phone: '',
-    nickname: name,
-    avatar: `https://picsum.photos/100?random=${20 + i}`,
-    bio: bios[i],
-    bgImg: `https://picsum.photos/400/200?random=${30 + i}`,
+    nickname: item.nickname,
+    avatar: item.avatar,
+    bio: item.bio,
+    bgImg: '',
     memberType: 1,
-    publishCount: Math.floor(Math.random() * 50) + 1,
-    followCount: Math.floor(Math.random() * 200) + 10,
-    fansCount: Math.floor(Math.random() * 500) + 50,
-    //+ 关注状态：一半已关注一半未关注
-    isFollowed: i % 2 === 0,
-  }))
+    publishCount: 0,
+    followCount: 0,
+    fansCount: 0,
+    isFollowed: item.isFollowed
+  }
 }
 
-const staticFollowList = generateUsers()
-
 const FollowList = () => {
-  const [list, setList] = useState<UserPublic[]>(staticFollowList)
+  const dispatch: AppDispatch = useDispatch()
+  const [list, setList] = useState<UserPublic[]>([])
+  const [loading, setLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const pageRef = useRef(1)
+  const sizeRef = useRef(10)
 
-  //+ 切换关注状态
+  //+ 加载数据
+  const loadData = useCallback(async (page: number = 1, append: boolean = false) => {
+    if (loading) return
+    setLoading(true)
+    try {
+      const res: any = await dispatch(fetchFollowList({ page, size: sizeRef.current }))
+      if (res.meta.requestStatus === 'fulfilled') {
+        const data = res.payload
+        const newItems: UserPublic[] = (data.list || []).map(toUserPublic)
+        setList(prev => append ? [...prev, ...newItems] : newItems)
+        pageRef.current = data.page
+        setHasMore(data.page < data.total_page)
+      }
+    } catch (e) {
+      console.error('加载关注列表失败:', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [dispatch, loading])
+
+  //+ 页面显示时加载第一页
+  useDidShow(() => {
+    loadData(1, false)
+  })
+
+  //+ 加载更多
+  const handleLoadMore = () => {
+    if (!hasMore || loading) return
+    loadData(pageRef.current + 1, true)
+  }
+
+  //+ 切换关注状态（乐观更新）
   const handleToggleFollow = (e: any, id: string, currentStatus: boolean) => {
     e.stopPropagation()
-    //+ 乐观更新
     setList(prev => prev.map(user =>
       user.id === id ? { ...user, isFollowed: !currentStatus } : user
     ))
-    //+ 后期对接接口
+    //+ 后期对接关注/取消关注接口
     const text = currentStatus ? '已取消关注' : '关注成功'
     Taro.showToast({ title: text, icon: 'success' })
   }
 
   //+ 点击用户项：跳转个人主页（暂未开发）
   const handleUserClick = (user: UserPublic) => {
-    //+ 后期跳转对应用户主页
     Taro.showToast({ title: `查看 ${user.nickname}`, icon: 'none' })
   }
 
@@ -57,7 +90,7 @@ const FollowList = () => {
       <HeaderNavBar title="关注" fixed={false} cancel={false} />
 
       <div className="list-wrapper">
-        {list.length === 0 ? (
+        {list.length === 0 && !loading ? (
           <div className="empty-state">还没有关注的人</div>
         ) : (
           list.map(user => (
@@ -77,6 +110,16 @@ const FollowList = () => {
               </Button>
             </div>
           ))
+        )}
+        
+        {/* 加载更多 */}
+        {hasMore && list.length > 0 && (
+          <div className="load-more" onClick={handleLoadMore}>
+            {loading ? '加载中...' : '加载更多'}
+          </div>
+        )}
+        {!hasMore && list.length > 0 && (
+          <div className="no-more">已加载全部</div>
         )}
       </div>
     </div>

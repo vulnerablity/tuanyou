@@ -77,3 +77,8 @@ export function updateUserSettingsAPI(params: {
 export function getUserInfoAPI(userId: string) {
   return get(`/users/${userId}`)
 }
+
+//+ 退出登录
+export function logoutAPI() {
+  return post('/auth/logout')
+}

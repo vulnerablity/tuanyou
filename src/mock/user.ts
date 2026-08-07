@@ -292,5 +292,8 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
       })
     }
     return errorResponse('用户不存在')
-  }
+  },
+
+  //+ 退出登录
+  'POST /api/v1/auth/logout': () => successResponse({ message: '已退出登录' })
 }

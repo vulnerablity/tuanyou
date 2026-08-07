@@ -1,64 +1,82 @@
 //+ Content 页面 - 用户发布的笔记和攻略
 //+ 结构：HeaderNavBar + Tab（笔记/攻略，激活色#428a46） + 瀑布流列表 + 详情页删除按钮
 //+ 标签使用习惯：NutUI 组件（Tabs/Dialog） + NoteList 复用瀑布流
-import { useState, useMemo } from 'react'
-import Taro from '@tarojs/taro'
+import { useState, useMemo, useCallback } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { Tabs, Dialog } from '@nutui/nutui-react'
-import { More } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import NoteList from '@/components/NoteList'
-import type { FeedItem } from '@/types'
+import { fetchProfileNotes, fetchProfileStrategys } from '@/store/modules/profile'
+import type { FeedItem, ProfilePostItem } from '@/types'
+import type { RootState, AppDispatch } from '@/store'
 import './index.less'
 
-//+ 生成静态瀑布流数据（与首页 NoteList 结构一致）
-const generateFeedData = (type: 'note' | 'guide'): FeedItem[] => {
-  const titles = type === 'note'
-    ? ['周末轻徒步｜莫干山竹林穿越一日', '露营夜话｜在山顶等一场日出', '骑行环千岛湖｜秋天最美公路', '3天2夜武功山攻略｜云海路线', '城市夜跑｜滨江5公里打卡路线']
-    : ['新手入门装备清单｜第一次徒步必看', '新手登山鞋选购指南，不走弯路！', '新手露营地推荐TOP10，新手友好', '新手骑行入门：从10公里到100公里', '新手攀岩入门：基础技巧全解析']
-  const coverRandoms = type === 'note' ? [2, 3, 4, 5, 6] : [12, 13, 14, 15, 16]
-  const avatars = [7, 8, 9, 10, 11]
-  const nicknames = type === 'note'
-    ? ['山林旅人', '露营爱好者', '骑行追光', '登山少年', '夜跑达人']
-    : ['装备控', '老驴', '户外百科', '攻略达人', '新手指导员']
-  const tags = type === 'note'
-    ? [['徒步', '户外'], ['露营', '日出'], ['骑行', '千岛湖'], ['登山', '武功山'], ['夜跑', '5km']]
-    : [['装备', '新手必看'], ['登山鞋', '装备'], ['露营地', '推荐'], ['骑行', '入门'], ['攀岩', '技巧']]
-
-  return titles.map((title, i) => ({
-    id: `${type}-${i + 1}`,
-    title,
-    images: [`https://picsum.photos/400/500?random=${coverRandoms[i]}`],
+//+ 将 ProfilePostItem 转换为 NoteList 所需的 FeedItem
+//+ 后端返回的 type: 'strategy' 需转为 FeedItem 的 'guide'
+const toFeedItem = (item: ProfilePostItem): FeedItem => {
+  return {
+    id: item.id,
+    title: item.title,
+    images: [item.coverImg],
     videoUrl: '',
-    tags: tags[i],
+    tags: item.tag ? [item.tag] : [],
     member: {
-      nickname: nicknames[i],
-      avatar: `https://picsum.photos/100?random=${avatars[i]}`,
+      nickname: item.author.nickname,
+      avatar: item.author.avatar
     },
-    likeCount: Math.floor(Math.random() * 500) + 10,
-    isLiked: false,
-    type,
-    category: (i % 7) + 1,
-  }))
+    likeCount: item.likeCount,
+    isLiked: item.isLiked,
+    type: item.type === 'strategy' ? 'guide' : item.type
+  }
 }
 
-//+ 静态数据
-const staticNoteList = generateFeedData('note')
-const staticGuideList = generateFeedData('guide')
-
 const Content = () => {
+  const dispatch: AppDispatch = useDispatch()
   //+ Tab激活态 0=笔记 1=攻略
   const [activeTab, setActiveTab] = useState<number>(0)
-  //+ 本地列表数据（删除后实时更新）
-  const [noteList, setNoteList] = useState(staticNoteList)
-  const [guideList, setGuideList] = useState(staticGuideList)
   //+ 删除弹窗控制
   const [deleteVisible, setDeleteVisible] = useState(false)
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
-  //+ 当前列表数据
+  //+ 从 profile store 获取笔记和攻略列表
+  const { notes, strategys } = useSelector((state: RootState) => state.profile)
+
+  //+ 加载首页数据
+  const loadFirstPage = useCallback(() => {
+    dispatch(fetchProfileNotes({ page: 1, size: 10 }))
+    dispatch(fetchProfileStrategys({ page: 1, size: 10 }))
+  }, [dispatch])
+
+  //+ 页面显示时加载数据
+  useDidShow(() => {
+    loadFirstPage()
+  })
+
+  //+ 下拉刷新
+  usePullDownRefresh(() => {
+    loadFirstPage()
+    Taro.stopPullDownRefresh()
+  })
+
+  //+ 当前列表数据（转成 FeedItem 格式供 NoteList 使用）
   const currentList = useMemo(() => {
-    return activeTab === 0 ? noteList : guideList
-  }, [activeTab, noteList, guideList])
+    const rawList = activeTab === 0 ? notes.list : strategys.list
+    return rawList.map(toFeedItem)
+  }, [activeTab, notes.list, strategys.list])
+
+  //+ 当前 Tab 的加载/分页状态
+  const currentLoading = activeTab === 0 ? notes.loading : strategys.loading
+  const currentHasMore = activeTab === 0 ? notes.hasMore : strategys.hasMore
+
+  //+ 加载更多
+  const handleLoadMore = useCallback(() => {
+    if (currentLoading || !currentHasMore) return
+    if (activeTab === 0) {
+      dispatch(fetchProfileNotes({ page: notes.page + 1, size: 10 }))
+    } else {
+      dispatch(fetchProfileStrategys({ page: strategys.page + 1, size: 10 }))
+    }
+  }, [activeTab, currentLoading, currentHasMore, notes.page, strategys.page, dispatch])
 
   //+ 点击详情：传 isMine=1 标识详情页显示删除按钮
   const handleItemClick = (item: FeedItem) => {
@@ -68,8 +86,10 @@ const Content = () => {
     Taro.navigateTo({ url: `${pagePath}?id=${item.id}&type=${item.type}&isMine=1` })
   }
 
-  //+ 顶部右上角三个点：点击弹出删除（这里简化为在详情页删除，此按钮预留）
-  //+ 文档要求"点击三个点，底部就有删除按钮"，此处我们在FeedCard层追加一个More入口
+  //+ Tab 切换时重置对应列表的加载状态
+  const handleTabChange = (v: number) => {
+    setActiveTab(Number(v))
+  }
 
   return (
     <div className="content-page">
@@ -77,14 +97,13 @@ const Content = () => {
         title="我的内容"
         fixed={false}
         cancel={false}
-        
       />
 
       <div className="content-body">
         {/* 顶部 Tab */}
         <Tabs
           value={activeTab}
-          onChange={(v) => setActiveTab(Number(v))}
+          onChange={handleTabChange}
           activeColor="#428a46"
           className="content-tabs"
           activeType="card"
@@ -97,10 +116,11 @@ const Content = () => {
         <div className="feed-wrapper">
           <NoteList
             feed={currentList}
-            loading={false}
-            hasMore={false}
+            loading={currentLoading && currentList.length === 0}
+            hasMore={currentHasMore}
             emptyText={activeTab === 0 ? '还没有发布笔记' : '还没有发布攻略'}
             onItemClick={handleItemClick}
+            onLoadMore={handleLoadMore}
           />
         </div>
       </div>
@@ -113,21 +133,13 @@ const Content = () => {
         confirmText="删除"
         cancelText="取消"
         onConfirm={() => {
-          if (pendingDeleteId) {
-            const idPrefix = pendingDeleteId.startsWith('note') ? 'note' : 'guide'
-            if (idPrefix === 'note') {
-              setNoteList(prev => prev.filter(p => p.id !== pendingDeleteId))
-            } else {
-              setGuideList(prev => prev.filter(p => p.id !== pendingDeleteId))
-            }
-            Taro.showToast({ title: '删除成功', icon: 'success' })
-          }
+          //+ 本地模拟删除，真实删除需对接后端接口
+          //+ 暂未实现删除接口，此处仅关闭弹窗
           setDeleteVisible(false)
-          setPendingDeleteId(null)
+          Taro.showToast({ title: '删除功能开发中', icon: 'none' })
         }}
         onCancel={() => {
           setDeleteVisible(false)
-          setPendingDeleteId(null)
         }}
       />
     </div>

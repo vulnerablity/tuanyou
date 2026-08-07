@@ -1,16 +1,16 @@
 //+ 发布笔记页
 //+ 笔记字段：多图上传 + 标题 + 分类 + 标签 + 正文内容
 //+ 标签使用习惯：NutUI 组件（Input/Picker/TextArea/Button/Tag）+ 原生 HTML（div/img/span）
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { Button, TextArea, Input, Picker } from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import { createNoteAPI } from '@/apis/note'
 import { uploadImageAPI } from '@/apis/upload'
-import { CATEGORY_MAP } from '@/types'
 import { fetchTags } from '@/store/modules/tag'
+import { CATEGORY_MAP } from '@/types'
 import type { RootState, AppDispatch } from '@/store'
 import './index.less'
 
@@ -47,6 +47,19 @@ const initialForm: FormState = {
 }
 
 const PublishNote = () => {
+  const dispatch: AppDispatch = useDispatch()
+  //+ 从 tag store 获取标签列表（替代原硬编码 ALL_TAGS）
+  const { tags: tagList, loading: tagLoading } = useSelector((state: RootState) => state.tag)
+  //+ 标签选项：将 Tag[] 转为字符串数组供渲染与选中
+  const tagOptions = tagList.map(t => t.tagName)
+
+  //+ 页面显示时加载标签（已加载则不重复请求）
+  useDidShow(() => {
+    if (!tagList.length && !tagLoading) {
+      dispatch(fetchTags())
+    }
+  })
+
   const [form, setForm] = useState<FormState>(initialForm)
   //+ 提交中 Loading 状态（防重复提交）
   const [submitting, setSubmitting] = useState(false)
@@ -54,20 +67,6 @@ const PublishNote = () => {
   const [uploading, setUploading] = useState(false)
   //+ 分类 Picker 弹窗可见性
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false)
-
-  //+ Redux dispatch
-  const dispatch: AppDispatch = useDispatch()
-  //+ 从 tag store 获取标签列表（GET /common/tags 返回所有启用标签）
-  const { tags: tagList, loading: tagLoading } = useSelector((state: RootState) => state.tag)
-  //+ 可选标签名称列表（tagName 原样作为提交字段传给后端 tags 字段）
-  const tagOptions = tagList.map(t => t.tagName)
-
-  //+ 进入页面拉取标签列表（无缓存数据时才请求，避免重复请求）
-  useEffect(() => {
-    if (tagList.length === 0) {
-      dispatch(fetchTags())
-    }
-  }, [dispatch, tagList.length])
 
   //+ 通用字段更新（泛型，支持 string/number/string[] 等类型）
   const updateField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
@@ -289,20 +288,16 @@ const PublishNote = () => {
           </div>
           <div className="tag-list">
             {tagLoading && tagOptions.length === 0 ? (
-              <span className="tag-loading">标签加载中...</span>
-            ) : tagOptions.length === 0 ? (
-              <span className="tag-loading">暂无可用标签</span>
-            ) : (
-              tagOptions.map(tag => (
-                <span
-                  key={tag}
-                  className={`tag ${form.tags.includes(tag) ? 'tag-active' : ''}`}
-                  onClick={() => handleTagToggle(tag)}
-                >
-                  <span className="tag-icon">#</span>{tag}
-                </span>
-              ))
-            )}
+              <span className="tag-loading">加载标签中...</span>
+            ) : tagOptions.map(tag => (
+              <span
+                key={tag}
+                className={`tag ${form.tags.includes(tag) ? 'tag-active' : ''}`}
+                onClick={() => handleTagToggle(tag)}
+              >
+                <span className="tag-icon">#</span>{tag}
+              </span>
+            ))}
           </div>
         </div>
 

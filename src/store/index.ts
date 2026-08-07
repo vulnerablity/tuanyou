@@ -4,6 +4,7 @@ import userReducer from './modules/user'
 import noteReducer from './modules/note'
 import activityReducer from './modules/activity'
 import homeReducer from './modules/home'
+import profileReducer from './modules/profile'
 import tagReducer from './modules/tag'
 
 //+ 创建Store
@@ -13,6 +14,7 @@ export const store = configureStore({
     note: noteReducer,
     activity: activityReducer,
     home: homeReducer,
+    profile: profileReducer,
     tag: tagReducer
   }
 })
