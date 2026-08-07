@@ -7,7 +7,7 @@ import { useDispatch } from 'react-redux'
 import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Tabs, Dialog } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
-import { PostWaterfall } from '@/components/NoteList'
+import { PostWaterfall } from '@/components/PostWaterfall'
 import { usePagedList } from '@/hooks/usePagedList'
 import { fetchProfileNotes, fetchProfileStrategys } from '@/store/modules/profile'
 //+ 说明：点赞 API 由 PostWaterfall 组件内部调用（含乐观 UI）；

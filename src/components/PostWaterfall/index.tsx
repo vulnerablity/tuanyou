@@ -129,10 +129,10 @@ const FeedCard = ({
 
   //+ 点击跳转详情（note→NoteDetail, guide→GuideDetail）
   const handleClick = () => {
-    if (onClick) {
-      onClick()
-      return
-    }
+    // if (onClick) {
+    //   onClick()
+    //   return
+    // }
     const pagePath = item.type === 'guide'
       ? '/pages/GuideDetail/index'
       : '/pages/NoteDetail/index'

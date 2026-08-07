@@ -3,7 +3,7 @@
 //+ Q7：useReachBottom 上拉加载更多；usePullDownRefresh 下拉刷新
 import SearchBar from '@/components/SearchBar'
 import Banner from '@/components/Banner'
-import { PostWaterfall } from '@/components/NoteList'
+import { PostWaterfall } from '@/components/PostWaterfall'
 import { Tabs } from '@nutui/nutui-react'
 import { useEffect, useState, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
@@ -62,12 +62,12 @@ const Home = () => {
     }))
   }, [dispatch, categoryName, sortName, feedLoading, feedHasMore, feedPage])
 
-  //+ Q7：上拉加载更多
+  //+ Q7：taro上拉加载更多
   useReachBottom(() => {
     loadNextPage()
   })
-
-  //+ Q7：下拉刷新（重新加载第一页）
+  
+  //+ Q7：taro下拉刷新（重新加载第一页）
   usePullDownRefresh(async () => {
     dispatch(resetFeed())
     await dispatch(fetchFeed({
@@ -135,6 +135,7 @@ const Home = () => {
             hasMore={feedHasMore}
             onLoadMore={loadNextPage}
             emptyText="暂无内容，去发布第一篇吧"
+            onItemClick={()=>{}}
             onToggleLike={handleToggleLike}
           />
         </div>
