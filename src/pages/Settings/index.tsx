@@ -74,7 +74,7 @@ const Settings = () => {
 
   return (
     <div className="settings-page">
-      <HeaderNavBar title="设置" fixed={true} cancel={true} />
+      <HeaderNavBar title="设置" fixed={false} cancel={false} />
 
       <div className="settings-content">
         {/* 开关模块 */}
