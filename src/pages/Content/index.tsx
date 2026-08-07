@@ -1,35 +1,21 @@
 //+ Content 页面 - 用户发布的笔记和攻略
-//+ 结构：HeaderNavBar + Tab（笔记/攻略，激活色#428a46） + 瀑布流列表 + 详情页删除按钮
-//+ 标签使用习惯：NutUI 组件（Tabs/Dialog） + NoteList 复用瀑布流
-import { useState, useMemo, useCallback } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
+//+ Q2 需求：Tab懒加载，默认先请求笔记；每次切Tab才请求对应Tab（实时刷新，不累积）
+//+ Q7 需求：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
+//+ 结构：HeaderNavBar + Tab（笔记/攻略） + PostWaterfall 瀑布流 + 删除弹窗（待接口）
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useDispatch } from 'react-redux'
+import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Tabs, Dialog } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
-import NoteList from '@/components/NoteList'
+import { PostWaterfall } from '@/components/NoteList'
+import { usePagedList } from '@/hooks/usePagedList'
 import { fetchProfileNotes, fetchProfileStrategys } from '@/store/modules/profile'
-import type { FeedItem, ProfilePostItem } from '@/types'
-import type { RootState, AppDispatch } from '@/store'
+//+ 说明：点赞 API 由 PostWaterfall 组件内部调用（含乐观 UI）；
+//+ "我的内容"为管理列表，不展示收藏按钮，无需父级回调同步
+import { toFeedList } from '@/utils/postAdapter'
+import type { ProfilePostItem, FeedItem, PageResult } from '@/types'
+import type { AppDispatch } from '@/store'
 import './index.less'
-
-//+ 将 ProfilePostItem 转换为 NoteList 所需的 FeedItem
-//+ 后端返回的 type: 'strategy' 需转为 FeedItem 的 'guide'
-const toFeedItem = (item: ProfilePostItem): FeedItem => {
-  return {
-    id: item.id,
-    title: item.title,
-    images: [item.coverImg],
-    videoUrl: '',
-    tags: item.tag ? [item.tag] : [],
-    member: {
-      nickname: item.author.nickname,
-      avatar: item.author.avatar
-    },
-    likeCount: item.likeCount,
-    isLiked: item.isLiked,
-    type: item.type === 'strategy' ? 'guide' : item.type
-  }
-}
 
 const Content = () => {
   const dispatch: AppDispatch = useDispatch()
@@ -37,46 +23,66 @@ const Content = () => {
   const [activeTab, setActiveTab] = useState<number>(0)
   //+ 删除弹窗控制
   const [deleteVisible, setDeleteVisible] = useState(false)
+  const [, setNeedShowFirst] = useState(0)
 
-  //+ 从 profile store 获取笔记和攻略列表
-  const { notes, strategys } = useSelector((state: RootState) => state.profile)
-
-  //+ 加载首页数据
-  const loadFirstPage = useCallback(() => {
-    dispatch(fetchProfileNotes({ page: 1, size: 10 }))
-    dispatch(fetchProfileStrategys({ page: 1, size: 10 }))
-  }, [dispatch])
-
-  //+ 页面显示时加载数据
-  useDidShow(() => {
-    loadFirstPage()
+  //+ 两个独立的分页实例：一个给笔记，一个给攻略（相互独立不共享状态）
+  const notesPaged = usePagedList<ProfilePostItem>({
+    size: 10,
+    fetcher: useCallback(
+      async ({ page, size }) => {
+        const action = await dispatch(fetchProfileNotes({ page, size }))
+        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
+        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
+        return { code: 0, data: payload }
+      },
+      [dispatch]
+    )
   })
 
-  //+ 下拉刷新
-  usePullDownRefresh(() => {
-    loadFirstPage()
+  const strategysPaged = usePagedList<ProfilePostItem>({
+    size: 10,
+    fetcher: useCallback(
+      async ({ page, size }) => {
+        const action = await dispatch(fetchProfileStrategys({ page, size }))
+        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
+        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
+        return { code: 0, data: payload }
+      },
+      [dispatch]
+    )
+  })
+
+  const currentPaged = activeTab === 0 ? notesPaged : strategysPaged
+  const currentList: FeedItem[] = useMemo(
+    () => toFeedList(currentPaged.list),
+    [currentPaged.list]
+  )
+
+  //+ Q2：页面显示时，仅加载激活Tab（默认笔记）；不预加载另一Tab
+  useDidShow(() => {
+    ;(activeTab === 0 ? notesPaged : strategysPaged).loadFirstPage()
+  })
+
+  //+ Q2：每次切 Tab 时，实时刷新新 Tab（即便之前加载过，也重新请求第一页）
+  useEffect(() => {
+    if (activeTab === 0) {
+      notesPaged.loadFirstPage()
+    } else {
+      strategysPaged.loadFirstPage()
+    }
+    setNeedShowFirst(n => n + 1)
+  }, [activeTab, notesPaged, strategysPaged])
+
+  //+ Q7：下拉刷新（只刷新当前 Tab）
+  usePullDownRefresh(async () => {
+    await currentPaged.refresh()
     Taro.stopPullDownRefresh()
   })
 
-  //+ 当前列表数据（转成 FeedItem 格式供 NoteList 使用）
-  const currentList = useMemo(() => {
-    const rawList = activeTab === 0 ? notes.list : strategys.list
-    return rawList.map(toFeedItem)
-  }, [activeTab, notes.list, strategys.list])
-
-  //+ 当前 Tab 的加载/分页状态
-  const currentLoading = activeTab === 0 ? notes.loading : strategys.loading
-  const currentHasMore = activeTab === 0 ? notes.hasMore : strategys.hasMore
-
-  //+ 加载更多
-  const handleLoadMore = useCallback(() => {
-    if (currentLoading || !currentHasMore) return
-    if (activeTab === 0) {
-      dispatch(fetchProfileNotes({ page: notes.page + 1, size: 10 }))
-    } else {
-      dispatch(fetchProfileStrategys({ page: strategys.page + 1, size: 10 }))
-    }
-  }, [activeTab, currentLoading, currentHasMore, notes.page, strategys.page, dispatch])
+  //+ Q7：上拉加载更多（只加载当前 Tab）
+  useReachBottom(() => {
+    currentPaged.loadMore()
+  })
 
   //+ 点击详情：传 isMine=1 标识详情页显示删除按钮
   const handleItemClick = (item: FeedItem) => {
@@ -86,8 +92,8 @@ const Content = () => {
     Taro.navigateTo({ url: `${pagePath}?id=${item.id}&type=${item.type}&isMine=1` })
   }
 
-  //+ Tab 切换时重置对应列表的加载状态
-  const handleTabChange = (v: number) => {
+  //+ Tab 切换
+  const handleTabChange = (v: number | string) => {
     setActiveTab(Number(v))
   }
 
@@ -112,15 +118,15 @@ const Content = () => {
           <Tabs.TabPane title="攻略" value={1} />
         </Tabs>
 
-        {/* 瀑布流列表 */}
+        {/* 瀑布流列表：用统一的 PostWaterfall 组件 */}
         <div className="feed-wrapper">
-          <NoteList
+          <PostWaterfall
             feed={currentList}
-            loading={currentLoading && currentList.length === 0}
-            hasMore={currentHasMore}
+            loading={currentPaged.loading && currentList.length === 0}
+            hasMore={currentPaged.hasMore}
             emptyText={activeTab === 0 ? '还没有发布笔记' : '还没有发布攻略'}
             onItemClick={handleItemClick}
-            onLoadMore={handleLoadMore}
+            onLoadMore={() => currentPaged.loadMore()}
           />
         </div>
       </div>
@@ -133,7 +139,6 @@ const Content = () => {
         confirmText="删除"
         cancelText="取消"
         onConfirm={() => {
-          //+ 本地模拟删除，真实删除需对接后端接口
           //+ 暂未实现删除接口，此处仅关闭弹窗
           setDeleteVisible(false)
           Taro.showToast({ title: '删除功能开发中', icon: 'none' })

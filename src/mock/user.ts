@@ -295,5 +295,25 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
   },
 
   //+ 退出登录
-  'POST /api/v1/auth/logout': () => successResponse({ message: '已退出登录' })
+  'POST /api/v1/auth/logout': () => successResponse({ message: '已退出登录' }),
+
+  //+ ========== 关注模块 ==========
+
+  //+ 关注/取消关注（切换式，返回最新关注状态 & 对方粉丝数变化）
+  'POST /api/v1/members/:id/follow': (_, url) => {
+    const id = (url as string).split('/')[2] || '1'
+    const user = [...mockUsers, ...mockLeaders].find(u => u.id === id)
+    if (!user) return errorResponse('用户不存在')
+    // 本地临时 map 存每个用户的关注状态
+    const FOLLOW_STORE_KEY = '__followed_users__'
+    const store: Record<string, boolean> = (globalThis as any)[FOLLOW_STORE_KEY] || {}
+    const prev = !!store[id]
+    store[id] = !prev
+    ;(globalThis as any)[FOLLOW_STORE_KEY] = store
+    return successResponse({
+      memberId: id,
+      isFollowed: store[id],
+      followCount: (parseInt(user.followCount || 0) + (store[id] ? 1 : -1))
+    })
+  }
 }

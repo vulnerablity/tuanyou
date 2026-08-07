@@ -595,6 +595,11 @@ function generatePost(id: number, member: typeof mockUsers[0], isGuide: boolean)
 let postId = 1
 export const mockPosts: ReturnType<typeof generatePost>[] = []
 
+//+ 共享自增ID（供攻略模块 mock 复用，避免跨模块修改 let 导出）
+export function getNextPostId() {
+  return postId++
+}
+
 //+ 为每个用户生成笔记和攻略
 mockUsers.forEach(member => {
   //+ 生成笔记（1-10个）
@@ -602,7 +607,7 @@ mockUsers.forEach(member => {
   for (let i = 0; i < noteCount; i++) {
     mockPosts.push(generatePost(postId++, member, false))
   }
-  
+
   //+ 生成攻略（1-10个）
   const guideCount = randomInt(1, 10)
   for (let i = 0; i < guideCount; i++) {
@@ -730,4 +735,6 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
     }
     return errorResponse('笔记不存在')
   },
+
+  //+ 攻略相关路由已拆分到 src/mock/guide.ts
 }

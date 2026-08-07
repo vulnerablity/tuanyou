@@ -1,199 +1,92 @@
 //+ Favorite 我的收藏列表页
-//+ 结构：HeaderNavBar + Tabs（笔记/攻略，激活色#428a46） + 瀑布流列表
-//+ 收藏图标：收藏态用 icon-shoucangfill，取消收藏用 icon-shoucang（空心）
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+//+ Q2 Tab 懒加载：默认笔记，切攻略才请求；每次切Tab实时刷新
+//+ Q3 布局统一：复用 PostWaterfall 双列瀑布流，加载更多在外层（不在右侧）
+//+ Q7：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
+//+ Q8：取消收藏 → 调用真实API → 立即从列表移除
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useDispatch } from 'react-redux'
-import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
+import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Tabs } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
+import { PostWaterfall } from '@/components/NoteList'
+import { usePagedList } from '@/hooks/usePagedList'
 import { fetchFavoriteNotes, fetchFavoriteStrategys } from '@/store/modules/profile'
-import type { FeedItem, ProfilePostItem } from '@/types'
+import { toFeedList } from '@/utils/postAdapter'
+import type { ProfilePostItem, FeedItem, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
 import './index.less'
-
-//+ 将 ProfilePostItem 转换为 FeedItem
-const toFeedItem = (item: ProfilePostItem): FeedItem => {
-  return {
-    id: item.id,
-    title: item.title,
-    images: [item.coverImg],
-    videoUrl: '',
-    tags: item.tag ? [item.tag] : [],
-    member: {
-      nickname: item.author.nickname,
-      avatar: item.author.avatar
-    },
-    likeCount: item.likeCount,
-    isLiked: item.isLiked,
-    type: item.type === 'strategy' ? 'guide' : item.type
-  }
-}
-
-//+ 单个收藏卡片（复用首页瀑布流布局，但点赞位置换成收藏图标）
-const FavoriteCard = ({
-  item,
-  isFavorite,
-  onToggleFavorite,
-  onClick,
-}: {
-  item: FeedItem
-  isFavorite: boolean
-  onToggleFavorite: (id: string) => void
-  onClick: () => void
-}) => {
-  const coverImg = item.images[0] || ''
-
-  const handleFavClick = (e: any) => {
-    e.stopPropagation()
-    onToggleFavorite(item.id)
-  }
-
-  return (
-    <div className="fav-item" onClick={onClick}>
-      <div className="fav-cover">
-        <img src={coverImg} alt={item.title} />
-        {item.tags.length > 0 && (
-          <div className="fav-tag">{item.tags[0]}</div>
-        )}
-      </div>
-      <div className="fav-info">
-        <div className="fav-title">{item.title}</div>
-        <div className="fav-meta">
-          <img className="fav-avatar" src={item.member.avatar} alt="" />
-          <span className="fav-name">{item.member.nickname}</span>
-          <span className="fav-like" onClick={handleFavClick}>
-            {isFavorite ? (
-              <span className="iconfont icon-shoucangfill fav-icon-fill"></span>
-            ) : (
-              <span className="iconfont icon-shoucang fav-icon"></span>
-            )}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 const Favorite = () => {
   const dispatch: AppDispatch = useDispatch()
   const [activeTab, setActiveTab] = useState(0)
-  
-  //+ 笔记收藏列表
-  const [noteList, setNoteList] = useState<FeedItem[]>([])
-  const [noteLoading, setNoteLoading] = useState(false)
-  const [noteHasMore, setNoteHasMore] = useState(true)
-  const notePageRef = useRef(1)
-  
-  //+ 攻略收藏列表
-  const [guideList, setGuideList] = useState<FeedItem[]>([])
-  const [guideLoading, setGuideLoading] = useState(false)
-  const [guideHasMore, setGuideHasMore] = useState(true)
-  const guidePageRef = useRef(1)
-  
-  //+ 全局收藏 ID 列表（用于快速判断状态）
-  const [favIds, setFavIds] = useState<string[]>([])
 
-  //+ 加载笔记收藏
-  const loadFavoriteNotes = useCallback(async (page: number = 1, append: boolean = false) => {
-    if (noteLoading) return
-    setNoteLoading(true)
-    try {
-      const res: any = await dispatch(fetchFavoriteNotes({ page, size: 10 }))
-      if (res.meta.requestStatus === 'fulfilled') {
-        const data = res.payload
-        const items: FeedItem[] = (data.list || []).map(toFeedItem)
-        setNoteList(prev => append ? [...prev, ...items] : items)
-        notePageRef.current = data.page
-        setNoteHasMore(data.page < data.total_page)
-      }
-    } catch (e) {
-      console.error('加载收藏笔记失败:', e)
-    } finally {
-      setNoteLoading(false)
-    }
-  }, [dispatch, noteLoading])
-
-  //+ 加载攻略收藏
-  const loadFavoriteStrategys = useCallback(async (page: number = 1, append: boolean = false) => {
-    if (guideLoading) return
-    setGuideLoading(true)
-    try {
-      const res: any = await dispatch(fetchFavoriteStrategys({ page, size: 10 }))
-      if (res.meta.requestStatus === 'fulfilled') {
-        const data = res.payload
-        const items: FeedItem[] = (data.list || []).map(toFeedItem)
-        setGuideList(prev => append ? [...prev, ...items] : items)
-        guidePageRef.current = data.page
-        setGuideHasMore(data.page < data.total_page)
-      }
-    } catch (e) {
-      console.error('加载收藏攻略失败:', e)
-    } finally {
-      setGuideLoading(false)
-    }
-  }, [dispatch, guideLoading])
-
-  //+ 初始化：加载第一页数据
-  const loadFirstPage = useCallback(() => {
-    loadFavoriteNotes(1, false)
-    loadFavoriteStrategys(1, false)
-  }, [loadFavoriteNotes, loadFavoriteStrategys])
-
-  //+ 页面显示时加载数据
-  useDidShow(() => {
-    loadFirstPage()
+  //+ 两个独立分页实例：笔记/攻略收藏
+  const notesPaged = usePagedList<ProfilePostItem>({
+    size: 10,
+    fetcher: useCallback(
+      async ({ page, size }) => {
+        const action = await dispatch(fetchFavoriteNotes({ page, size }))
+        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
+        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
+        return { code: 0, data: payload }
+      },
+      [dispatch]
+    )
   })
 
-  //+ 下拉刷新
-  usePullDownRefresh(() => {
-    loadFirstPage()
+  const strategysPaged = usePagedList<ProfilePostItem>({
+    size: 10,
+    fetcher: useCallback(
+      async ({ page, size }) => {
+        const action = await dispatch(fetchFavoriteStrategys({ page, size }))
+        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
+        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
+        return { code: 0, data: payload }
+      },
+      [dispatch]
+    )
+  })
+
+  const currentPaged = activeTab === 0 ? notesPaged : strategysPaged
+  // 转成 FeedItem 后，把 isFavorited 补上（收藏列表都是收藏过的，默认 true，取消后通过 updateItem/removeItem 改）
+  const currentList: FeedItem[] = useMemo(() => {
+    return toFeedList(currentPaged.list).map(f => ({ ...f, isFavorited: true }))
+  }, [currentPaged.list])
+
+  //+ Q2：页面显示时，仅加载当前 Tab（默认笔记）
+  useDidShow(() => {
+    currentPaged.loadFirstPage()
+  })
+
+  //+ Q2：每次切 Tab，都重新请求新 Tab 的第一页（实时）
+  useEffect(() => {
+    ;(activeTab === 0 ? notesPaged : strategysPaged).loadFirstPage()
+  }, [activeTab, notesPaged, strategysPaged])
+
+  usePullDownRefresh(async () => {
+    await currentPaged.refresh()
     Taro.stopPullDownRefresh()
   })
 
-  //+ 更新收藏 ID 列表（当列表变化时）
-  useEffect(() => {
-    const allIds = [...noteList.map(i => i.id), ...guideList.map(i => i.id)]
-    setFavIds(prev => {
-      //+ 合并并去重
-      const set = new Set([...prev, ...allIds])
-      return Array.from(set)
-    })
-  }, [noteList, guideList])
+  useReachBottom(() => {
+    currentPaged.loadMore()
+  })
 
-  const currentList = useMemo(() => {
-    return activeTab === 0 ? noteList : guideList
-  }, [activeTab, noteList, guideList])
-
-  //+ 切换收藏（乐观更新，暂未对接后端）
-  const handleToggleFavorite = (id: string) => {
-    const isFav = favIds.includes(id)
-    if (isFav) {
-      setFavIds(prev => prev.filter(x => x !== id))
+  //+ Q8：收藏切换（这里只有"取消收藏"移除是有效操作，收藏本身是详情页的）
+  // 取消收藏后 → 从当前 Tab 列表移除
+  const handleToggleFavorite = (item: FeedItem, newIsFavorited: boolean) => {
+    if (!newIsFavorited) {
+      currentPaged.removeItem(p => p.id === item.id)
       Taro.showToast({ title: '已取消收藏', icon: 'success' })
-    } else {
-      setFavIds(prev => [...prev, id])
     }
   }
 
-  //+ 加载更多
-  const handleLoadMore = () => {
-    if (activeTab === 0) {
-      if (noteLoading || !noteHasMore) return
-      loadFavoriteNotes(notePageRef.current + 1, true)
-    } else {
-      if (guideLoading || !guideHasMore) return
-      loadFavoriteStrategys(guidePageRef.current + 1, true)
-    }
-  }
-
-  //+ 跳转详情
   const handleItemClick = (item: FeedItem) => {
-    const pagePath = item.type === 'guide' ? '/pages/GuideDetail/index' : '/pages/NoteDetail/index'
-    Taro.navigateTo({ url: `${pagePath}?id=${item.id}&type=${item.type}` })
+    const path = item.type === 'guide' ? '/pages/GuideDetail/index' : '/pages/NoteDetail/index'
+    Taro.navigateTo({ url: `${path}?id=${item.id}&type=${item.type}` })
   }
 
-  const currentLoading = activeTab === 0 ? noteLoading : guideLoading
-  const currentHasMore = activeTab === 0 ? noteHasMore : guideHasMore
+  const { loading, hasMore } = currentPaged
 
   return (
     <div className="favorite-page">
@@ -210,49 +103,17 @@ const Favorite = () => {
           <Tabs.TabPane title="攻略" value={1} />
         </Tabs>
 
-        <div className="fav-waterfall">
-          {currentList.length === 0 && !currentLoading ? (
-            <div className="empty-state">还没有收藏的{activeTab === 0 ? '笔记' : '攻略'}</div>
-          ) : (
-            <>
-              <div className="fav-column">
-                {currentList.filter((_, i) => i % 2 === 0).map(item => (
-                  <FavoriteCard
-                    key={item.id}
-                    item={item}
-                    isFavorite={favIds.includes(item.id)}
-                    onToggleFavorite={handleToggleFavorite}
-                    onClick={() => handleItemClick(item)}
-                  />
-                ))}
-              </div>
-              <div className="fav-column">
-                {currentList.filter((_, i) => i % 2 === 1).map(item => (
-                  <FavoriteCard
-                    key={item.id}
-                    item={item}
-                    isFavorite={favIds.includes(item.id)}
-                    onToggleFavorite={handleToggleFavorite}
-                    onClick={() => handleItemClick(item)}
-                  />
-                ))}
-              </div>
-              
-             {/* 加载更多 */}
-              {currentHasMore && (
-                <div className="load-more" onClick={handleLoadMore}>
-                  {currentLoading ? '加载中...' : '加载更多'}
-                </div>
-              )}
-              {!currentHasMore && currentList.length > 0 && (
-                <div className="no-more">已加载全部</div>
-              )}
-            </>
-
-            
-          )}
-            
-        </div>
+        {/* Q3 修复：瀑布流容器 + 加载更多分离，加载更多放在外层（下方） */}
+        <PostWaterfall
+          feed={currentList}
+          loading={loading && currentList.length === 0}
+          hasMore={hasMore}
+          emptyText={activeTab === 0 ? '还没有收藏的笔记' : '还没有收藏的攻略'}
+          onItemClick={handleItemClick}
+          onLoadMore={() => currentPaged.loadMore()}
+          showFavorite
+          onToggleFavorite={handleToggleFavorite}
+        />
       </div>
     </div>
   )

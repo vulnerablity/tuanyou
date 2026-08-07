@@ -6,7 +6,7 @@ import { getToken } from '@/utils/token'
 import type { ResponseData } from '@/utils/request'
 
 //+ 图片用途类型
-export type UploadType = 'avatar' | 'cover' | 'note' | 'activity'
+export type UploadType = 'avatar' | 'cover' | 'note' | 'activity' | 'bg'
 
 //+ 是否全局启用 Mock
 const isMock = process.env.TARO_APP_USE_MOCK === 'true'

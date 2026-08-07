@@ -3,6 +3,7 @@
 
 import { userMockRoutes } from './user'
 import { noteMockRoutes } from './note'
+import { guideMockRoutes } from './guide'
 import { activityMockRoutes } from './activity'
 import { configMockRoutes } from './config'
 import { homeMockRoutes } from './home'
@@ -13,6 +14,7 @@ import { profileMockRoutes } from './profile'
 export const mockRoutes: Record<string, (data?: any, url?: string) => any> = {
   ...userMockRoutes,
   ...noteMockRoutes,
+  ...guideMockRoutes,
   ...activityMockRoutes,
   ...configMockRoutes,
   ...homeMockRoutes,

@@ -1,12 +1,15 @@
 //+ 编辑资料页（从个人中心进入）
-//+ 功能：编辑头像、背景图、昵称、签名
-//+ 标签使用习惯：NutUI 组件（Button/Input/TextArea）+ 原生 HTML（div/img/span）
-import { useState } from 'react'
-import Taro from '@tarojs/taro'
-import { Button, Input, TextArea } from '@nutui/nutui-react'
+//+ Q4 链路开发：fetchProfileInfo 获取初始值，fetchUpdateProfile 保存
+import { useState, useCallback } from 'react'
+import Taro, { useDidShow } from '@tarojs/taro'
+import { Button, Input, TextArea, Loading } from '@nutui/nutui-react'
+import { useDispatch } from 'react-redux'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import Avatar from '@/components/Avatar'
 import { uploadImageAPI } from '@/apis/upload'
+import { fetchProfileInfo, fetchUpdateProfile } from '@/store/modules/profile'
+import type { ProfileInfo, ProfileUpdate } from '@/types'
+import type { AppDispatch } from '@/store'
 import './index.less'
 
 //+ 最大长度限制
@@ -18,20 +21,45 @@ interface EditFormState {
   avatar: string
   bgImg: string
   nickname: string
-  signature: string
-}
-
-//+ 初始数据（模拟当前用户数据，后期从接口获取）
-const initialData: EditFormState = {
-  avatar: 'https://picsum.photos/200?random=1',
-  bgImg: 'https://picsum.photos/400/200?random=10',
-  nickname: '山林旅人',
-  signature: '热爱徒步，每周一山',
+  signature: string // 页面展示用"签名"，接口用 bio
 }
 
 const EditProfile = () => {
-  const [form, setForm] = useState<EditFormState>(initialData)
+  const dispatch: AppDispatch = useDispatch()
+
+  const [form, setForm] = useState<EditFormState>({
+    avatar: '',
+    bgImg: '',
+    nickname: '',
+    signature: ''
+  })
   const [submitting, setSubmitting] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  //+ Q4：页面首次进入/显示时，拉取 profile info（真实 thunk 接口）作为初始值
+  const loadProfile = useCallback(async () => {
+    setLoading(true)
+    try {
+      const action = await dispatch(fetchProfileInfo())
+      const info: ProfileInfo | undefined = (action as any)?.payload
+      if (info) {
+        setForm({
+          avatar: info.avatar || '',
+          bgImg: info.bgImg || '',
+          nickname: info.nickname || '',
+          signature: info.bio || ''
+        })
+      }
+    } catch (err) {
+      console.warn('[EditProfile] load profile failed:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [dispatch])
+
+  useDidShow(() => {
+    loadProfile()
+  })
 
   //+ 更新单个字段
   const updateField = (field: keyof EditFormState, value: string) => {
@@ -78,7 +106,7 @@ const EditProfile = () => {
     }
   }
 
-  //+ 保存表单（静态模拟，后期对接接口）
+  //+ Q4：保存表单（对接 fetchUpdateProfile thunk → 真实接口）
   const handleSave = async () => {
     if (submitting) return
 
@@ -89,14 +117,28 @@ const EditProfile = () => {
 
     setSubmitting(true)
     try {
-      //+ 后期对接保存接口
-      await new Promise(resolve => setTimeout(resolve, 500))
-      Taro.showToast({ title: '保存成功', icon: 'success' })
-      setTimeout(() => {
-        //+ 返回个人中心
-        Taro.navigateBack({ delta: 1 })
-      }, 1000)
+      // 页面 signature → 接口 bio 字段
+      const params: ProfileUpdate = {
+        avatar: form.avatar,
+        bgImg: form.bgImg,
+        nickname: form.nickname.trim(),
+        bio: form.signature.trim()
+      }
+      const action = await dispatch(fetchUpdateProfile(params))
+      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
+      if (ok) {
+        Taro.showToast({ title: '保存成功', icon: 'success' })
+        setTimeout(() => {
+          Taro.navigateBack({ delta: 1 })
+        }, 800)
+      } else {
+        Taro.showToast({
+          title: (action as any)?.payload || '保存失败',
+          icon: 'none'
+        })
+      }
     } catch (err) {
+      console.warn('[EditProfile] save failed:', err)
       Taro.showToast({ title: '保存失败', icon: 'none' })
     } finally {
       setSubmitting(false)
@@ -112,73 +154,75 @@ const EditProfile = () => {
         cancel={true}
       />
 
-      <div className="form-wrapper">
-        {/* 头像模块 */}
-        <div className="avatar-section">
-          <div className="section-label">头像</div>
-          <div className="avatar-upload" onClick={handleChangeAvatar}>
-            <Avatar url={form.avatar} size="80" />
-            {/* <div className="avatar-tip">点击更换头像</div> */}
+      {loading ? (
+        <div className="edit-profile-loading"><Loading>加载中...</Loading></div>
+      ) : (
+        <div className="form-wrapper">
+          {/* 头像模块 */}
+          <div className="avatar-section">
+            <div className="section-label">头像</div>
+            <div className="avatar-upload" onClick={handleChangeAvatar}>
+              <Avatar url={form.avatar} size="80" />
+            </div>
+          </div>
+
+          {/* 背景图模块 */}
+          <div className="bg-section">
+            <div className="section-label">背景图</div>
+            <div className="bg-preview" onClick={handleChangeBgImg}>
+              {form.bgImg ? (
+                <img src={form.bgImg} alt="背景图" />
+              ) : (
+                <div className="bg-placeholder">
+                  <span className="placeholder-text">点击选择背景图</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 昵称输入 */}
+          <div className="form-section">
+            <div className="form-label">昵称</div>
+            <Input
+              className="form-input"
+              type="text"
+              placeholder="请输入昵称"
+              value={form.nickname}
+              maxLength={MAX_NICKNAME}
+              onChange={(v) => updateField('nickname', v)}
+            />
+            <span className="form-count">{form.nickname.length}/{MAX_NICKNAME}</span>
+          </div>
+
+          {/* 签名输入 */}
+          <div className="form-section column">
+            <div className="form-label">签名</div>
+            <TextArea
+              className="form-textarea"
+              placeholder="介绍一下自己吧"
+              value={form.signature}
+              onChange={(v) => updateField('signature', v)}
+              maxLength={MAX_SIGNATURE}
+              rows={1}
+              showCount={false}
+            />
+            <span className="form-count right">{form.signature.length}/{MAX_SIGNATURE}</span>
+          </div>
+
+          {/* 底部保存按钮 */}
+          <div className="submit-bar">
+            <Button
+              type="primary"
+              block
+              loading={submitting}
+              disabled={submitting}
+              onClick={handleSave}
+            >
+              {submitting ? '保存中...' : '保存'}
+            </Button>
           </div>
         </div>
-
-        {/* 背景图模块 */}
-        <div className="bg-section">
-          <div className="section-label">背景图</div>
-          <div className="bg-preview" onClick={handleChangeBgImg}>
-            {form.bgImg ? (
-              <img src={form.bgImg} alt="背景图" />
-            ) : (
-              <div className="bg-placeholder">
-                <span className="placeholder-text">点击选择背景图</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 昵称输入 */}
-        <div className="form-section">
-          <div className="form-label">昵称</div>
-          <Input
-            className="form-input"
-            type="text"
-            placeholder="请输入昵称"
-            value={form.nickname}
-            maxLength={MAX_NICKNAME}
-            onChange={(v) => updateField('nickname', v)}
-          />
-          <span className="form-count">{form.nickname.length}/{MAX_NICKNAME}</span>
-        </div>
-
-        {/* 签名输入 */}
-        <div className="form-section column">
-          <div className="form-label">签名</div>
-          <TextArea
-            className="form-textarea"
-            placeholder="介绍一下自己吧"
-            value={form.signature}
-            onChange={(v) => updateField('signature', v)}
-            maxLength={MAX_SIGNATURE}
-            rows={1}
-            showCount={false}
-          />
-          <span className="form-count right">{form.signature.length}/{MAX_SIGNATURE}</span>
-        </div>
-        {/* 底部保存按钮 */}
-      <div className="submit-bar">
-        <Button
-          type="primary"
-          block
-          loading={submitting}
-          disabled={submitting}
-          onClick={handleSave}
-        >
-          {submitting ? '保存中...' : '保存'}
-        </Button>
-      </div>
-      </div>
-
-      
+      )}
     </div>
   )
 }

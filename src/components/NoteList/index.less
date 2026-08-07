@@ -55,6 +55,31 @@ background-color: pink;
       position: absolute;
       top: 0.4rem;
       left: 0.3rem;
+      z-index: 2;
+    }
+
+    //+ 右上角收藏图标容器
+    .feed-favorite-wrapper {
+      position: absolute;
+      top: 0.3rem;
+      right: 0.3rem;
+      width: 1.4rem;
+      height: 1.4rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 50%;
+      background-color: rgba(0, 0, 0, 0.25);
+      z-index: 2;
+
+      .feed-fav-fill {
+        color: #ff6b6b;
+        font-size: 0.8rem;
+      }
+      .feed-fav-empty {
+        color: #fff;
+        font-size: 0.8rem;
+      }
     }
 
     //+ 视频播放图标（居中）

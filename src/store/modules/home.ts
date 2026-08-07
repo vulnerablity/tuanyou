@@ -95,6 +95,14 @@ const homeSlice = createSlice({
     //+ 追加Feed数据（加载更多）
     appendFeed: (state, action: PayloadAction<FeedItem[]>) => {
       state.feed = [...state.feed, ...action.payload]
+    },
+    //+ Q8：局部更新Feed流中单个卡片（点赞/收藏后同步）
+    updateFeedItem: (state, action: PayloadAction<{ id: string; patch: Partial<FeedItem> }>) => {
+      const { id, patch } = action.payload
+      const item = state.feed.find(f => f.id === id)
+      if (item) {
+        Object.assign(item, patch)
+      }
     }
   },
   extraReducers: (builder) => {
@@ -119,7 +127,9 @@ const homeSlice = createSlice({
       })
       .addCase(fetchFeed.fulfilled, (state, action: PayloadAction<PageResult<FeedItem>>) => {
         state.feedLoading = false
-        state.feed = action.payload.list
+        //+ page===1 重置列表，page>1 追加（上拉加载更多）；以响应中的 page 为准
+        const page = action.payload.page
+        state.feed = page === 1 ? action.payload.list : [...state.feed, ...action.payload.list]
         state.feedTotal = action.payload.total
         state.feedPage = action.payload.page
         state.feedTotalPage = action.payload.total_page
@@ -133,7 +143,7 @@ const homeSlice = createSlice({
 })
 
 //+ 导出Action
-export const { resetFeed, appendFeed } = homeSlice.actions
+export const { resetFeed, appendFeed, updateFeedItem } = homeSlice.actions
 
 //+ 导出Reducer
 export default homeSlice.reducer

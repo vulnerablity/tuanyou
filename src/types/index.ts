@@ -85,11 +85,14 @@ export interface FeedItem {
   videoUrl?: string
   tags: string[]
   member: {
+    id?: string
     nickname: string
     avatar: string
   }
   likeCount: number
+  collectCount?: number
   isLiked: boolean
+  isFavorited?: boolean
   type: 'note' | 'guide'
   category?: number
 }

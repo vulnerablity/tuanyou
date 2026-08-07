@@ -1,7 +1,15 @@
 //+ 用户状态管理Slice
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { setToken, clearToken } from '@/utils/token'
-import { loginAPI, getUserProfileAPI, registerAPI, sendCodeAPI, resetPasswordAPI, logoutAPI } from '@/apis/user'
+import {
+  loginAPI,
+  getUserProfileAPI,
+  registerAPI,
+  sendCodeAPI,
+  resetPasswordAPI,
+  logoutAPI,
+  toggleFollowAPI
+} from '@/apis/user'
 import type { User } from '@/types'
 
 //+ 用户信息类型，与API文档一致
@@ -131,6 +139,23 @@ export const fetchLogout = createAsyncThunk(
         return res.data
       } else {
         return rejectWithValue(res.message || '退出登录失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error?.message || '网络错误')
+    }
+  }
+)
+
+//+ Q8：关注/取消关注（详情页作者关注按钮）
+export const toggleFollow = createAsyncThunk(
+  'user/toggleFollow',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      const res = await toggleFollowAPI(userId)
+      if (res.code === 0 || res.code === 200) {
+        return { userId, ...(res.data || {}) }
+      } else {
+        return rejectWithValue(res.message || '操作失败')
       }
     } catch (error: any) {
       return rejectWithValue(error?.message || '网络错误')

@@ -1,12 +1,13 @@
 //+ 笔记模块Redux状态管理
+//+ 说明：攻略相关逻辑已拆分到 src/store/modules/guide.ts，本模块仅处理笔记
+//+ 复用约定：与 guide.ts 保持结构对称，便于列表/详情/点赞/收藏逻辑复用
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { getNotesAPI, toggleNoteLikeAPI, toggleNoteFavoriteAPI ,getNoteDetailAPI,getNoteCommentsAPI} from '@/apis/note'
 import type {Post,PageResult ,Comment} from '@/types'
 
 //+ 笔记查询参数接口
-//+ type为后端检索字段：note/guide
 export interface NoteQueryParams {
-  category?: number   
+  category?: number
   sort?: string
   type?: string
   page: number
@@ -29,7 +30,7 @@ export interface NoteState {
   loading: boolean
   hasMore: boolean
   error: string | null
-  //+ 笔记详情
+  //+ 笔记详情（笔记或攻略）
   noteDetail: Post | null
   //+ 笔记评论列表
   comments: Comment[] | null
@@ -50,8 +51,6 @@ const initialState: NoteState = {
   noteDetail: null,
   //+ 笔记评论列表
   comments: null,
-  
- 
 }
 //获取笔记详情异步Action
 export const fetchNoteDetail= createAsyncThunk(
@@ -87,14 +86,14 @@ export const fetchNotes = createAsyncThunk(
   }
 )
 
-//+ 笔记点赞异步Action
+//+ 笔记点赞/取消点赞（攻略请使用 guide 模块的 toggleLike）
 export const toggleLike = createAsyncThunk(
   'note/toggleLike',
   async (id: string, { rejectWithValue }) => {
     try {
       const res = await toggleNoteLikeAPI(id)
       if (res.code === 0 || res.code === 200) {
-        return { id, ...res.data }
+        return { id, ...(res.data || {}) }
       } else {
         return rejectWithValue(res.message || '操作失败')
       }
@@ -104,14 +103,14 @@ export const toggleLike = createAsyncThunk(
   }
 )
 
-//+ 笔记收藏异步Action
+//+ 笔记收藏/取消收藏（攻略请使用 guide 模块的 toggleFavorite）
 export const toggleFavorite = createAsyncThunk(
   'note/toggleFavorite',
   async (id: string, { rejectWithValue }) => {
     try {
       const res = await toggleNoteFavoriteAPI(id)
       if (res.code === 0 || res.code === 200) {
-        return { id, ...res.data }
+        return { id, ...(res.data || {}) }
       } else {
         return rejectWithValue(res.message || '操作失败')
       }
@@ -159,23 +158,21 @@ const noteSlice = createSlice({
       state.notes = [...state.notes, ...action.payload]
     },
     //+ 更新笔记详情
-    //+ 用于在获取笔记详情成功后，更新状态中的noteDetail
     setNoteDetail: (state, action: PayloadAction<Post>) => {
       state.noteDetail = action.payload
+    },
+    //+ 局部更新笔记详情（用于点赞/收藏/关注后同步状态）
+    patchNoteDetail: (state, action: PayloadAction<Partial<Post>>) => {
+      if (state.noteDetail) {
+        state.noteDetail = { ...state.noteDetail, ...action.payload }
+      }
     },
     //+ 更新笔记评论列表
     setNoteComments: (state, action: PayloadAction<Comment[]>) => {
       state.comments = action.payload
     },
-
   },
   extraReducers: (builder) => {
-// 以下是对extraReducers中每个addCase的解释：
-// 1. fetchNotes.pending: 获取笔记列表请求发出时，将loading设为true，清空之前的错误信息
-// 2. fetchNotes.fulfilled: 获取笔记列表成功时，更新笔记数据、总数、当前页、总页数，并根据是否还有更多数据设置hasMore
-// 3. fetchNotes.rejected: 获取笔记列表失败时，将loading设为false，保存错误信息到error
-// 4. toggleLike.fulfilled: 点赞/取消点赞成功时，更新对应笔记的点赞状态和点赞数量
-// 5. toggleFavorite.fulfilled: 收藏/取消收藏成功时，更新对应笔记的收藏状态
     builder
       .addCase(fetchNotes.pending, (state) => {
         state.loading = true
@@ -193,17 +190,28 @@ const noteSlice = createSlice({
         state.loading = false
         state.error = action.payload as string
       })
-      .addCase(toggleLike.fulfilled, (state, action: PayloadAction<{ id: string; isLiked: boolean; likeCount: number }>) => {
+      .addCase(toggleLike.fulfilled, (state, action: PayloadAction<{ id: string; isLiked?: boolean; likeCount?: number }>) => {
+        // 1. 更新列表中的项
         const note = state.notes.find(n => n.id === action.payload.id)
         if (note) {
-          note.isLiked = action.payload.isLiked
-          note.likeCount = action.payload.likeCount
+          if (typeof action.payload.isLiked === 'boolean') note.isLiked = action.payload.isLiked
+          if (typeof action.payload.likeCount === 'number') note.likeCount = action.payload.likeCount
+        }
+        // 2. 更新详情
+        if (state.noteDetail && state.noteDetail.id === action.payload.id) {
+          if (typeof action.payload.isLiked === 'boolean') state.noteDetail.isLiked = action.payload.isLiked
+          if (typeof action.payload.likeCount === 'number') state.noteDetail.likeCount = action.payload.likeCount
         }
       })
-      .addCase(toggleFavorite.fulfilled, (state, action: PayloadAction<{ id: string; isFavorited: boolean }>) => {
+      .addCase(toggleFavorite.fulfilled, (state, action: PayloadAction<{ id: string; isFavorited?: boolean }>) => {
+        // 1. 更新列表中的项
         const note = state.notes.find(n => n.id === action.payload.id)
-        if (note) {
+        if (note && typeof action.payload.isFavorited === 'boolean') {
           note.isFavorited = action.payload.isFavorited
+        }
+        // 2. 更新详情
+        if (state.noteDetail && state.noteDetail.id === action.payload.id && typeof action.payload.isFavorited === 'boolean') {
+          state.noteDetail.isFavorited = action.payload.isFavorited
         }
       })
       .addCase(fetchNoteDetail.pending, (state) => {
@@ -213,7 +221,6 @@ const noteSlice = createSlice({
       .addCase(fetchNoteDetail.fulfilled, (state, action: PayloadAction<Post>) => {
         state.loading = false
         state.noteDetail = action.payload
-       
       })
       .addCase(fetchNoteDetail.rejected, (state, action) => {
         state.loading = false
@@ -235,7 +242,7 @@ const noteSlice = createSlice({
 })
 
 //+ 导出Action
-export const { resetNotes, setNotes, appendNotes,setNoteDetail,setNoteComments } = noteSlice.actions
+export const { resetNotes, setNotes, appendNotes, setNoteDetail, patchNoteDetail, setNoteComments } = noteSlice.actions
 
 //+ 导出Reducer
 export default noteSlice.reducer
