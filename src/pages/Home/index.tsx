@@ -7,7 +7,7 @@ import { PostWaterfall } from '@/components/PostWaterfall'
 import { Tabs } from '@nutui/nutui-react'
 import { useEffect, useState, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import Taro, { useReachBottom, usePullDownRefresh } from '@tarojs/taro'
+import Taro, { useDidShow, useReachBottom, usePullDownRefresh } from '@tarojs/taro'
 import type { RootState, AppDispatch } from '@/store'
 import { fetchFeed, resetFeed, updateFeedItem } from '@/store/modules/home'
 import type { FeedItem } from '@/types'
@@ -39,7 +39,7 @@ const Home = () => {
   const loadFirstPage = useCallback(() => {
     dispatch(resetFeed())
     dispatch(fetchFeed({
-      category: categoryName === '全部' ? undefined : categories.indexOf(categoryName),
+      category: categoryName === '全部' ? 0 : categories.indexOf(categoryName),
       sort: sortName,
       page: 1,
       size: 10
@@ -61,6 +61,18 @@ const Home = () => {
       size: 10
     }))
   }, [dispatch, categoryName, sortName, feedLoading, feedHasMore, feedPage])
+
+  //+ 问题1修复：从详情页返回首页时重新拉取第一页，保证点赞/收藏状态与服务端一致（兜底策略）
+  //+ useDidShow 首次进入页面也会触发，但此时 useEffect 已在加载 feed，可能造成双重请求；
+  //+ 因此用 loadedOnce 标记跳过首次触发，仅当"从其他页面返回"时刷新
+  const loadedOnceRef = { current: false }
+  useDidShow(() => {
+    if (loadedOnceRef.current) {
+      loadFirstPage()
+    } else {
+      loadedOnceRef.current = true
+    }
+  })
 
   //+ Q7：taro上拉加载更多
   useReachBottom(() => {

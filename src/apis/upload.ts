@@ -85,3 +85,52 @@ export async function uploadImagesAPI(
     __fromMock: isMock
   }
 }
+
+//+ Mock 上传视频：返回模拟视频URL
+//+ 如果是本地 blob/data URL，直接返回（开发预览用）；否则用示例视频地址
+function mockUploadVideo(filePath: string): ResponseData<{ url: string }> {
+  const url = filePath.startsWith('blob:') || filePath.startsWith('data:')
+    ? filePath
+    : `https://www.w3schools.com/html/mov_bbb.mp4`
+  return {
+    code: 0,
+    message: '成功',
+    data: { url },
+    __fromMock: true
+  }
+}
+
+//+ 上传单个视频
+//+ filePath: Taro.chooseVideo 返回的 tempFilePath，或 H5 下的 blob URL
+//+ type: 视频用途（复用 UploadType，发布笔记传 'note'）
+export async function uploadVideoAPI(
+  filePath: string,
+  type?: UploadType
+): Promise<ResponseData<{ url: string }>> {
+  //+ Mock 模式：直接返回模拟 URL
+  if (isMock) {
+    console.log('[Upload] Mock 模式：上传视频')
+    return mockUploadVideo(filePath)
+  }
+
+  try {
+    const baseURL = process.env.TARO_APP_API_BASE || ''
+    const token = getToken()
+    const uploadRes = await Taro.uploadFile({
+      url: `${baseURL}/upload/video`,
+      filePath,
+      name: 'file',
+      formData: type ? { type } : {},
+      header: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+    const data = JSON.parse(uploadRes.data)
+    if (data.code === 0 || data.code === 200) {
+      return { ...data, __fromMock: false }
+    }
+    throw new Error(data.message || '上传失败')
+  } catch (err: any) {
+    //+ 真实上传失败，降级 Mock
+    console.warn('[Upload] 视频真实上传失败，降级 Mock:', err?.message || err)
+    return mockUploadVideo(filePath)
+  }
+}

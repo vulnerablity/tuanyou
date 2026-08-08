@@ -17,6 +17,25 @@
     padding-bottom: 5rem;
 }
 
+//+ 媒体类型切换（图片/视频互斥）
+.media-type-switch {
+    .nut-tabs-titles {
+        background: #fff;
+
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .nut-tabs-titles-item-text {
+        color: #333 !important;
+    }
+
+    .nut-tabs-titles-item-active .nut-tabs-titles-item-text {
+        color: #428a46 !important;
+    }
+
+}
+
+
 //+ 多图上传区域
 .images-section {
     padding: 0.6rem 1.5rem;
@@ -65,7 +84,7 @@
 }
 
 //+ 上传按钮（正方形占位）
-.image-add {
+.image-add,.video-add {
     width: calc((100% - 1.8rem) / 3);
     aspect-ratio: 1;
     background-color: #f7f8fa;
@@ -81,6 +100,57 @@
         color: #999;
     }
 }
+
+//+ 视频上传区域
+.video-section {
+    padding: 0.6rem 1.5rem;
+}
+
+//+ 视频网格容器
+.video-grid {
+    display: flex;
+    gap: 0.4rem;
+}
+
+//+ 视频预览容器（16:9）
+.video-item {
+    width: 100%;
+    max-width: 16rem;
+    aspect-ratio: 16 / 9;
+    border-radius: 0.3rem;
+    overflow: hidden;
+    position: relative;
+    background-color: #000;
+
+    .video-preview {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .image-remove {
+        position: absolute;
+        top: 0.15rem;
+        right: 0.15rem;
+        width: 0.85rem;
+        height: 0.85rem;
+        line-height: 0.85rem;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.45);
+        color: #fff;
+        border-radius: 50%;
+        font-size: 0.5rem;
+        cursor: pointer;
+        z-index: 100;
+    }
+}
+
+//+ 视频上传占位按钮（复用 image-add，宽度放大）
+// .video-add {
+//     width: 100%;
+//     max-width: 16rem;
+//     aspect-ratio: 16 / 9;
+// }
 
 //+ 通用字段区域
 .field-section {

@@ -5,7 +5,7 @@ import { Loading } from '@nutui/nutui-react'
 import Taro from '@tarojs/taro'
 import Tag from '@/components/Tag'
 import type { FeedItem } from '@/types'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toggleNoteLikeAPI, toggleNoteFavoriteAPI } from '@/apis/note'
 import { toggleGuideLikeAPI, toggleGuideFavoriteAPI } from '@/apis/guide'
 import './index.less'
@@ -89,6 +89,19 @@ const FeedCard = ({
   const [localFav, setLocalFav] = useState<boolean>(!!item.isFavorited)
   const [faving, setFaving] = useState(false)
 
+  //+ 问题1修复：当外部 prop（从详情返回时从 store 同步回来）变化时，同步到本地 state，避免陈旧乐观值
+  useEffect(() => {
+    setLocalLiked(item.isLiked)
+  }, [item.isLiked])
+  useEffect(() => {
+    if (typeof item.likeCount === 'number') {
+      setLocalLikeCount(item.likeCount)
+    }
+  }, [item.likeCount])
+  useEffect(() => {
+    setLocalFav(!!item.isFavorited)
+  }, [item.isFavorited])
+
   //+ 点赞/取消点赞（阻止冒泡，不触发卡片跳转）
   const handleLikeClick = async (e: any) => {
     e.stopPropagation()
@@ -147,7 +160,8 @@ const FeedCard = ({
     <div className="feed-item" onClick={handleClick}>
       <div className="feed-cover">
         <img
-          src={isVideo ? (item.videoUrl || coverImg) : coverImg}
+          //+ 问题2修复：视频封面统一用 coverImg（第一张图），videoUrl 不是图片，不应作为 img src
+          src={coverImg}
           alt={item.title}
           className={isVideo ? 'cover-video' : 'cover-image'}
         />
