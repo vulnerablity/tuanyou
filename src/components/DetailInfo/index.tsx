@@ -5,14 +5,6 @@ import Button from '../Button'
 import './index.less'
 
 export interface DetailInfoActionProps {
-  /** 点赞状态 */
-  isLiked?: boolean
-  /** 点赞数 */
-  likeCount?: number
-  /** 收藏状态 */
-  isFavorited?: boolean
-  /** 收藏数（后端未返回则不传） */
-  favoriteCount?: number
   /** 关注状态 */
   isFollowed?: boolean
   /** 当前用户是否是作者本人（本人则不显示关注按钮） */
@@ -21,10 +13,7 @@ export interface DetailInfoActionProps {
   authorId?: string
   /** 点击关注 */
   onToggleFollow?: (authorId: string, nextIsFollowed: boolean) => void
-  /** 点击点赞 */
-  onToggleLike?: (nextIsLiked: boolean) => void
-  /** 点击收藏 */
-  onToggleFavorite?: (nextIsFavorited: boolean) => void
+
 }
 
 export interface DetailInfoProps {
@@ -43,16 +32,12 @@ const DetailInfo: React.FC<DetailInfoProps> = ({ detail, actions }) => {
   } = detail || {}
 
   const {
-    isLiked = false,
-    likeCount = 0,
-    isFavorited = false,
-    favoriteCount,
+ 
     isFollowed = false,
     isSelf = false,
     authorId,
     onToggleFollow,
-    onToggleLike,
-    onToggleFavorite
+    
   } = actions || {}
 
   // 作者信息（保证 author?.id 存在，用于关注）
@@ -60,15 +45,7 @@ const DetailInfo: React.FC<DetailInfoProps> = ({ detail, actions }) => {
   const nickname = author?.nickname || ''
   const avatarUrl = avatar || author?.avatar || ''
 
-  // 点赞
-  const handleLikeClick = () => {
-    onToggleLike?.(!isLiked)
-  }
-
-  // 收藏
-  const handleFavoriteClick = () => {
-    onToggleFavorite?.(!isFavorited)
-  }
+  
 
   // 关注
   const handleFollowClick = () => {
@@ -116,25 +93,7 @@ const DetailInfo: React.FC<DetailInfoProps> = ({ detail, actions }) => {
         ))}
       </div>
 
-      {/* Q8：操作栏（点赞/收藏） */}
-      <div className="info-actions">
-        <div
-          className={`action-item ${isLiked ? 'active' : ''}`}
-          onClick={handleLikeClick}
-        >
-          <span className="action-icon">{isLiked ? '👍' : '👍'}</span>
-          <span className="action-text">{likeCount || 0}</span>
-        </div>
-        <div
-          className={`action-item ${isFavorited ? 'active' : ''}`}
-          onClick={handleFavoriteClick}
-        >
-          <span className="action-icon">{isFavorited ? '⭐' : '☆'}</span>
-          <span className="action-text">
-            {typeof favoriteCount === 'number' ? favoriteCount : (isFavorited ? '已收藏' : '收藏')}
-          </span>
-        </div>
-      </div>
+
     </div>
   )
 }

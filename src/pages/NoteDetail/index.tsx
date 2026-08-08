@@ -95,21 +95,27 @@ const NoteDetail = () => {
       <DetailInfo
         detail={noteDetail}
         actions={{
-          isLiked: noteDetail?.isLiked,
-          likeCount: noteDetail?.likeCount,
-          isFavorited: noteDetail?.isFavorited,
-          favoriteCount: noteDetail?.collectCount,
           isFollowed: noteDetail?.isFollowed,
           isSelf,
           authorId,
           onToggleFollow: handleToggleFollow,
-          onToggleLike: handleToggleLike,
-          onToggleFavorite: handleToggleFavorite
         }}
       />
 
       {/* 评论 */}
-      <CommentInput />
+      <CommentInput 
+        detail={noteDetail}
+        actions={{
+          isLiked: noteDetail?.isLiked,
+          likeCount: noteDetail?.likeCount,
+          isFavorited: noteDetail?.isFavorited,
+          favoriteCount: noteDetail?.collectCount,
+
+          
+          onToggleLike: handleToggleLike,
+          onToggleFavorite: handleToggleFavorite
+        }}
+      />
       </div>
       
     </div>
