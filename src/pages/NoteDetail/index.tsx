@@ -11,7 +11,7 @@ import { useEffect, useCallback } from 'react'
 import Taro from '@tarojs/taro'
 import { fetchNoteDetail, toggleLike as toggleNoteLike, toggleFavorite as toggleNoteFavorite, patchNoteDetail } from '@/store/modules/note'
 import { toggleFollow } from '@/store/modules/user'
-
+import './index.less'
 const NoteDetail = () => {
   const dispatch: AppDispatch = useDispatch()
 
@@ -25,6 +25,7 @@ const NoteDetail = () => {
   const id = router?.params?.id || ''
 
   useEffect(() => {
+
     if (id) {
       dispatch(fetchNoteDetail({ id, type: 'note' }))
     }
@@ -80,14 +81,16 @@ const NoteDetail = () => {
   return (
     <div className='note-detail-container'>
       {/* 顶部标题和返回箭头 */}
-      <HeaderNavBar title='详情' backPageNum={1} more={true}/>
-
-      {/* 轮播图/视频 */}
+      <HeaderNavBar title='详情' backPageNum={1} fixed={false} />
+      <div className='note-detail-content'>
+        {/* 轮播图/视频 */}
+       
       {isVideo
-        ? <DetailBanner type='note' videoUrl={noteDetail?.videoUrl} />
-        : <DetailBanner type='note' images={noteDetail?.images} />
+        ? <DetailBanner  videoUrl={noteDetail?.videoUrl} />
+        : <DetailBanner  images={noteDetail?.images} />
       }
-
+     
+      
       {/* 笔记详情（含点赞/收藏/关注） */}
       <DetailInfo
         detail={noteDetail}
@@ -107,6 +110,8 @@ const NoteDetail = () => {
 
       {/* 评论 */}
       <CommentInput />
+      </div>
+      
     </div>
   )
 }

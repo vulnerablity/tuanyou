@@ -1,20 +1,20 @@
 .banner-container {
   height: 100%;
 }
-.nut-swiper-item {
+.banner-container .nut-swiper-item {
   border-radius: 0.8rem;
   overflow: hidden;
   width: 100%;
   height: 100%;
 }
-.nut-swiper-item img {
+.banner-container .nut-swiper-item img {
   aspect-ratio: 16/9;
   border-radius: 0.8rem;
   object-fit: contain;
   width: 100%;
   height: 100%;
 }
-.banner-overlay {
+.banner-container .banner-overlay {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -24,7 +24,7 @@
   background: linear-gradient(to top, rgba(0, 0, 0, 0.55) 0%, transparent 100%);
   pointer-events: none;
 }
-.banner-indicator {
+.banner-container .banner-indicator {
   position: absolute;
   bottom: 0rem;
   left: 50%;
@@ -38,27 +38,27 @@
   box-shadow: none;
   padding: 0;
 }
-.banner-indicator .nut-indicator-dot {
+.banner-container .banner-indicator .nut-indicator-dot {
   border-radius: 50%;
   background-color: #e8f0df7e;
 }
-.banner-indicator .nut-indicator-dot-active {
+.banner-container .banner-indicator .nut-indicator-dot-active {
   background-color: #60b464b4;
 }
-.banner-info {
+.banner-container .banner-info {
   position: absolute;
   width: 100%;
   bottom: 0.5rem;
   left: 0;
   padding-left: 0.35rem;
 }
-.banner-info .top-info {
+.banner-container .banner-info .top-info {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
 }
-.banner-info .top-info .banner-title {
+.banner-container .banner-info .top-info .banner-title {
   margin-left: 0.3rem;
   font-size: 0.75rem;
   color: #fff;
@@ -67,7 +67,7 @@
   white-space: nowrap;
   position: relative;
 }
-.banner-info .top-info .banner-title::after {
+.banner-container .banner-info .top-info .banner-title::after {
   content: "";
   position: absolute;
   right: 0;
@@ -76,23 +76,23 @@
   width: 1rem;
   background: linear-gradient(to right, transparent, #00000062);
 }
-.banner-info .bottom-info {
+.banner-container .banner-info .bottom-info {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
   margin-top: 0.2rem;
 }
-.banner-info .bottom-info .banner-signup {
+.banner-container .banner-info .bottom-info .banner-signup {
   margin-left: 0.3rem;
   font-size: 0.55rem;
   color: #cecaca;
 }
-.banner-info .bottom-info .banner-people {
+.banner-container .banner-info .bottom-info .banner-people {
   margin-left: 0.3rem;
   font-size: 0.55rem;
   color: #cecaca;
 }
-.banner-info .placeholder-box {
+.banner-container .banner-info .placeholder-box {
   visibility: hidden;
 }
