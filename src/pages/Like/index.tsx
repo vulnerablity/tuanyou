@@ -3,7 +3,7 @@
 //+ Q3 布局统一：复用 PostWaterfall 双列瀑布流（与 Favorite/Content 对齐）
 //+ Q7：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
 //+ Q8：取消点赞 → 真实API调用 → 立即从列表移除
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useDispatch } from 'react-redux'
 import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Tabs } from '@nutui/nutui-react'
@@ -52,13 +52,11 @@ const Like = () => {
     return toFeedList(currentPaged.list).map(f => ({ ...f, isLiked: true }))
   }, [currentPaged.list])
 
+  //+ Q2：页面显示时刷新当前 Tab（覆盖：首次进入 + 从详情页返回），保证数据实时
+  //+ 注意：不能用 useEffect 依赖 notesPaged/strategysPaged —— 它们每次渲染都是新对象引用，会触发无限请求
   useDidShow(() => {
     currentPaged.loadFirstPage()
   })
-
-  useEffect(() => {
-    ;(activeTab === 0 ? notesPaged : strategysPaged).loadFirstPage()
-  }, [activeTab, notesPaged, strategysPaged])
 
   usePullDownRefresh(async () => {
     await currentPaged.refresh()
@@ -91,7 +89,12 @@ const Like = () => {
       <div className="like-body">
         <Tabs
           value={activeTab}
-          onChange={(v) => setActiveTab(Number(v))}
+          onChange={(v) => {
+            const next = Number(v)
+            setActiveTab(next)
+            //+ Q2：切 Tab 实时请求新 Tab 第一页（不累积旧数据）
+            ;(next === 0 ? notesPaged : strategysPaged).loadFirstPage()
+          }}
           activeColor="#428a46"
           className="like-tabs"
         >

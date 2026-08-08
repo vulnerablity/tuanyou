@@ -26,7 +26,9 @@ export interface PostWaterfallProps {
   emptyText?: string
   //+ 点赞切换成功回调（用于我的点赞列表取消后移除项）
   onToggleLike?: (item: FeedItem, newIsLiked: boolean, newLikeCount: number) => void
-  //+ 是否显示右上角收藏图标（默认 false；我的收藏等页可开启）
+  //+ 底部右侧操作图标类型：'like'（默认，♥/♡+点赞数）| 'favorite'（⭐/☆，点击取消收藏，用于我的收藏页替代点赞图标）
+  actionType?: 'like' | 'favorite'
+  //+ 是否显示右上角收藏图标（默认 false；actionType='favorite' 时自动隐藏，避免重复）
   showFavorite?: boolean
   //+ 收藏切换成功回调（用于我的收藏列表取消收藏后移除项）
   onToggleFavorite?: (item: FeedItem, newIsFavorited: boolean) => void
@@ -62,12 +64,14 @@ const FeedCard = ({
   item,
   onClick,
   onToggleLike,
+  actionType = 'like',
   showFavorite = false,
   onToggleFavorite
 }: {
   item: FeedItem
   onClick?: () => void
   onToggleLike?: PostWaterfallProps['onToggleLike']
+  actionType?: 'like' | 'favorite'
   showFavorite?: boolean
   onToggleFavorite?: PostWaterfallProps['onToggleFavorite']
 }) => {
@@ -153,8 +157,8 @@ const FeedCard = ({
             <Tag tagName={item.tags[0]} />
           </div>
         )}
-        {/* 右上角收藏图标（仅 showFavorite=true 时显示） */}
-        {showFavorite && (
+        {/* 右上角收藏图标（仅 showFavorite=true 且 actionType!='favorite' 时显示；favorite 模式下收藏图标已移到底部） */}
+        {showFavorite && actionType !== 'favorite' && (
           <div className="feed-favorite-wrapper" onClick={handleFavClick}>
             <span className={`iconfont ${localFav ? 'icon-shoucangfill feed-fav-fill' : 'icon-shoucang feed-fav-empty'}`}></span>
           </div>
@@ -175,9 +179,17 @@ const FeedCard = ({
             alt={item.member.nickname}
           />
           <span className="user-name">{item.member.nickname}</span>
-          <span className={`feed-likes ${localLiked ? 'is-liked' : ''}`} onClick={handleLikeClick}>
-           <span className="like-icon"> {localLiked ? '♥' : '♡'} </span> {localLikeCount}
-          </span>
+          {actionType === 'favorite' ? (
+            //+ 收藏模式：底部右侧显示收藏图标（替代点赞图标），点击取消收藏
+            <span className={`feed-likes ${localFav ? 'is-faved' : ''}`} onClick={handleFavClick}>
+              <span className="like-icon"> {localFav ? '⭐' : '☆'} </span>
+            </span>
+          ) : (
+            //+ 默认点赞模式：♥/♡ + 点赞数
+            <span className={`feed-likes ${localLiked ? 'is-liked' : ''}`} onClick={handleLikeClick}>
+              <span className="like-icon"> {localLiked ? '♥' : '♡'} </span> {localLikeCount}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -193,6 +205,7 @@ export function PostWaterfall({
   onItemClick,
   emptyText = '暂无内容',
   onToggleLike,
+  actionType = 'like',
   showFavorite = false,
   onToggleFavorite
 }: PostWaterfallProps) {
@@ -225,6 +238,7 @@ export function PostWaterfall({
               item={item}
               onClick={() => onItemClick?.(item)}
               onToggleLike={onToggleLike}
+              actionType={actionType}
               showFavorite={showFavorite}
               onToggleFavorite={onToggleFavorite}
             />
@@ -237,6 +251,7 @@ export function PostWaterfall({
               item={item}
               onClick={() => onItemClick?.(item)}
               onToggleLike={onToggleLike}
+              actionType={actionType}
               showFavorite={showFavorite}
               onToggleFavorite={onToggleFavorite}
             />

@@ -2,7 +2,7 @@
 //+ Q2 需求：Tab懒加载，默认先加载"我发布的"；每次切Tab实时刷新
 //+ Q7 需求：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
 //+ 结构：HeaderNavBar + Tabs（我发布的 / 我参与的） + ActivityCard 列表
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useDispatch } from 'react-redux'
 import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Tabs } from '@nutui/nutui-react'
@@ -50,15 +50,11 @@ const MyActivity = () => {
   const currentList = useMemo(() => currentPaged.list, [currentPaged.list])
   const { loading, hasMore } = currentPaged
 
-  //+ 页面显示时，仅加载当前Tab（默认是"我发布的"）
+  //+ 页面显示时刷新当前 Tab（覆盖：首次进入 + 从详情页返回），保证数据实时
+  //+ 注意：不能用 useEffect 依赖 publishPaged/joinPaged —— 它们每次渲染都是新对象引用，会触发无限请求
   useDidShow(() => {
     currentPaged.loadFirstPage()
   })
-
-  //+ Q2：每次切 Tab，实时刷新新 Tab 第一页（即便之前加载过也重请求）
-  useEffect(() => {
-    ;(activeTab === 0 ? publishPaged : joinPaged).loadFirstPage()
-  }, [activeTab, publishPaged, joinPaged])
 
   //+ Q7：下拉刷新（当前Tab）
   usePullDownRefresh(async () => {
@@ -81,6 +77,13 @@ const MyActivity = () => {
     Taro.navigateTo({ url: `/pages/ActivityDetail/index?id=${activity.id}` })
   }
 
+  //+ Q2：Tab 切换 —— 实时请求新 Tab 第一页（不累积旧数据）
+  const handleTabChange = (v: number | string) => {
+    const next = Number(v)
+    setActiveTab(next)
+    ;(next === 0 ? publishPaged : joinPaged).loadFirstPage()
+  }
+
   return (
     <div className="my-activity-page">
       <HeaderNavBar title="我的活动" fixed={false} cancel={false} />
@@ -88,7 +91,7 @@ const MyActivity = () => {
       <div className="my-activity-body">
         <Tabs
           value={activeTab}
-          onChange={(v) => setActiveTab(Number(v))}
+          onChange={handleTabChange}
           activeColor="#428a46"
           className="my-activity-tabs"
         >
