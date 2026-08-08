@@ -1,7 +1,15 @@
 //+ 用户状态管理Slice
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { setToken, clearToken } from '@/utils/token'
-import { loginAPI, getUserProfileAPI, registerAPI, sendCodeAPI, resetPasswordAPI } from '@/apis/user'
+import {
+  loginAPI,
+  getUserProfileAPI,
+  registerAPI,
+  sendCodeAPI,
+  resetPasswordAPI,
+  logoutAPI,
+  toggleFollowAPI
+} from '@/apis/user'
 import type { User } from '@/types'
 
 //+ 用户信息类型，与API文档一致
@@ -120,6 +128,41 @@ export const getUserInfo = createAsyncThunk(
   }
 )
 
+//+ 退出登录异步Action
+//+ 无论成功/失败都清理本地状态（Settings 页统一跳转登录）
+export const fetchLogout = createAsyncThunk(
+  'user/fetchLogout',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await logoutAPI()
+      if (res.code === 0 || res.code === 200) {
+        return res.data
+      } else {
+        return rejectWithValue(res.message || '退出登录失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error?.message || '网络错误')
+    }
+  }
+)
+
+//+ Q8：关注/取消关注（详情页作者关注按钮）
+export const toggleFollow = createAsyncThunk(
+  'user/toggleFollow',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      const res = await toggleFollowAPI(userId)
+      if (res.code === 0 || res.code === 200) {
+        return { userId, ...(res.data || {}) }
+      } else {
+        return rejectWithValue(res.message || '操作失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error?.message || '网络错误')
+    }
+  }
+)
+
 //+ 用户Slice
 const userSlice = createSlice({
   name: 'user',
@@ -208,6 +251,17 @@ const userSlice = createSlice({
       .addCase(getUserInfo.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
+      })
+      //+ 退出登录：无论成功/失败都清理本地状态（token + userInfo）
+      .addCase(fetchLogout.fulfilled, (state) => {
+        state.userInfo = null
+        state.isLoggedIn = false
+        clearToken()
+      })
+      .addCase(fetchLogout.rejected, (state) => {
+        state.userInfo = null
+        state.isLoggedIn = false
+        clearToken()
       })
   }
 })

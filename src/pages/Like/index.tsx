@@ -1,118 +1,88 @@
 //+ Like 我的点赞列表页
-//+ 结构：HeaderNavBar + Tabs（笔记/攻略） + 瀑布流列表
-//+ 点赞图标：点赞态用 icon-likefill，取消点赞用 icon-like（空心）
-import { useState, useMemo } from 'react'
-import Taro from '@tarojs/taro'
+//+ Q2 Tab 懒加载：默认笔记，切攻略才请求；每次切Tab实时刷新
+//+ Q3 布局统一：复用 PostWaterfall 双列瀑布流（与 Favorite/Content 对齐）
+//+ Q7：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
+//+ Q8：取消点赞 → 真实API调用 → 立即从列表移除
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useDispatch } from 'react-redux'
+import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Tabs } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
-import type { FeedItem } from '@/types'
-//+ 复用 Favorite 的样式（瀑布流卡片结构一样）
+import { PostWaterfall } from '@/components/PostWaterfall'
+import { usePagedList } from '@/hooks/usePagedList'
+import { fetchLikedNotes, fetchLikedStrategys } from '@/store/modules/profile'
+import { toFeedList } from '@/utils/postAdapter'
+import type { ProfilePostItem, FeedItem, PageResult } from '@/types'
+import type { AppDispatch } from '@/store'
 import './index.less'
-import '../Favorite/index.less'
-
-//+ 生成点赞数据
-const generateLikeData = (type: 'note' | 'guide'): FeedItem[] => {
-  const titles = type === 'note'
-    ? ['云南雨崩徒步｜神瀑下的心愿', '稻城亚丁｜从你的全世界路过', '四姑娘山大峰｜人生第一座雪山', '北疆禾木村｜中国最美秋色', '梅里北坡｜雪山冰川徒步之旅']
-    : ['户外服装清洗保养指南（亲测有效）', '露营睡袋温标怎么选？避坑指南', '登山杖选择&使用技巧全解析', '户外防晒攻略｜再也不怕晒黑', '户外水处理方法汇总｜喝放心水']
-  return titles.map((title, i) => ({
-    id: `like-${type}-${i + 1}`,
-    title,
-    images: [`https://picsum.photos/400/500?random=${100 + i + (type === 'guide' ? 50 : 0)}`],
-    videoUrl: '',
-    tags: type === 'note'
-      ? [['雨崩', '神瀑'], ['稻城亚丁', '电影取景'], ['四姑娘山', '雪山'], ['北疆', '秋色'], ['梅里', '冰川']][i]
-      : [['保养', '清洗'], ['睡袋', '温标'], ['登山杖', '技巧'], ['防晒', '护肤'], ['水', '安全']][i],
-    member: {
-      nickname: type === 'note' ? ['滇藏行者', '甘孜向导', '雪山猎人', '北疆旅拍', '梅里导游'][i] : ['生活小能手', '露营研究员', '登山俱乐部', '护肤博主', '安全科普'][i],
-      avatar: `https://picsum.photos/100?random=${130 + i + (type === 'guide' ? 20 : 0)}`,
-    },
-    likeCount: Math.floor(Math.random() * 1000) + 100,
-    isLiked: true,
-    type,
-    category: (i % 7) + 1,
-  }))
-}
-
-const staticLikeNotes = generateLikeData('note')
-const staticLikeGuides = generateLikeData('guide')
-
-//+ 单个点赞卡片（与收藏卡片结构一致，只换图标）
-const LikeCard = ({
-  item,
-  isLiked,
-  onToggleLike,
-  onClick,
-}: {
-  item: FeedItem
-  isLiked: boolean
-  onToggleLike: (id: string) => void
-  onClick: () => void
-}) => {
-  const coverImg = item.images[0] || ''
-
-  const handleLikeClick = (e: any) => {
-    e.stopPropagation()
-    onToggleLike(item.id)
-  }
-
-  return (
-    <div className="like-item" onClick={onClick}>
-      <div className="like-cover">
-        <img src={coverImg} alt={item.title} />
-        {item.tags.length > 0 && (
-          <div className="like-tag">{item.tags[0]}</div>
-        )}
-      </div>
-      <div className="like-info">
-        <div className="like-title">{item.title}</div>
-        <div className="like-meta">
-          <img className="like-avatar" src={item.member.avatar} alt="" />
-          <span className="like-name">{item.member.nickname}</span>
-          <span className="like-like" onClick={handleLikeClick}>
-            {isLiked ? (
-              <span className="iconfont icon-likefill like-icon-fill"></span>
-            ) : (
-              <span className="iconfont icon-like like-icon"></span>
-            )}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 const Like = () => {
+  const dispatch: AppDispatch = useDispatch()
   const [activeTab, setActiveTab] = useState(0)
-  //+ 点赞 ID：默认全部已点赞
-  const [likedIds, setLikedIds] = useState<string[]>(() => [
-    ...staticLikeNotes.map(n => n.id),
-    ...staticLikeGuides.map(g => g.id),
-  ])
-  const [localLikeNotes] = useState(staticLikeNotes)
-  const [localLikeGuides] = useState(staticLikeGuides)
 
-  const currentList = useMemo(() => {
-    const ids = new Set(likedIds)
-    const srcList = activeTab === 0 ? localLikeNotes : localLikeGuides
-    return srcList.filter(item => ids.has(item.id))
-  }, [activeTab, likedIds, localLikeNotes, localLikeGuides])
+  const notesPaged = usePagedList<ProfilePostItem>({
+    size: 10,
+    fetcher: useCallback(
+      async ({ page, size }) => {
+        const action = await dispatch(fetchLikedNotes({ page, size }))
+        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
+        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
+        return { code: 0, data: payload }
+      },
+      [dispatch]
+    )
+  })
 
-  //+ 切换点赞
-  const handleToggleLike = (id: string) => {
-    const isLiked = likedIds.includes(id)
-    if (isLiked) {
-      setLikedIds(prev => prev.filter(x => x !== id))
+  const strategysPaged = usePagedList<ProfilePostItem>({
+    size: 10,
+    fetcher: useCallback(
+      async ({ page, size }) => {
+        const action = await dispatch(fetchLikedStrategys({ page, size }))
+        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
+        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
+        return { code: 0, data: payload }
+      },
+      [dispatch]
+    )
+  })
+
+  const currentPaged = activeTab === 0 ? notesPaged : strategysPaged
+  // 点赞列表项本身 isLiked=true，取消后通过 onToggleLike 回调 removeItem
+  const currentList: FeedItem[] = useMemo(() => {
+    return toFeedList(currentPaged.list).map(f => ({ ...f, isLiked: true }))
+  }, [currentPaged.list])
+
+  useDidShow(() => {
+    currentPaged.loadFirstPage()
+  })
+
+  useEffect(() => {
+    ;(activeTab === 0 ? notesPaged : strategysPaged).loadFirstPage()
+  }, [activeTab, notesPaged, strategysPaged])
+
+  usePullDownRefresh(async () => {
+    await currentPaged.refresh()
+    Taro.stopPullDownRefresh()
+  })
+
+  useReachBottom(() => {
+    currentPaged.loadMore()
+  })
+
+  //+ Q8：点赞切换回调（在"我的点赞"里，newIsLiked=false 代表取消，从列表移除）
+  const handleToggleLike = (item: FeedItem, newIsLiked: boolean) => {
+    if (!newIsLiked) {
+      currentPaged.removeItem(p => p.id === item.id)
       Taro.showToast({ title: '已取消点赞', icon: 'success' })
-    } else {
-      setLikedIds(prev => [...prev, id])
     }
   }
 
   const handleItemClick = (item: FeedItem) => {
-    const pagePath = item.type === 'guide' ? '/pages/GuideDetail/index' : '/pages/NoteDetail/index'
-    Taro.navigateTo({ url: `${pagePath}?id=${item.id}&type=${item.type}` })
+    const path = item.type === 'guide' ? '/pages/GuideDetail/index' : '/pages/NoteDetail/index'
+    Taro.navigateTo({ url: `${path}?id=${item.id}&type=${item.type}` })
   }
+
+  const { loading, hasMore } = currentPaged
 
   return (
     <div className="like-page">
@@ -129,36 +99,16 @@ const Like = () => {
           <Tabs.TabPane title="攻略" value={1} />
         </Tabs>
 
-        <div className="like-waterfall">
-          {currentList.length === 0 ? (
-            <div className="empty-state">还没有点赞的{activeTab === 0 ? '笔记' : '攻略'}</div>
-          ) : (
-            <>
-              <div className="like-column">
-                {currentList.filter((_, i) => i % 2 === 0).map(item => (
-                  <LikeCard
-                    key={item.id}
-                    item={item}
-                    isLiked={likedIds.includes(item.id)}
-                    onToggleLike={handleToggleLike}
-                    onClick={() => handleItemClick(item)}
-                  />
-                ))}
-              </div>
-              <div className="like-column">
-                {currentList.filter((_, i) => i % 2 === 1).map(item => (
-                  <LikeCard
-                    key={item.id}
-                    item={item}
-                    isLiked={likedIds.includes(item.id)}
-                    onToggleLike={handleToggleLike}
-                    onClick={() => handleItemClick(item)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        {/* Q3：Like 布局与 Favorite 完全对齐，统一 PostWaterfall 双列 */}
+        <PostWaterfall
+          feed={currentList}
+          loading={loading && currentList.length === 0}
+          hasMore={hasMore}
+          emptyText={activeTab === 0 ? '还没有点赞的笔记' : '还没有点赞的攻略'}
+          onItemClick={handleItemClick}
+          onLoadMore={() => currentPaged.loadMore()}
+          onToggleLike={handleToggleLike}
+        />
       </div>
     </div>
   )

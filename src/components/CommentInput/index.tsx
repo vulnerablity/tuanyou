@@ -3,14 +3,59 @@ import {useState,useRef} from 'react'
 import { IconFont } from '@nutui/icons-react'
 import '@/assets/iconfont.css'
 import './index.less'
-interface CommentInputProps{
+interface CommentInputActionProps{
     
+  /** 点赞状态 */
+  isLiked?: boolean
+  /** 点赞数 */
+  likeCount?: number
+  /** 收藏状态 */
+  isFavorited?: boolean
+  /** 收藏数（后端未返回则不传） */
+  favoriteCount?: number
+/** 点击点赞 */
+  onToggleLike?: (nextIsLiked: boolean) => void
+  /** 点击收藏 */
+  onToggleFavorite?: (nextIsFavorited: boolean) => void
+
 }
-const CommentInput = ()=>{
+export interface CommentInputProps {
+  detail?: any
+  actions?: CommentInputActionProps
+}
+
+const CommentInput:React.FC<CommentInputProps> = ({detail,actions})=>{
+//      const {
+//     title,
+//     content,
+//     avatar,
+//     author,
+//     publishTime,
+//     tags
+//   } = detail || {}
+
+  const {
+    isLiked = false,
+    likeCount = 0,
+    isFavorited = false,
+    favoriteCount ,
+    onToggleLike,
+    onToggleFavorite
+  } = actions || {}
+    // 点赞
+//   const handleLikeClick = () => {
+    
+//     onToggleLike?.(!isLiked)
+//   }
+
+  // 收藏
+//   const handleFavoriteClick = () => {
+//     onToggleFavorite?.(!isFavorited)
+//   }
     const [visible,setVisible] = useState<boolean>(false)
-    const [isLiked,setIsLiked] = useState<boolean>(false)
-    const [likeCount,setLikeCount] = useState<number>(0)
-    const [isFavorite,setIsFavorite] = useState<boolean>(false)
+    // const [isLiked,setIsLiked] = useState<boolean>(false)
+    // const [likeCount,setLikeCount] = useState<number>(0)
+    // const [isFavorite,setIsFavorite] = useState<boolean>(false)
 
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const [textareaValue,setTextareaValue] = useState<string>('')
@@ -32,27 +77,30 @@ const CommentInput = ()=>{
     switch(action) {
       case 'like':
         {
-             if(isLiked){
-                setIsLiked(false)
-                setLikeCount(likeCount - 1)
-                Toast.show({ content: '取消点赞', duration: 1 })
-             }else{
-                setIsLiked(true)
-                setLikeCount(likeCount + 1)
-                Toast.show({ content: '已点赞', duration: 1 })
-             }
+            //  if(isLiked){
+            //     setIsLiked(false)
+            //     setLikeCount(likeCount - 1)
+            //     Toast.show({ content: '取消点赞', duration: 1 })
+            //  }else{
+            //     setIsLiked(true)
+            //     setLikeCount(likeCount + 1)
+            //     Toast.show({ content: '已点赞', duration: 1 })
+            //  }
+           
+            onToggleLike?.(!isLiked)
              break
         }
        
       case 'favorite':
         {
-             if(isFavorite){
-                setIsFavorite(false)
-                Toast.show({ content: '取消收藏', duration: 1 })
-             }else{
-                setIsFavorite(true)
-                Toast.show({ content: '已收藏', duration: 1 })
-             }
+            //  if(isFavorite){
+            //     setIsFavorite(false)
+            //     Toast.show({ content: '取消收藏', duration: 1 })
+            //  }else{
+            //     setIsFavorite(true)
+            //     Toast.show({ content: '已收藏', duration: 1 })
+            //  }
+             onToggleFavorite?.(!isFavorited)
              break
         }
       case 'share':
@@ -71,11 +119,12 @@ const CommentInput = ()=>{
 
                     <IconFont name={isLiked ? 'likefill' : 'like'} fontClassName="iconfont" classPrefix="icon" className={isLiked ? 'like-active' : ''} onClick={(e) => handleIconClick(e,'like')}><span className='like-count'>{likeCount}</span></IconFont>
                     {/* 收藏 */}
-                    <IconFont name={isFavorite ? 'shoucangfill' : 'shoucang'} fontClassName="iconfont" classPrefix="icon" className={isFavorite ? 'favorite-active' : ''} onClick={(e) => handleIconClick(e,'favorite')} />
+                    <IconFont name={isFavorited ? 'shoucangfill' : 'shoucang'} fontClassName="iconfont" classPrefix="icon" className={isFavorited ? 'favorite-active' : ''} onClick={(e) => handleIconClick(e,'favorite')} />
                     {/* 转发 */}
                     <IconFont name="zhuanfa" fontClassName="iconfont" classPrefix="icon" onClick={(e) => handleIconClick(e,'share')} />
 
                 </Cell>
+
                 <Popup  
                     visible={visible} 
                     onClose={()=>setVisible(false)}

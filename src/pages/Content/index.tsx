@@ -1,64 +1,88 @@
 //+ Content 页面 - 用户发布的笔记和攻略
-//+ 结构：HeaderNavBar + Tab（笔记/攻略，激活色#428a46） + 瀑布流列表 + 详情页删除按钮
-//+ 标签使用习惯：NutUI 组件（Tabs/Dialog） + NoteList 复用瀑布流
-import { useState, useMemo } from 'react'
-import Taro from '@tarojs/taro'
+//+ Q2 需求：Tab懒加载，默认先请求笔记；每次切Tab才请求对应Tab（实时刷新，不累积）
+//+ Q7 需求：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
+//+ 结构：HeaderNavBar + Tab（笔记/攻略） + PostWaterfall 瀑布流 + 删除弹窗（待接口）
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useDispatch } from 'react-redux'
+import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Tabs, Dialog } from '@nutui/nutui-react'
-import { More } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
-import NoteList from '@/components/NoteList'
-import type { FeedItem } from '@/types'
+import { PostWaterfall } from '@/components/PostWaterfall'
+import { usePagedList } from '@/hooks/usePagedList'
+import { fetchProfileNotes, fetchProfileStrategys } from '@/store/modules/profile'
+//+ 说明：点赞 API 由 PostWaterfall 组件内部调用（含乐观 UI）；
+//+ "我的内容"为管理列表，不展示收藏按钮，无需父级回调同步
+import { toFeedList } from '@/utils/postAdapter'
+import type { ProfilePostItem, FeedItem, PageResult } from '@/types'
+import type { AppDispatch } from '@/store'
 import './index.less'
 
-//+ 生成静态瀑布流数据（与首页 NoteList 结构一致）
-const generateFeedData = (type: 'note' | 'guide'): FeedItem[] => {
-  const titles = type === 'note'
-    ? ['周末轻徒步｜莫干山竹林穿越一日', '露营夜话｜在山顶等一场日出', '骑行环千岛湖｜秋天最美公路', '3天2夜武功山攻略｜云海路线', '城市夜跑｜滨江5公里打卡路线']
-    : ['新手入门装备清单｜第一次徒步必看', '新手登山鞋选购指南，不走弯路！', '新手露营地推荐TOP10，新手友好', '新手骑行入门：从10公里到100公里', '新手攀岩入门：基础技巧全解析']
-  const coverRandoms = type === 'note' ? [2, 3, 4, 5, 6] : [12, 13, 14, 15, 16]
-  const avatars = [7, 8, 9, 10, 11]
-  const nicknames = type === 'note'
-    ? ['山林旅人', '露营爱好者', '骑行追光', '登山少年', '夜跑达人']
-    : ['装备控', '老驴', '户外百科', '攻略达人', '新手指导员']
-  const tags = type === 'note'
-    ? [['徒步', '户外'], ['露营', '日出'], ['骑行', '千岛湖'], ['登山', '武功山'], ['夜跑', '5km']]
-    : [['装备', '新手必看'], ['登山鞋', '装备'], ['露营地', '推荐'], ['骑行', '入门'], ['攀岩', '技巧']]
-
-  return titles.map((title, i) => ({
-    id: `${type}-${i + 1}`,
-    title,
-    images: [`https://picsum.photos/400/500?random=${coverRandoms[i]}`],
-    videoUrl: '',
-    tags: tags[i],
-    member: {
-      nickname: nicknames[i],
-      avatar: `https://picsum.photos/100?random=${avatars[i]}`,
-    },
-    likeCount: Math.floor(Math.random() * 500) + 10,
-    isLiked: false,
-    type,
-    category: (i % 7) + 1,
-  }))
-}
-
-//+ 静态数据
-const staticNoteList = generateFeedData('note')
-const staticGuideList = generateFeedData('guide')
-
 const Content = () => {
+  const dispatch: AppDispatch = useDispatch()
   //+ Tab激活态 0=笔记 1=攻略
   const [activeTab, setActiveTab] = useState<number>(0)
-  //+ 本地列表数据（删除后实时更新）
-  const [noteList, setNoteList] = useState(staticNoteList)
-  const [guideList, setGuideList] = useState(staticGuideList)
   //+ 删除弹窗控制
   const [deleteVisible, setDeleteVisible] = useState(false)
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [, setNeedShowFirst] = useState(0)
 
-  //+ 当前列表数据
-  const currentList = useMemo(() => {
-    return activeTab === 0 ? noteList : guideList
-  }, [activeTab, noteList, guideList])
+  //+ 两个独立的分页实例：一个给笔记，一个给攻略（相互独立不共享状态）
+  const notesPaged = usePagedList<ProfilePostItem>({
+    size: 10,
+    fetcher: useCallback(
+      async ({ page, size }) => {
+        const action = await dispatch(fetchProfileNotes({ page, size }))
+        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
+        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
+        return { code: 0, data: payload }
+      },
+      [dispatch]
+    )
+  })
+
+  const strategysPaged = usePagedList<ProfilePostItem>({
+    size: 10,
+    fetcher: useCallback(
+      async ({ page, size }) => {
+        const action = await dispatch(fetchProfileStrategys({ page, size }))
+        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
+        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
+        return { code: 0, data: payload }
+      },
+      [dispatch]
+    )
+  })
+
+  const currentPaged = activeTab === 0 ? notesPaged : strategysPaged
+  const currentList: FeedItem[] = useMemo(
+    () => toFeedList(currentPaged.list),
+    [currentPaged.list]
+  )
+
+  //+ Q2：页面显示时，仅加载激活Tab（默认笔记）；不预加载另一Tab
+  useDidShow(() => {
+    ;(activeTab === 0 ? notesPaged : strategysPaged).loadFirstPage()
+  })
+
+  //+ Q2：每次切 Tab 时，实时刷新新 Tab（即便之前加载过，也重新请求第一页）
+  useEffect(() => {
+    if (activeTab === 0) {
+      notesPaged.loadFirstPage()
+    } else {
+      strategysPaged.loadFirstPage()
+    }
+    setNeedShowFirst(n => n + 1)
+  }, [activeTab, notesPaged, strategysPaged])
+
+  //+ Q7：下拉刷新（只刷新当前 Tab）
+  usePullDownRefresh(async () => {
+    await currentPaged.refresh()
+    Taro.stopPullDownRefresh()
+  })
+
+  //+ Q7：上拉加载更多（只加载当前 Tab）
+  useReachBottom(() => {
+    currentPaged.loadMore()
+  })
 
   //+ 点击详情：传 isMine=1 标识详情页显示删除按钮
   const handleItemClick = (item: FeedItem) => {
@@ -68,8 +92,10 @@ const Content = () => {
     Taro.navigateTo({ url: `${pagePath}?id=${item.id}&type=${item.type}&isMine=1` })
   }
 
-  //+ 顶部右上角三个点：点击弹出删除（这里简化为在详情页删除，此按钮预留）
-  //+ 文档要求"点击三个点，底部就有删除按钮"，此处我们在FeedCard层追加一个More入口
+  //+ Tab 切换
+  const handleTabChange = (v: number | string) => {
+    setActiveTab(Number(v))
+  }
 
   return (
     <div className="content-page">
@@ -77,14 +103,13 @@ const Content = () => {
         title="我的内容"
         fixed={false}
         cancel={false}
-        
       />
 
       <div className="content-body">
         {/* 顶部 Tab */}
         <Tabs
           value={activeTab}
-          onChange={(v) => setActiveTab(Number(v))}
+          onChange={handleTabChange}
           activeColor="#428a46"
           className="content-tabs"
           activeType="card"
@@ -93,14 +118,15 @@ const Content = () => {
           <Tabs.TabPane title="攻略" value={1} />
         </Tabs>
 
-        {/* 瀑布流列表 */}
+        {/* 瀑布流列表：用统一的 PostWaterfall 组件 */}
         <div className="feed-wrapper">
-          <NoteList
+          <PostWaterfall
             feed={currentList}
-            loading={false}
-            hasMore={false}
+            loading={currentPaged.loading && currentList.length === 0}
+            hasMore={currentPaged.hasMore}
             emptyText={activeTab === 0 ? '还没有发布笔记' : '还没有发布攻略'}
             onItemClick={handleItemClick}
+            onLoadMore={() => currentPaged.loadMore()}
           />
         </div>
       </div>
@@ -113,21 +139,12 @@ const Content = () => {
         confirmText="删除"
         cancelText="取消"
         onConfirm={() => {
-          if (pendingDeleteId) {
-            const idPrefix = pendingDeleteId.startsWith('note') ? 'note' : 'guide'
-            if (idPrefix === 'note') {
-              setNoteList(prev => prev.filter(p => p.id !== pendingDeleteId))
-            } else {
-              setGuideList(prev => prev.filter(p => p.id !== pendingDeleteId))
-            }
-            Taro.showToast({ title: '删除成功', icon: 'success' })
-          }
+          //+ 暂未实现删除接口，此处仅关闭弹窗
           setDeleteVisible(false)
-          setPendingDeleteId(null)
+          Taro.showToast({ title: '删除功能开发中', icon: 'none' })
         }}
         onCancel={() => {
           setDeleteVisible(false)
-          setPendingDeleteId(null)
         }}
       />
     </div>

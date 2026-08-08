@@ -77,3 +77,15 @@ export function updateUserSettingsAPI(params: {
 export function getUserInfoAPI(userId: string) {
   return get(`/users/${userId}`)
 }
+
+//+ 退出登录
+export function logoutAPI() {
+  return post('/auth/logout')
+}
+
+//+ ========== 关注模块 ==========
+
+//+ 关注/取消关注（切换式，返回最新关注状态）
+export function toggleFollowAPI(memberId: string) {
+  return post(`/members/${memberId}/follow`)
+}

@@ -41,13 +41,6 @@ export function getCategoryName(categoryId?: number): string {
   return CATEGORY_MAP[categoryId] || ''
 }
 
-//+ 标签接口（GET /common/tags 返回项）
-//+ 供笔记/攻略发布时选择，tagName 原样传给 POST /notes 或 POST /guides 的 tags 字段
-export interface Tag {
-  id: number
-  tagName: string
-}
-
 //+ Post数据结构（笔记/攻略详情）
 //+ 笔记和攻略共用此结构，通过 type 区分（'note'/'guide'）
 //+ 攻略额外包含 routeInfo
@@ -92,11 +85,14 @@ export interface FeedItem {
   videoUrl?: string
   tags: string[]
   member: {
+    id?: string
     nickname: string
     avatar: string
   }
   likeCount: number
+  collectCount?: number
   isLiked: boolean
+  isFavorited?: boolean
   type: 'note' | 'guide'
   category?: number
 }
@@ -239,6 +235,66 @@ export interface PageResult<T> {
   page: number
   size: number
   total_page: number
+}
+
+//+ 个人主页信息（GET /personal 返回）
+export interface ProfileInfo {
+  id: string
+  nickname: string
+  avatar: string
+  bio: string
+  bgImg: string
+  publishCount: number
+  followCount: number
+  fansCount: number
+}
+
+//+ 编辑个人信息请求参数（PUT /personal body）
+export interface ProfileUpdate {
+  avatar: string
+  nickname: string
+  bio: string
+  bgImg: string
+}
+
+//+ 个人主页笔记/攻略列表项（type: note/strategy）
+export interface ProfilePostItem {
+  id: string
+  type: 'note' | 'strategy'
+  author: {
+    id: string
+    nickname: string
+    avatar: string
+  }
+  coverImg: string
+  title: string
+  tag: string
+  likeCount: number
+  isLiked: boolean
+}
+
+//+ 关注列表项（followeeId=被关注者ID）
+export interface FollowItem {
+  followeeId: string
+  nickname: string
+  avatar: string
+  bio: string
+  isFollowed: boolean
+}
+
+//+ 粉丝列表项（followerId=粉丝ID）
+export interface FanItem {
+  followerId: string
+  nickname: string
+  avatar: string
+  bio: string
+  isFollowed: boolean
+}
+
+//+ 标签（发布笔记/攻略时供用户选择）
+export interface Tag {
+  id: number
+  tagName: string
 }
 
 //+ 统一响应数据结构

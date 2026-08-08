@@ -32,6 +32,7 @@ const ActivityDetail = () => {
 
   //+ 进入页面加载详情
   useEffect(() => {
+    
     dispatch(fetchActivityDetail(activityId))
     //+ 离开页面清空详情，避免残留
     return () => {

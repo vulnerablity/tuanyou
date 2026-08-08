@@ -68,6 +68,39 @@
             }
         }
     }
+    //+ Q8：操作栏（点赞/收藏）
+    .info-actions {
+        margin-top: 1rem;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 1.5rem;
+
+        .action-item {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            color: #666;
+            cursor: pointer;
+            user-select: none;
+
+            &.active {
+                color: #f76a55;
+            }
+
+            .action-icon {
+                font-size: 0.9rem;
+                line-height: 1;
+            }
+
+            .action-text {
+                font-size: 0.7rem;
+                line-height: 1;
+            }
+        }
+    }
 }
 @media screen and (min-width: 768px) {
     .detail-info {

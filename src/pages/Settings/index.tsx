@@ -2,10 +2,13 @@
 //+ 功能：消息通知、位置服务开关；编辑资料、隐私设置、帮助与反馈、关于途右入口
 //+ 标签使用习惯：NutUI 组件（Switch/Button/Dialog）+ 原生 HTML + IconFont 图标
 import { useState } from 'react'
+import { useDispatch } from 'react-redux'
 import Taro from '@tarojs/taro'
 import { Switch, Dialog } from '@nutui/nutui-react'
 import { ArrowRight } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
+import { fetchLogout } from '@/store/modules/user'
+import type { AppDispatch } from '@/store'
 import './index.less'
 
 //+ 开关项配置
@@ -30,12 +33,15 @@ const bottomButtons = [
 ]
 
 const Settings = () => {
+  const dispatch: AppDispatch = useDispatch<AppDispatch>()
   //+ 开关状态
   const [switchState, setSwitchState] = useState<Record<string, boolean>>(
     () => switchItems.reduce((acc, item) => ({ ...acc, [item.key]: item.default }), {})
   )
   //+ 退出确认弹窗
   const [logoutVisible, setLogoutVisible] = useState(false)
+  //+ 退出登录进行中（防重复点击）
+  const [logoutLoading, setLogoutLoading] = useState(false)
 
   //+ 开关切换
   const handleSwitchChange = (key: string, value: boolean) => {
@@ -62,19 +68,27 @@ const Settings = () => {
     }
   }
 
-  //+ 确认退出
-  const handleLogoutConfirm = () => {
+  //+ 确认退出：调后端退出接口 → 清本地登录态 → 跳登录页
+  //+ fetchLogout 无论成功/失败都会清理本地 token 与 userInfo，故统一跳转
+  const handleLogoutConfirm = async () => {
+    if (logoutLoading) return
     setLogoutVisible(false)
-    Taro.showToast({ title: '已退出登录', icon: 'success' })
-    //+ 后期对接退出登录接口，清除 token，跳转登录页
-    setTimeout(() => {
-      Taro.reLaunch({ url: '/pages/Login/index' })
-    }, 1000)
+    setLogoutLoading(true)
+    try {
+      await dispatch(fetchLogout())
+      Taro.showToast({ title: '已退出登录', icon: 'success' })
+      setTimeout(() => {
+        //+ reLaunch 清空页面栈，避免返回到需登录页面
+        Taro.reLaunch({ url: '/pages/Login/index' })
+      }, 1000)
+    } finally {
+      setLogoutLoading(false)
+    }
   }
 
   return (
     <div className="settings-page">
-      <HeaderNavBar title="设置" fixed={true} cancel={true} />
+      <HeaderNavBar title="设置" fixed={false} cancel={false} />
 
       <div className="settings-content">
         {/* 开关模块 */}
