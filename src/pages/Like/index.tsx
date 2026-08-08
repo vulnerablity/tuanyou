@@ -2,10 +2,10 @@
 //+ Q2 Tab 懒加载：默认笔记，切攻略才请求；每次切Tab实时刷新
 //+ Q3 布局统一：复用 PostWaterfall 双列瀑布流（与 Favorite/Content 对齐）
 //+ Q7：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
-//+ Q8：取消点赞 → 真实API调用 → 立即从列表移除
-import { useState, useCallback, useMemo } from 'react'
+//+ Q8：取消点赞 → 真实API调用 → 延迟移除（离开页面时统一清理，给用户反悔机会）
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useDispatch } from 'react-redux'
-import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
+import Taro, { useDidShow, useDidHide, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Tabs } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import { PostWaterfall } from '@/components/PostWaterfall'
@@ -19,6 +19,9 @@ import './index.less'
 const Like = () => {
   const dispatch: AppDispatch = useDispatch()
   const [activeTab, setActiveTab] = useState(0)
+
+  //+ 记录已取消点赞但暂未移除的项（延迟到离开页面时移除，防止手误给用户反悔机会）
+  const pendingRemoveRef = useRef<Set<string | number>>(new Set())
 
   const notesPaged = usePagedList<ProfilePostItem>({
     size: 10,
@@ -67,13 +70,24 @@ const Like = () => {
     currentPaged.loadMore()
   })
 
-  //+ Q8：点赞切换回调（在"我的点赞"里，newIsLiked=false 代表取消，从列表移除）
+  //+ Q8 改造：取消点赞不立即移除，标记为待移除；再次点赞则撤销标记（给用户反悔机会）
   const handleToggleLike = (item: FeedItem, newIsLiked: boolean) => {
     if (!newIsLiked) {
-      currentPaged.removeItem(p => p.id === item.id)
+      pendingRemoveRef.current.add(item.id)
       Taro.showToast({ title: '已取消点赞', icon: 'success' })
+    } else {
+      pendingRemoveRef.current.delete(item.id)
     }
   }
+
+  //+ 离开页面时统一移除已取消点赞的项
+  useDidHide(() => {
+    if (pendingRemoveRef.current.size === 0) return
+    const ids = pendingRemoveRef.current
+    notesPaged.removeItem(p => ids.has(p.id))
+    strategysPaged.removeItem(p => ids.has(p.id))
+    pendingRemoveRef.current.clear()
+  })
 
   const handleItemClick = (item: FeedItem) => {
     const path = item.type === 'guide' ? '/pages/GuideDetail/index' : '/pages/NoteDetail/index'
