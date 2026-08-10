@@ -1,16 +1,24 @@
 //+ 发布笔记页
 //+ 笔记字段：媒体类型切换（图片1-5张 / 视频1个）+ 标题 + 分类 + 标签 + 正文内容
+//+ 模块化链路：页面 → dispatch(uploadXxx thunk) → upload store → apis/upload.ts → request.ts
 //+ 标签使用习惯：NutUI 组件（Input/Picker/TextArea/Button/Tag）+ 原生 HTML（div/img/span）
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { useDidShow, useDidHide } from '@tarojs/taro'
 import { Video } from '@tarojs/components'
 import { Button, TextArea, Input, Picker, Tabs } from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import { createNoteAPI } from '@/apis/note'
-import { uploadImagesAPI, uploadVideoAPI } from '@/apis/upload'
 import { fetchTags } from '@/store/modules/tag'
+import {
+  uploadImages,
+  uploadVideo,
+  resetImages as resetUploadImages,
+  resetVideo as resetUploadVideo,
+  resetUpload,
+  clearUploadError
+} from '@/store/modules/upload'
 import { CATEGORY_MAP } from '@/types'
 import type { RootState, AppDispatch } from '@/store'
 import './index.less'
@@ -54,6 +62,8 @@ const PublishNote = () => {
   const dispatch: AppDispatch = useDispatch()
   //+ 从 tag store 获取标签列表（替代原硬编码 ALL_TAGS）
   const { tags: tagList, loading: tagLoading } = useSelector((state: RootState) => state.tag)
+  //+ 从 upload store 读取上传结果和状态
+  const uploadState = useSelector((state: RootState) => state.upload)
   //+ 标签选项：将 Tag[] 转为字符串数组供渲染与选中
   const tagOptions = tagList.map(t => t.tagName)
 
@@ -64,51 +74,75 @@ const PublishNote = () => {
     }
   })
 
+  //+ 离开页面时清空上传模块缓存，防止下次进入误读上次结果
+  useDidHide(() => {
+    dispatch(resetUpload())
+  })
+
   const [form, setForm] = useState<FormState>(initialForm)
   //+ 提交中 Loading 状态（防重复提交）
   const [submitting, setSubmitting] = useState(false)
-  //+ 图片上传中状态
-  const [uploading, setUploading] = useState(false)
-  //+ 视频上传中状态
-  const [videoUploading, setVideoUploading] = useState(false)
   //+ 分类 Picker 弹窗可见性
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false)
   //+ 媒体类型（图片/视频互斥），默认图片
   const [mediaType, setMediaType] = useState<MediaType>('image')
+  const [activeTab, setActiveTab] = useState('image')
   //+ 视频封面 URL（后端返回的 OSS 截帧地址，提交时塞入 images[0]）
   const [videoCoverUrl, setVideoCoverUrl] = useState<string>('')
+
+  //+ 记录选择了多少张文件（用于失败时 toast 提示失败几张）
+  const lastImageChooseCountRef = useRef<number>(0)
 
   //+ 通用字段更新（泛型，支持 string/number/string[] 等类型）
   const updateField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  //+ 多图上传：选择图片 → 调用批量接口 uploadImagesAPI（H5 真批量，小程序端逐个兜底）→ 合并 URL
+  //+ 批量图片上传成功 → 合并到 form.images
+  useEffect(() => {
+    if (uploadState.imagesStatus === 'success' && uploadState.lastImageUrls.length > 0) {
+      updateField('images', [...form.images, ...uploadState.lastImageUrls])
+      const failCount = lastImageChooseCountRef.current - uploadState.lastImageUrls.length
+      if (failCount > 0) {
+        Taro.showToast({ title: `${failCount}张上传失败`, icon: 'none' })
+      }
+      lastImageChooseCountRef.current = 0
+      dispatch(resetUploadImages())
+    } else if (uploadState.imagesStatus === 'error' && uploadState.error) {
+      Taro.showToast({ title: uploadState.error, icon: 'none' })
+      lastImageChooseCountRef.current = 0
+      dispatch(clearUploadError())
+    }
+  }, [uploadState.imagesStatus, uploadState.lastImageUrls, uploadState.error])
+
+  //+ 视频上传成功 → 写入 form.videoUrl + videoCoverUrl
+  useEffect(() => {
+    if (uploadState.videoStatus === 'success' && uploadState.lastVideoUrl) {
+      updateField('videoUrl', uploadState.lastVideoUrl)
+      setVideoCoverUrl(uploadState.lastVideoCoverUrl || '')
+      dispatch(resetUploadVideo())
+    } else if (uploadState.videoStatus === 'error' && uploadState.error) {
+      Taro.showToast({ title: uploadState.error, icon: 'none' })
+      dispatch(clearUploadError())
+    }
+  }, [uploadState.videoStatus, uploadState.lastVideoUrl, uploadState.lastVideoCoverUrl, uploadState.error])
+
+  //+ 多图上传：选择图片 → dispatch(uploadImages) → store 完成后 useEffect 合并
   const handleUploadImages = async () => {
     const remaining = MAX_IMAGES - form.images.length
     if (remaining <= 0) {
       Taro.showToast({ title: `最多上传${MAX_IMAGES}张图片`, icon: 'none' })
       return
     }
+    if (uploadState.imagesStatus === 'loading') return
 
     try {
       const chooseRes = await Taro.chooseImage({ count: remaining, sizeType: ['compressed'] })
       const filePaths = chooseRes.tempFilePaths
-
-      setUploading(true)
-      const res = await uploadImagesAPI(filePaths, 'note', MAX_IMAGES)
-      const newUrls = res.data.urls || []
-      if (newUrls.length > 0) {
-        updateField('images', [...form.images, ...newUrls])
-      }
-      if (newUrls.length < filePaths.length) {
-        Taro.showToast({ title: `${filePaths.length - newUrls.length}张上传失败`, icon: 'none' })
-      }
+      lastImageChooseCountRef.current = filePaths.length
+      dispatch(uploadImages({ filePaths, type: 'note', maxCount: MAX_IMAGES }))
     } catch (err) {
-      console.warn('[PublishNote] 图片上传失败:', err)
-      Taro.showToast({ title: '图片上传失败', icon: 'none' })
-    } finally {
-      setUploading(false)
+      console.warn('[PublishNote] 选择图片失败:', err)
     }
   }
 
@@ -117,47 +151,23 @@ const PublishNote = () => {
     updateField('images', form.images.filter((_, i) => i !== index))
   }
 
-  //+ 媒体类型切换：清空对方媒体内容（图片↔视频互斥）
-  const [activeTab, setActiveTab] = useState('image')
-  
-  // const handleSwitchMediaType = (type: MediaType) => {
-  //   if (type === mediaType) return
-  //   setMediaType(type)
-  //   if (type === 'image') {
-  //     updateField('videoUrl', '')
-  //   } else {
-  //     updateField('images', [])
-  //   }
-  // }
-
-  //+ 视频上传：选择1个视频 → 上传 → 后端返回 { videoUrl, coverUrl }，封面单独存 videoCoverUrl
-  //+ 文档：发布时把 coverUrl 填入 images[0]，videoUrl 填入 videoUrl
+  //+ 视频上传：选择1个视频 → dispatch(uploadVideo) → useEffect 写入
   const handleUploadVideo = async () => {
     if (form.videoUrl) {
       Taro.showToast({ title: '最多上传1个视频', icon: 'none' })
       return
     }
+    if (uploadState.videoStatus === 'loading') return
+
     try {
       const chooseRes = await Taro.chooseVideo({
         sourceType: ['album', 'camera'],
         maxDuration: 60,
         compressed: true
       })
-      const filePath = chooseRes.tempFilePath
-
-      setVideoUploading(true)
-      const res = await uploadVideoAPI(filePath, 'note')
-      if (res.code === 0 || res.code === 200) {
-        updateField('videoUrl', res.data.videoUrl)
-        setVideoCoverUrl(res.data.coverUrl)
-      } else {
-        Taro.showToast({ title: '视频上传失败', icon: 'none' })
-      }
+      dispatch(uploadVideo({ filePath: chooseRes.tempFilePath, type: 'note' }))
     } catch (err) {
-      console.warn('[PublishNote] 视频上传失败:', err)
-      Taro.showToast({ title: '视频上传失败', icon: 'none' })
-    } finally {
-      setVideoUploading(false)
+      console.warn('[PublishNote] 选择视频失败:', err)
     }
   }
 
@@ -198,7 +208,11 @@ const PublishNote = () => {
       Taro.showToast({ title: '请选择分类', icon: 'none' })
       return false
     }
-    //+ 媒体内容校验：图片模式需1-5张，视频模式需1个
+    //+ 媒体内容校验：图片模式需1-5张，视频模式需1个；上传中不可提交
+    if (uploadState.imagesStatus === 'loading' || uploadState.videoStatus === 'loading') {
+      Taro.showToast({ title: '媒体上传中，请稍候', icon: 'none' })
+      return false
+    }
     if (mediaType === 'image') {
       if (form.images.length < 1) {
         Taro.showToast({ title: '请至少上传1张图片', icon: 'none' })
@@ -244,6 +258,8 @@ const PublishNote = () => {
       if (res.code === 0 || res.code === 200) {
         Taro.showToast({ title: '发布成功', icon: 'success' })
         setTimeout(() => {
+          //+ 发布成功后清空上传缓存
+          dispatch(resetUpload())
           //+ 三级降级返回：优先 navigateBack，其次 window.history.back()，最后 redirectTo 首页
           const pages = Taro.getCurrentPages()
           if (pages.length > 1) {
@@ -277,21 +293,6 @@ const PublishNote = () => {
       <HeaderNavBar title="发布笔记" backPageNum={1} fixed={false} cancel={true} />
 
       <div className="form-wrapper">
-        {/* 媒体类型切换：图片 / 视频（互斥） */}
-        {/* <div className="media-type-switch">
-          <div
-            className={`media-type-tab ${mediaType === 'image' ? 'active' : ''}`}
-            onClick={() => handleSwitchMediaType('image')}
-          >
-            图片
-          </div>
-          <div
-            className={`media-type-tab ${mediaType === 'video' ? 'active' : ''}`}
-            onClick={() => handleSwitchMediaType('video')}
-          >
-            视频
-          </div>
-        </div> */}
         <Tabs
                   value={activeTab}
                   onChange={(v) => {
@@ -303,8 +304,10 @@ const PublishNote = () => {
                     if (v === 'image') {
                       updateField('videoUrl', '')
                       setVideoCoverUrl('')
+                      dispatch(resetUploadVideo())
                     } else {
                       updateField('images', [])
+                      dispatch(resetUploadImages())
                     }
                     setActiveTab(v as string)
                   }}
@@ -330,7 +333,7 @@ const PublishNote = () => {
               ))}
               {form.images.length < MAX_IMAGES && (
                 <div className="image-add" onClick={handleUploadImages}>
-                  {uploading ? (
+                  {uploadState.imagesStatus === 'loading' ? (
                     <span className="uploading-text">上传中...</span>
                   ) : (
                     <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
@@ -355,7 +358,7 @@ const PublishNote = () => {
                 </div>
               ) : (
                 <div className="video-add" onClick={handleUploadVideo}>
-                  {videoUploading ? (
+                  {uploadState.videoStatus === 'loading' ? (
                     <span className="uploading-text">上传中...</span>
                   ) : (
                     <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
@@ -397,7 +400,7 @@ const PublishNote = () => {
           />
         </div>
 
-        
+
 
         {/* 笔记内容 */}
         <div className="field-section content column">

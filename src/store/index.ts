@@ -7,6 +7,7 @@ import activityReducer from './modules/activity'
 import homeReducer from './modules/home'
 import profileReducer from './modules/profile'
 import tagReducer from './modules/tag'
+import uploadReducer from './modules/upload'
 
 //+ 创建Store
 export const store = configureStore({
@@ -17,7 +18,8 @@ export const store = configureStore({
     activity: activityReducer,
     home: homeReducer,
     profile: profileReducer,
-    tag: tagReducer
+    tag: tagReducer,
+    upload: uploadReducer
   }
 })
 

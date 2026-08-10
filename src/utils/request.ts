@@ -205,3 +205,245 @@ export function put<T = any>(url: string, data?: any, header?: any): Promise<Res
 export function del<T = any>(url: string, data?: any, header?: any): Promise<ResponseData<T>> {
   return request({ url, method: 'DELETE', data, header })
 }
+
+// ========== 文件上传封装 ==========
+
+//+ 上传配置：multipart/form-data 单文件上传
+//+ url: 相对路径（如 /upload/image）；baseURL 由统一配置自动拼接
+//+ filePath: 本地路径（H5 为 blob:/data: URL，小程序端为临时文件路径）
+//+ name: formData 中文件字段名，默认 'file'（后端约定：单图 'file'、视频 'file'，批量图 'files' 需走 H5 fetch）
+//+ formData: 附加文本字段（如 type）
+//+ header: 额外请求头；Authorization 自动注入，无需手动传
+//+ mockFn: Mock 模式 / 失败降级时使用的 Mock 生成函数；文件上传不走 mockRoutes 拦截器（Taro.uploadFile / fetch 不经 request.ts mockRequest）
+export interface UploadConfig<T> {
+  url: string
+  filePath: string
+  name?: string
+  formData?: Record<string, any>
+  header?: any
+  mockFn?: (filePath: string) => ResponseData<T>
+  //+ 文件名（H5 fetch+FormData 时使用），不传则根据日期+扩展名推断
+  fileNameHint?: string
+}
+
+//+ 计算全量 URL（含 baseURL 前缀）和相对路径；与 request() 内部逻辑一致
+function resolveUrl(url: string): { fullUrl: string; relativeUrl: string } {
+  const baseURL = process.env.TARO_APP_API_BASE || ''
+  const fullUrl = url.startsWith('http') ? url : `${baseURL}${url}`
+  const basePath = baseURL.replace(/^https?:\/\/[^/]+/, '')
+  const relativeUrl = url.startsWith('http')
+    ? url.replace(/^https?:\/\/[^/]+/, '')
+    : `${basePath}${url}`
+  return { fullUrl, relativeUrl }
+}
+
+//+ 组装 Authorization + 自定义 Header；与 requestInterceptor 行为一致，保持单点维护
+function buildAuthHeader(extraHeader?: any): Record<string, string> {
+  const token = getToken()
+  const header: Record<string, string> = { ...(extraHeader || {}) }
+  if (token) header.Authorization = `Bearer ${token}`
+  return header
+}
+
+//+ 统一解析上传响应体（statusCode 200 且 JSON 可解析，code=0/200 视为成功）
+//+ 解析失败 / HTTP 错误 → throw Error；业务错误（code 非 0/200）→ reject 响应数据对象
+async function parseUploadResponse<T = any>(
+  statusCode: number,
+  rawData: string,
+  relativeUrl: string
+): Promise<ResponseData<T>> {
+  if (statusCode === 401) {
+    Taro.showToast({ title: '登录已过期，请重新登录', icon: 'none' })
+    Taro.redirectTo({ url: '/pages/Login/index' })
+    throw new Error('401 Unauthorized')
+  }
+  if (statusCode !== 200) {
+    throw new Error(`HTTP ${statusCode}`)
+  }
+  try {
+    const data = JSON.parse(rawData) as ResponseData<T>
+    if (data.code === 0 || data.code === 200) {
+      return data
+    }
+    //+ 业务错误（如文件过大/格式错误），透传给调用方 reject（不降级 Mock）
+    return Promise.reject(data) as any
+  } catch (parseErr: any) {
+    //+ parseErr 是之前 reject 的业务错误数据对象（带 code/message），直接向上抛
+    if (parseErr && typeof parseErr.code === 'number') {
+      return Promise.reject(parseErr) as any
+    }
+    throw new Error('响应解析失败')
+  }
+}
+
+//+ 文件上传：multipart/form-data
+//+ 策略（与 apis/upload.ts 当前方案对齐）：
+//+   1. TARO_APP_USE_MOCK=true → 直接调用 mockFn
+//+   2. H5 端 + filePath 为 blob:/data: → fetch + FormData（避开 Taro.uploadFile H5 blob 缺陷）
+//+   3. 其他端（小程序） → Taro.uploadFile
+//+   4. 真实上传失败（非业务错误） → 调用 mockFn 降级；若调用方未传 mockFn 则抛出错误
+export async function upload<T = any>(config: UploadConfig<T>): Promise<ResponseData<T>> {
+  const {
+    url,
+    filePath,
+    name = 'file',
+    formData,
+    header,
+    mockFn,
+    fileNameHint
+  } = config
+
+  const { fullUrl, relativeUrl } = resolveUrl(url)
+  const authHeader = buildAuthHeader(header)
+
+  //+ 全局 Mock 模式：直接调用 mockFn（上传不走 mockRoutes）
+  if (isMock) {
+    console.log('[Upload] Mock 模式:', relativeUrl)
+    if (!mockFn) {
+      const err: any = new Error('上传Mock未配置mockFn')
+      err.code = -1
+      throw err
+    }
+    return { ...mockFn(filePath), __fromMock: true }
+  }
+
+  //+ H5 端：blob:/data: URL 用 fetch + FormData（Taro.uploadFile 在 H5 处理 blob 有缺陷）
+  const isH5Blob =
+    typeof window !== 'undefined' &&
+    typeof fetch === 'function' &&
+    typeof FormData !== 'undefined' &&
+    (filePath.startsWith('blob:') || filePath.startsWith('data:'))
+
+  try {
+    if (isH5Blob) {
+      const blob = await fetch(filePath).then(r => r.blob())
+      const fd = new FormData()
+      //+ 提取文件名：优先 fileNameHint，其次从 blob.type 猜扩展名，最后兜底 .bin
+      let filename = fileNameHint?.trim()
+      if (!filename) {
+        const ext = blob.type?.includes('video')
+          ? 'mp4'
+          : blob.type?.includes('image') ? 'jpg' : 'bin'
+        filename = `${name}_${Date.now()}.${ext}`
+      }
+      fd.append(name, blob, filename)
+      if (formData) {
+        for (const [k, v] of Object.entries(formData)) {
+          if (v != null) fd.append(k, String(v))
+        }
+      }
+
+      const res = await fetch(fullUrl, {
+        method: 'POST',
+        headers: authHeader, //+ fetch 会自动补 multipart boundary，不手动加 Content-Type
+        body: fd
+      })
+      const text = await res.text()
+      return await parseUploadResponse<T>(res.status, text, relativeUrl)
+    }
+
+    //+ 非 H5 / 非 blob 路径（小程序端 tempFilePath 是真实文件路径）
+    const uploadRes = await Taro.uploadFile({
+      url: fullUrl,
+      filePath,
+      name,
+      formData,
+      header: authHeader
+    })
+    return await parseUploadResponse<T>(uploadRes.statusCode, uploadRes.data, relativeUrl)
+  } catch (err: any) {
+    //+ 业务错误（{code, message}）：不降级 Mock，透传
+    if (err && typeof err.code === 'number') {
+      return Promise.reject(err)
+    }
+    //+ 网络/HTTP/解析错误：若有 mockFn 则降级
+    if (mockFn) {
+      console.warn('[Upload] 真实上传失败，降级 Mock:', relativeUrl, err?.message || err)
+      return { ...mockFn(filePath), __fromMock: true }
+    }
+    throw err
+  }
+}
+
+// ========== 批量文件上传封装 ==========
+
+//+ 批量上传配置（multipart/form-data 多文件一次提交）
+//+ 目前仅 H5 端支持真正批量；非 H5 调用方要自行逐张调用 upload() 兜底
+//+ url: 如 /upload/images
+//+ filePaths: 本地路径数组（H5 须为 blob:/data: URL；否则抛错给调用方兜底）
+//+ name: formData 中多文件字段名，后端约定 'files'
+//+ formData: 附加文本字段
+//+ mockFn: Mock/降级函数，参数是 filePaths；返回 ResponseData<{ urls: string[] }> 或调用方自定义结构
+export interface BatchUploadConfig<T> {
+  url: string
+  filePaths: string[]
+  name?: string
+  formData?: Record<string, any>
+  header?: any
+  mockFn?: (filePaths: string[]) => ResponseData<T>
+}
+
+//+ 批量上传：H5 端 fetch + FormData 一次提交多文件
+//+ 非 H5 blob 路径（如小程序临时文件路径）：调用方传 mockFn 的降级路径会触发；未传则 throw 'not-supported'
+export async function uploadBatch<T = any>(config: BatchUploadConfig<T>): Promise<ResponseData<T>> {
+  const { url, filePaths, name = 'files', formData, header, mockFn } = config
+  const { fullUrl, relativeUrl } = resolveUrl(url)
+  const authHeader = buildAuthHeader(header)
+
+  //+ 全局 Mock
+  if (isMock) {
+    console.log('[Upload] Mock 模式（批量）:', relativeUrl)
+    if (!mockFn) {
+      const err: any = new Error('批量上传Mock未配置mockFn')
+      err.code = -1
+      throw err
+    }
+    return { ...mockFn(filePaths), __fromMock: true }
+  }
+
+  const isH5 =
+    typeof window !== 'undefined' &&
+    typeof fetch === 'function' &&
+    typeof FormData !== 'undefined'
+
+  try {
+    if (!isH5) {
+      //+ 非 H5：Taro 暂无原生批量上传 API，抛错让调用方兜底（逐张走 upload）
+      throw new Error('batch-not-supported')
+    }
+
+    //+ H5：校验每一项都是 blob:/data:，否则抛错给调用方逐张兜底
+    const allBlob = filePaths.every(
+      fp => fp.startsWith('blob:') || fp.startsWith('data:')
+    )
+    if (!allBlob) throw new Error('not-all-blob')
+
+    const fd = new FormData()
+    for (let i = 0; i < filePaths.length; i++) {
+      const fp = filePaths[i]
+      const blob = await fetch(fp).then(r => r.blob())
+      const ext = blob.type?.includes('image') ? 'jpg' : 'bin'
+      fd.append(name, blob, `file_${Date.now()}_${i}.${ext}`)
+    }
+    if (formData) {
+      for (const [k, v] of Object.entries(formData)) {
+        if (v != null) fd.append(k, String(v))
+      }
+    }
+
+    const res = await fetch(fullUrl, {
+      method: 'POST',
+      headers: authHeader,
+      body: fd
+    })
+    const text = await res.text()
+    return await parseUploadResponse<T>(res.status, text, relativeUrl)
+  } catch (err: any) {
+    if (err && typeof err.code === 'number') return Promise.reject(err)
+    if (mockFn) {
+      console.warn('[Upload] 批量上传失败，降级 Mock:', relativeUrl, err?.message || err)
+      return { ...mockFn(filePaths), __fromMock: true }
+    }
+    throw err
+  }
+}
