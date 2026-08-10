@@ -9,7 +9,7 @@ import { Button, TextArea, Input, Picker, Tabs } from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import { createNoteAPI } from '@/apis/note'
-import { uploadImageAPI, uploadVideoAPI } from '@/apis/upload'
+import { uploadImagesAPI, uploadVideoAPI } from '@/apis/upload'
 import { fetchTags } from '@/store/modules/tag'
 import { CATEGORY_MAP } from '@/types'
 import type { RootState, AppDispatch } from '@/store'
@@ -75,13 +75,15 @@ const PublishNote = () => {
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false)
   //+ 媒体类型（图片/视频互斥），默认图片
   const [mediaType, setMediaType] = useState<MediaType>('image')
+  //+ 视频封面 URL（后端返回的 OSS 截帧地址，提交时塞入 images[0]）
+  const [videoCoverUrl, setVideoCoverUrl] = useState<string>('')
 
   //+ 通用字段更新（泛型，支持 string/number/string[] 等类型）
   const updateField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  //+ 多图上传：选择图片 → 逐个上传 → 收集 URL
+  //+ 多图上传：选择图片 → 调用批量接口 uploadImagesAPI（H5 真批量，小程序端逐个兜底）→ 合并 URL
   const handleUploadImages = async () => {
     const remaining = MAX_IMAGES - form.images.length
     if (remaining <= 0) {
@@ -94,14 +96,8 @@ const PublishNote = () => {
       const filePaths = chooseRes.tempFilePaths
 
       setUploading(true)
-      const newUrls: string[] = []
-      for (const filePath of filePaths) {
-        const res = await uploadImageAPI(filePath, 'note')
-        if (res.code === 0 || res.code === 200) {
-          newUrls.push(res.data.url)
-        }
-      }
-
+      const res = await uploadImagesAPI(filePaths, 'note', MAX_IMAGES)
+      const newUrls = res.data.urls || []
       if (newUrls.length > 0) {
         updateField('images', [...form.images, ...newUrls])
       }
@@ -134,7 +130,8 @@ const PublishNote = () => {
   //   }
   // }
 
-  //+ 视频上传：选择1个视频 → 上传 → 填充 videoUrl
+  //+ 视频上传：选择1个视频 → 上传 → 后端返回 { videoUrl, coverUrl }，封面单独存 videoCoverUrl
+  //+ 文档：发布时把 coverUrl 填入 images[0]，videoUrl 填入 videoUrl
   const handleUploadVideo = async () => {
     if (form.videoUrl) {
       Taro.showToast({ title: '最多上传1个视频', icon: 'none' })
@@ -151,7 +148,8 @@ const PublishNote = () => {
       setVideoUploading(true)
       const res = await uploadVideoAPI(filePath, 'note')
       if (res.code === 0 || res.code === 200) {
-        updateField('videoUrl', res.data.url)
+        updateField('videoUrl', res.data.videoUrl)
+        setVideoCoverUrl(res.data.coverUrl)
       } else {
         Taro.showToast({ title: '视频上传失败', icon: 'none' })
       }
@@ -163,9 +161,10 @@ const PublishNote = () => {
     }
   }
 
-  //+ 删除视频
+  //+ 删除视频（同时清封面）
   const handleRemoveVideo = () => {
     updateField('videoUrl', '')
+    setVideoCoverUrl('')
   }
 
   //+ 分类 Picker 确认
@@ -223,17 +222,21 @@ const PublishNote = () => {
   }
 
   //+ 提交发布
+  //+ 文档要求：视频模式下把 coverUrl 填入 images[0]，videoUrl 填入 videoUrl；图片模式 images 原样
   const handleSubmit = async () => {
     if (submitting) return
     if (!validateForm()) return
 
     setSubmitting(true)
     try {
+      const submitImages: string[] =
+        mediaType === 'video' ? (videoCoverUrl ? [videoCoverUrl] : []) : [...form.images]
+
       const res = await createNoteAPI({
         title: form.title.trim(),
         content: form.noteContent,
-        images: form.images||[],
-        videoUrl: form.videoUrl || "",
+        images: submitImages,
+        videoUrl: mediaType === 'video' ? (form.videoUrl || '') : undefined,
         category: form.category,
         tags: form.tags
       })
@@ -292,18 +295,19 @@ const PublishNote = () => {
         <Tabs
                   value={activeTab}
                   onChange={(v) => {
-                                      
-                      if (v === mediaType) return
-                      setMediaType(v as MediaType)
-                      if (v === 'image') {
-                        updateField('videoUrl', '')
-                      } else {
-                        updateField('images', [])
-                      }
-  
+                    if (v === mediaType) {
+                      setActiveTab(v as string)
+                      return
+                    }
+                    setMediaType(v as MediaType)
+                    if (v === 'image') {
+                      updateField('videoUrl', '')
+                      setVideoCoverUrl('')
+                    } else {
+                      updateField('images', [])
+                    }
                     setActiveTab(v as string)
-               
-                     }}
+                  }}
                   activeColor="#428a46"
                   className="media-type-switch"
                 >
