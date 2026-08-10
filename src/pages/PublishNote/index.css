@@ -13,6 +13,16 @@
   overflow-y: auto;
   padding-bottom: 5rem;
 }
+.media-type-switch .nut-tabs-titles {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.media-type-switch .nut-tabs-titles-item-text {
+  color: #333 !important;
+}
+.media-type-switch .nut-tabs-titles-item-active .nut-tabs-titles-item-text {
+  color: #428a46 !important;
+}
 .images-section {
   padding: 0.6rem 1.5rem;
 }
@@ -53,7 +63,8 @@
   font-size: 0.5rem;
   cursor: pointer;
 }
-.image-add {
+.image-add,
+.video-add {
   width: calc((100% - 1.8rem) / 3);
   aspect-ratio: 1;
   background-color: #f7f8fa;
@@ -64,9 +75,46 @@
   color: #d7dbe0;
   cursor: pointer;
 }
-.image-add .uploading-text {
+.image-add .uploading-text,
+.video-add .uploading-text {
   font-size: 0.55rem;
   color: #999;
+}
+.video-section {
+  padding: 0.6rem 1.5rem;
+}
+.video-grid {
+  display: flex;
+  gap: 0.4rem;
+}
+.video-item {
+  width: 100%;
+  max-width: 16rem;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.3rem;
+  overflow: hidden;
+  position: relative;
+  background-color: #000;
+}
+.video-item .video-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.video-item .image-remove {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  line-height: 0.85rem;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.5rem;
+  cursor: pointer;
+  z-index: 100;
 }
 .field-section {
   padding: 0.75rem 0 0.75rem 1.5rem;
@@ -155,6 +203,10 @@
 .tag-list .tag.tag-active {
   background-color: #2e7d32;
   color: #fff;
+}
+.tag-list .tag-loading {
+  font-size: 0.65rem;
+  color: #999;
 }
 .field-textarea {
   width: 100%;

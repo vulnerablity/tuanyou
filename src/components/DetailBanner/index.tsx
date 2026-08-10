@@ -1,4 +1,5 @@
-import { Swiper, Cell, ConfigProvider, Indicator, SwiperItem, Image, Video } from '@nutui/nutui-react'
+import { Swiper, Cell, ConfigProvider, Indicator, SwiperItem, Image } from '@nutui/nutui-react'
+import { Video } from '@tarojs/components'
 import { useState, useMemo } from 'react'
 import './index.less'
 
@@ -35,7 +36,17 @@ const DetailBanner = (props: DetailBannerProps) => {
     if (contentItems.length === 1) {
       const item = contentItems[0]
       return item.type === 'video' ? (
-        <Video src={item.url} autoPlay loop muted className="banner-video" />
+        //+ 问题3修复：使用 Taro 原生 Video 组件；小程序端自动播放必须静音(muted=true)，同时启用 playsInline 避免iOS全屏劫持
+        <Video
+          src={item.url}
+          autoplay
+          loop
+          muted
+          controls
+          showCenterPlayBtn={false}
+          showPlayBtn
+          className="banner-video"
+        />
       ) : (
         <Image src={item.url} className="banner-single-image" />
       )

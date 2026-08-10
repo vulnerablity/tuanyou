@@ -1,14 +1,15 @@
 //+ 发布笔记页
-//+ 笔记字段：多图上传 + 标题 + 分类 + 标签 + 正文内容
+//+ 笔记字段：媒体类型切换（图片1-5张 / 视频1个）+ 标题 + 分类 + 标签 + 正文内容
 //+ 标签使用习惯：NutUI 组件（Input/Picker/TextArea/Button/Tag）+ 原生 HTML（div/img/span）
 import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { Button, TextArea, Input, Picker } from '@nutui/nutui-react'
+import { Video } from '@tarojs/components'
+import { Button, TextArea, Input, Picker, Tabs } from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import { createNoteAPI } from '@/apis/note'
-import { uploadImageAPI } from '@/apis/upload'
+import { uploadImagesAPI, uploadVideoAPI } from '@/apis/upload'
 import { fetchTags } from '@/store/modules/tag'
 import { CATEGORY_MAP } from '@/types'
 import type { RootState, AppDispatch } from '@/store'
@@ -21,6 +22,9 @@ const MAX_TAGS = 3
 //+ 标题/内容长度限制
 const MAX_TITLE = 50
 const MAX_CONTENT = 2000
+
+//+ 媒体类型：图片 或 视频（互斥）
+type MediaType = 'image' | 'video'
 
 //+ 分类选项（从 CATEGORY_MAP 生成，value 为数字 ID 的字符串形式供 Picker 使用）
 const CATEGORY_OPTIONS = [
@@ -65,15 +69,21 @@ const PublishNote = () => {
   const [submitting, setSubmitting] = useState(false)
   //+ 图片上传中状态
   const [uploading, setUploading] = useState(false)
+  //+ 视频上传中状态
+  const [videoUploading, setVideoUploading] = useState(false)
   //+ 分类 Picker 弹窗可见性
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false)
+  //+ 媒体类型（图片/视频互斥），默认图片
+  const [mediaType, setMediaType] = useState<MediaType>('image')
+  //+ 视频封面 URL（后端返回的 OSS 截帧地址，提交时塞入 images[0]）
+  const [videoCoverUrl, setVideoCoverUrl] = useState<string>('')
 
   //+ 通用字段更新（泛型，支持 string/number/string[] 等类型）
   const updateField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  //+ 多图上传：选择图片 → 逐个上传 → 收集 URL
+  //+ 多图上传：选择图片 → 调用批量接口 uploadImagesAPI（H5 真批量，小程序端逐个兜底）→ 合并 URL
   const handleUploadImages = async () => {
     const remaining = MAX_IMAGES - form.images.length
     if (remaining <= 0) {
@@ -86,14 +96,8 @@ const PublishNote = () => {
       const filePaths = chooseRes.tempFilePaths
 
       setUploading(true)
-      const newUrls: string[] = []
-      for (const filePath of filePaths) {
-        const res = await uploadImageAPI(filePath, 'note')
-        if (res.code === 0 || res.code === 200) {
-          newUrls.push(res.data.url)
-        }
-      }
-
+      const res = await uploadImagesAPI(filePaths, 'note', MAX_IMAGES)
+      const newUrls = res.data.urls || []
       if (newUrls.length > 0) {
         updateField('images', [...form.images, ...newUrls])
       }
@@ -111,6 +115,56 @@ const PublishNote = () => {
   //+ 删除单张图片
   const handleRemoveImage = (index: number) => {
     updateField('images', form.images.filter((_, i) => i !== index))
+  }
+
+  //+ 媒体类型切换：清空对方媒体内容（图片↔视频互斥）
+  const [activeTab, setActiveTab] = useState('image')
+  
+  // const handleSwitchMediaType = (type: MediaType) => {
+  //   if (type === mediaType) return
+  //   setMediaType(type)
+  //   if (type === 'image') {
+  //     updateField('videoUrl', '')
+  //   } else {
+  //     updateField('images', [])
+  //   }
+  // }
+
+  //+ 视频上传：选择1个视频 → 上传 → 后端返回 { videoUrl, coverUrl }，封面单独存 videoCoverUrl
+  //+ 文档：发布时把 coverUrl 填入 images[0]，videoUrl 填入 videoUrl
+  const handleUploadVideo = async () => {
+    if (form.videoUrl) {
+      Taro.showToast({ title: '最多上传1个视频', icon: 'none' })
+      return
+    }
+    try {
+      const chooseRes = await Taro.chooseVideo({
+        sourceType: ['album', 'camera'],
+        maxDuration: 60,
+        compressed: true
+      })
+      const filePath = chooseRes.tempFilePath
+
+      setVideoUploading(true)
+      const res = await uploadVideoAPI(filePath, 'note')
+      if (res.code === 0 || res.code === 200) {
+        updateField('videoUrl', res.data.videoUrl)
+        setVideoCoverUrl(res.data.coverUrl)
+      } else {
+        Taro.showToast({ title: '视频上传失败', icon: 'none' })
+      }
+    } catch (err) {
+      console.warn('[PublishNote] 视频上传失败:', err)
+      Taro.showToast({ title: '视频上传失败', icon: 'none' })
+    } finally {
+      setVideoUploading(false)
+    }
+  }
+
+  //+ 删除视频（同时清封面）
+  const handleRemoveVideo = () => {
+    updateField('videoUrl', '')
+    setVideoCoverUrl('')
   }
 
   //+ 分类 Picker 确认
@@ -144,6 +198,18 @@ const PublishNote = () => {
       Taro.showToast({ title: '请选择分类', icon: 'none' })
       return false
     }
+    //+ 媒体内容校验：图片模式需1-5张，视频模式需1个
+    if (mediaType === 'image') {
+      if (form.images.length < 1) {
+        Taro.showToast({ title: '请至少上传1张图片', icon: 'none' })
+        return false
+      }
+    } else {
+      if (!form.videoUrl) {
+        Taro.showToast({ title: '请上传1个视频', icon: 'none' })
+        return false
+      }
+    }
     if (form.noteContent.length > MAX_CONTENT) {
       Taro.showToast({ title: `内容不能超过${MAX_CONTENT}字`, icon: 'none' })
       return false
@@ -156,17 +222,21 @@ const PublishNote = () => {
   }
 
   //+ 提交发布
+  //+ 文档要求：视频模式下把 coverUrl 填入 images[0]，videoUrl 填入 videoUrl；图片模式 images 原样
   const handleSubmit = async () => {
     if (submitting) return
     if (!validateForm()) return
 
     setSubmitting(true)
     try {
+      const submitImages: string[] =
+        mediaType === 'video' ? (videoCoverUrl ? [videoCoverUrl] : []) : [...form.images]
+
       const res = await createNoteAPI({
         title: form.title.trim(),
         content: form.noteContent,
-        images: form.images,
-        videoUrl: form.videoUrl || undefined,
+        images: submitImages,
+        videoUrl: mediaType === 'video' ? (form.videoUrl || '') : undefined,
         category: form.category,
         tags: form.tags
       })
@@ -207,29 +277,94 @@ const PublishNote = () => {
       <HeaderNavBar title="发布笔记" backPageNum={1} fixed={false} cancel={true} />
 
       <div className="form-wrapper">
-        {/* 多图上传 */}
-        <div className="images-section">
-          <div className="section-label">
-            添加图片（{form.images.length}/{MAX_IMAGES}）
+        {/* 媒体类型切换：图片 / 视频（互斥） */}
+        {/* <div className="media-type-switch">
+          <div
+            className={`media-type-tab ${mediaType === 'image' ? 'active' : ''}`}
+            onClick={() => handleSwitchMediaType('image')}
+          >
+            图片
           </div>
-          <div className="image-grid">
-            {form.images.map((url, index) => (
-              <div key={index} className="image-item">
-                <img src={url} alt={`图片${index + 1}`} />
-                <div className="image-remove" onClick={() => handleRemoveImage(index)}>×</div>
-              </div>
-            ))}
-            {form.images.length < MAX_IMAGES && (
-              <div className="image-add" onClick={handleUploadImages}>
-                {uploading ? (
-                  <span className="uploading-text">上传中...</span>
-                ) : (
-                  <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
-                )}
-              </div>
-            )}
+          <div
+            className={`media-type-tab ${mediaType === 'video' ? 'active' : ''}`}
+            onClick={() => handleSwitchMediaType('video')}
+          >
+            视频
           </div>
-        </div>
+        </div> */}
+        <Tabs
+                  value={activeTab}
+                  onChange={(v) => {
+                    if (v === mediaType) {
+                      setActiveTab(v as string)
+                      return
+                    }
+                    setMediaType(v as MediaType)
+                    if (v === 'image') {
+                      updateField('videoUrl', '')
+                      setVideoCoverUrl('')
+                    } else {
+                      updateField('images', [])
+                    }
+                    setActiveTab(v as string)
+                  }}
+                  activeColor="#428a46"
+                  className="media-type-switch"
+                >
+                  <Tabs.TabPane title="图片" value={'image'} />
+                  <Tabs.TabPane title="视频" value={'video'} />
+                </Tabs>
+
+        {/* 图片上传区（图片模式） */}
+        {mediaType === 'image' && (
+          <div className="images-section">
+            <div className="section-label">
+              添加图片（{form.images.length}/{MAX_IMAGES}）
+            </div>
+            <div className="image-grid">
+              {form.images.map((url, index) => (
+                <div key={index} className="image-item">
+                  <img src={url} alt={`图片${index + 1}`} />
+                  <div className="image-remove" onClick={() => handleRemoveImage(index)}>×</div>
+                </div>
+              ))}
+              {form.images.length < MAX_IMAGES && (
+                <div className="image-add" onClick={handleUploadImages}>
+                  {uploading ? (
+                    <span className="uploading-text">上传中...</span>
+                  ) : (
+                    <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 视频上传区（视频模式，限1个） */}
+        {mediaType === 'video' && (
+          <div className="video-section">
+            <div className="section-label">
+              添加视频（{form.videoUrl ? 1 : 0}/1）
+            </div>
+            <div className="video-grid">
+              {form.videoUrl ? (
+                <div className="video-item">
+                  <Video src={form.videoUrl} className="video-preview" controls muted />
+                  <div className="image-remove" onClick={handleRemoveVideo}>×</div>
+                </div>
+              ) : (
+                <div className="video-add" onClick={handleUploadVideo}>
+                  {videoUploading ? (
+                    <span className="uploading-text">上传中...</span>
+                  ) : (
+                    <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 标题 */}
         <div className="field-section">

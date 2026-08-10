@@ -2,10 +2,10 @@
 //+ Q2 Tab 懒加载：默认笔记，切攻略才请求；每次切Tab实时刷新
 //+ Q3 布局统一：复用 PostWaterfall 双列瀑布流，加载更多在外层（不在右侧）
 //+ Q7：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
-//+ Q8：取消收藏 → 调用真实API → 立即从列表移除
-import { useState, useCallback, useEffect, useMemo } from 'react'
+//+ Q8：取消收藏 → 调用真实API → 延迟移除（离开页面时统一清理，给用户反悔机会）
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useDispatch } from 'react-redux'
-import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
+import Taro, { useDidShow, useDidHide, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { Tabs } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import { PostWaterfall } from '@/components/PostWaterfall'
@@ -19,6 +19,9 @@ import './index.less'
 const Favorite = () => {
   const dispatch: AppDispatch = useDispatch()
   const [activeTab, setActiveTab] = useState(0)
+
+  //+ 记录已取消收藏但暂未移除的项（延迟到离开页面时移除，防止手误给用户反悔机会）
+  const pendingRemoveRef = useRef<Set<string | number>>(new Set())
 
   //+ 两个独立分页实例：笔记/攻略收藏
   const notesPaged = usePagedList<ProfilePostItem>({
@@ -53,15 +56,11 @@ const Favorite = () => {
     return toFeedList(currentPaged.list).map(f => ({ ...f, isFavorited: true }))
   }, [currentPaged.list])
 
-  //+ Q2：页面显示时，仅加载当前 Tab（默认笔记）
+  //+ Q2：页面显示时刷新当前 Tab（覆盖：首次进入 + 从详情页返回），保证数据实时
+  //+ 注意：不能用 useEffect 依赖 notesPaged/strategysPaged —— 它们每次渲染都是新对象引用，会触发无限请求
   useDidShow(() => {
     currentPaged.loadFirstPage()
   })
-
-  //+ Q2：每次切 Tab，都重新请求新 Tab 的第一页（实时）
-  useEffect(() => {
-    ;(activeTab === 0 ? notesPaged : strategysPaged).loadFirstPage()
-  }, [activeTab, notesPaged, strategysPaged])
 
   usePullDownRefresh(async () => {
     await currentPaged.refresh()
@@ -72,14 +71,24 @@ const Favorite = () => {
     currentPaged.loadMore()
   })
 
-  //+ Q8：收藏切换（这里只有"取消收藏"移除是有效操作，收藏本身是详情页的）
-  // 取消收藏后 → 从当前 Tab 列表移除
+  //+ Q8 改造：取消收藏不立即移除，标记为待移除；再次收藏则撤销标记（给用户反悔机会）
   const handleToggleFavorite = (item: FeedItem, newIsFavorited: boolean) => {
     if (!newIsFavorited) {
-      currentPaged.removeItem(p => p.id === item.id)
+      pendingRemoveRef.current.add(item.id)
       Taro.showToast({ title: '已取消收藏', icon: 'success' })
+    } else {
+      pendingRemoveRef.current.delete(item.id)
     }
   }
+
+  //+ 离开页面时统一移除已取消收藏的项
+  useDidHide(() => {
+    if (pendingRemoveRef.current.size === 0) return
+    const ids = pendingRemoveRef.current
+    notesPaged.removeItem(p => ids.has(p.id))
+    strategysPaged.removeItem(p => ids.has(p.id))
+    pendingRemoveRef.current.clear()
+  })
 
   const handleItemClick = (item: FeedItem) => {
     const path = item.type === 'guide' ? '/pages/GuideDetail/index' : '/pages/NoteDetail/index'
@@ -95,7 +104,12 @@ const Favorite = () => {
       <div className="favorite-body">
         <Tabs
           value={activeTab}
-          onChange={(v) => setActiveTab(Number(v))}
+          onChange={(v) => {
+            const next = Number(v)
+            setActiveTab(next)
+            //+ Q2：切 Tab 实时请求新 Tab 第一页（不累积旧数据）
+            ;(next === 0 ? notesPaged : strategysPaged).loadFirstPage()
+          }}
           activeColor="#428a46"
           className="favorite-tabs"
         >
@@ -104,6 +118,7 @@ const Favorite = () => {
         </Tabs>
 
         {/* Q3 修复：瀑布流容器 + 加载更多分离，加载更多放在外层（下方） */}
+        {/* Q8 修正：收藏图标替代点赞图标位置（底部右侧），点击取消收藏 → 移除项 */}
         <PostWaterfall
           feed={currentList}
           loading={loading && currentList.length === 0}
@@ -111,7 +126,7 @@ const Favorite = () => {
           emptyText={activeTab === 0 ? '还没有收藏的笔记' : '还没有收藏的攻略'}
           onItemClick={handleItemClick}
           onLoadMore={() => currentPaged.loadMore()}
-          showFavorite
+          actionType="favorite"
           onToggleFavorite={handleToggleFavorite}
         />
       </div>

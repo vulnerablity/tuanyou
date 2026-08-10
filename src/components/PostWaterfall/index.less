@@ -147,16 +147,21 @@ background-color: pink;
       margin-left: 0.5rem;
     }
 
-    //+ 点赞数
+    //+ 点赞数 / 收藏图标（底部右侧操作区）
     .feed-likes {
       font-size: 0.6rem;
       color: #bfbfbf;
       flex-shrink: 0;
       margin-left: 0.2rem;
 
-      //+ 已点赞状态：红色
+      //+ 操作图标默认色
       .like-icon {
         color: #38833c;
+      }
+
+      //+ 已收藏状态（actionType=favorite）：金色星
+      &.is-faved .like-icon {
+        color: #f5a623;
       }
     }
   }

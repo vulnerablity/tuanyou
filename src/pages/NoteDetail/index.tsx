@@ -11,6 +11,7 @@ import { useEffect, useCallback } from 'react'
 import Taro from '@tarojs/taro'
 import { fetchNoteDetail, toggleLike as toggleNoteLike, toggleFavorite as toggleNoteFavorite, patchNoteDetail } from '@/store/modules/note'
 import { toggleFollow } from '@/store/modules/user'
+import { updateFeedItem } from '@/store/modules/home'
 import './index.less'
 const NoteDetail = () => {
   const dispatch: AppDispatch = useDispatch()
@@ -36,26 +37,40 @@ const NoteDetail = () => {
   const isSelf = !!userId && !!authorId && String(userId) === String(authorId)
 
   //+ Q8：点赞（note 模块 thunk → 单次 API；fulfilled 后 store 自动同步详情）
+  //+ 问题1修复：同时同步 home store 中对应卡片的点赞状态，返回首页时卡片图标和数字一致
   const handleToggleLike = useCallback(async (nextIsLiked: boolean) => {
     if (!noteDetail?.id) return
     try {
-      await dispatch(toggleNoteLike(noteDetail.id))
+      const action = await dispatch(toggleNoteLike(noteDetail.id))
+      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
+      if (ok) {
+        const payload = (action as any)?.payload || {}
+        const finalLiked = typeof payload.isLiked === 'boolean' ? payload.isLiked : nextIsLiked
+        const finalCount = typeof payload.likeCount === 'number' ? payload.likeCount : (noteDetail.likeCount || 0) + (finalLiked ? 1 : -1)
+        dispatch(updateFeedItem({ id: noteDetail.id, patch: { isLiked: finalLiked, likeCount: finalCount } }))
+      }
       Taro.showToast({ title: nextIsLiked ? '点赞成功' : '已取消点赞', icon: 'success' })
     } catch (err) {
       console.warn('[NoteDetail] 点赞失败:', err)
     }
-  }, [noteDetail?.id, dispatch])
+  }, [noteDetail, dispatch])
 
-  //+ Q8：收藏
+  //+ Q8：收藏（同时同步 home store，保证返回首页后卡片状态一致）
   const handleToggleFavorite = useCallback(async (nextIsFavorited: boolean) => {
     if (!noteDetail?.id) return
     try {
-      await dispatch(toggleNoteFavorite(noteDetail.id))
+      const action = await dispatch(toggleNoteFavorite(noteDetail.id))
+      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
+      if (ok) {
+        const payload = (action as any)?.payload || {}
+        const finalFav = typeof payload.isFavorited === 'boolean' ? payload.isFavorited : nextIsFavorited
+        dispatch(updateFeedItem({ id: noteDetail.id, patch: { isFavorited: finalFav } }))
+      }
       Taro.showToast({ title: nextIsFavorited ? '收藏成功' : '已取消收藏', icon: 'success' })
     } catch (err) {
       console.warn('[NoteDetail] 收藏失败:', err)
     }
-  }, [noteDetail?.id, dispatch])
+  }, [noteDetail, dispatch])
 
   //+ Q8：关注/取消关注（user 模块 thunk，成功后同步到笔记详情的 isFollowed）
   const handleToggleFollow = useCallback(async (authorUserId: string, nextIsFollowed: boolean) => {

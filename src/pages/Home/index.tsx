@@ -7,9 +7,9 @@ import { PostWaterfall } from '@/components/PostWaterfall'
 import { Tabs } from '@nutui/nutui-react'
 import { useEffect, useState, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import Taro, { useReachBottom, usePullDownRefresh } from '@tarojs/taro'
+import Taro, { useDidShow, useReachBottom, usePullDownRefresh } from '@tarojs/taro'
 import type { RootState, AppDispatch } from '@/store'
-import { fetchFeed, resetFeed, updateFeedItem } from '@/store/modules/home'
+import { fetchFeed, resetFeed, softSyncFeed, updateFeedItem } from '@/store/modules/home'
 import type { FeedItem } from '@/types'
 //+ 说明：点赞/收藏 API 由 PostWaterfall 组件内部调用（含乐观 UI），
 //+ 此处仅做 store 同步，不重复 dispatch thunk，避免双重请求
@@ -39,7 +39,7 @@ const Home = () => {
   const loadFirstPage = useCallback(() => {
     dispatch(resetFeed())
     dispatch(fetchFeed({
-      category: categoryName === '全部' ? undefined : categories.indexOf(categoryName),
+      category: categoryName === '全部' ? 0 : categories.indexOf(categoryName),
       sort: sortName,
       page: 1,
       size: 10
@@ -61,6 +61,22 @@ const Home = () => {
       size: 10
     }))
   }, [dispatch, categoryName, sortName, feedLoading, feedHasMore, feedPage])
+
+  //+ 问题2修复：从详情返回首页时使用软同步，不回到顶部、不打乱顺序
+  //+ 首次进入页面时 useEffect 已调 loadFirstPage，这里跳过；只有"从其他页面返回"时触发软同步
+  const loadedOnceRef = { current: false }
+  useDidShow(() => {
+    if (loadedOnceRef.current) {
+      dispatch(softSyncFeed({
+        category: categoryName === '全部' ? 0 : categories.indexOf(categoryName),
+        sort: sortName,
+        page: 1,
+        size: 10
+      }))
+    } else {
+      loadedOnceRef.current = true
+    }
+  })
 
   //+ Q7：taro上拉加载更多
   useReachBottom(() => {
