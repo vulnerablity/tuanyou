@@ -8,7 +8,8 @@ import {
   getActivityBannersAPI,
   getActivityListAPI,
   getActivityDetailAPI,
-  toggleActivitySignupAPI
+  toggleActivitySignupAPI,
+  deleteActivityAPI
 } from '@/apis/activity'
 import type { Activity, ActivityBanner, ActivityListItem } from '@/types'
 
@@ -129,6 +130,22 @@ export const fetchToggleSignup = createAsyncThunk(
   }
 )
 
+//+ 删除活动异步Action
+export const deleteActivity = createAsyncThunk(
+  'activity/deleteActivity',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const res = await deleteActivityAPI(id)
+      if (res.code === 0 || res.code === 200) {
+        return { id }
+      }
+      return rejectWithValue(res.message || '删除活动失败')
+    } catch (error: any) {
+      return rejectWithValue(error.message || '网络错误')
+    }
+  }
+)
+
 //+ 活动Slice
 const activitySlice = createSlice({
   name: 'activity',
@@ -228,6 +245,16 @@ const activitySlice = createSlice({
       })
       .addCase(fetchToggleSignup.rejected, (state) => {
         state.signupLoading = false
+      })
+      //+ 删除活动
+      .addCase(deleteActivity.fulfilled, (state, action) => {
+        const deletedId = action.payload.id
+        //+ 从列表中移除
+        state.activityList = state.activityList.filter(a => a.id !== deletedId)
+        //+ 如果删除的是当前详情，清空详情
+        if (state.currentActivity && state.currentActivity.id === deletedId) {
+          state.currentActivity = null
+        }
       })
   },
 })

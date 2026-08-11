@@ -65,6 +65,8 @@ export interface Post {
   tags: string[]
   status: number
   publishTime: string
+  //+ 是否为本人发布（后端判断，true=显示头部 more + 删除操作入口）
+  isOwner: boolean
   routeInfo?: {
     distance: string
     duration: string
@@ -92,6 +94,9 @@ export interface FeedItem {
   isFavorited?: boolean
   type: 'note' | 'guide'
   category?: number
+  //+ 是否为视频（来自后端字段；优先级高于 videoUrl 判断）
+  //+ 视频→封面 16:9；非视频→封面 3:4
+  isVideo?: boolean
 }
 
 //+ 轮播数据结构（首页轮播项）
@@ -147,6 +152,8 @@ export interface Activity {
     nickname: string
     avatar: string
   }[]
+  //+ 是否为本人发布（true=显示头部 more + 删除操作入口）
+  isOwner: boolean
 }
 
 //+ 活动列表项（与 OpenAPI GET /activities 响应 list 项对齐）
@@ -172,6 +179,8 @@ export interface ActivityListItem {
   difficulty: string
   activityStatus: string
   joined: boolean
+  //+ 是否为本人发布（true=显示头部 more + 删除操作入口）
+  isOwner: boolean
 }
 
 //+ 评论数据结构（两级）
@@ -237,6 +246,8 @@ export interface ProfilePostItem {
   tag: string
   likeCount: number
   isLiked: boolean
+  //+ 是否为视频（true=封面比例 16:9，false=原比例 3:4）
+  isVideo: boolean
 }
 
 //+ 关注列表项（followeeId=被关注者ID）

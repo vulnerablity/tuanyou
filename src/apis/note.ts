@@ -1,5 +1,5 @@
 //+ 笔记API接口封装
-import { get, post } from '@/utils/request'
+import { get, post, del } from '@/utils/request'
 
 //+ 获取笔记列表（瀑布流）
 export function getNotesAPI(params: {
@@ -43,4 +43,9 @@ export function toggleNoteFavoriteAPI(id: string) {
 //+ 获取笔记评论列表
 export function getNoteCommentsAPI(id: string) {
   return get(`/notes/${id}/comments`)
+}
+
+//+ 删除笔记
+export function deleteNoteAPI(id: string) {
+  return del(`/notes/${id}`)
 }

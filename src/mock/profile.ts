@@ -44,9 +44,11 @@ const strategyTitles = [
 ]
 const tagNames = ['徒步', '露营', '骑行', '登山', '跑步', '攀岩', '溯溪', '自驾']
 
-//+ 生成笔记/攻略列表项
+//+ 生成笔记/攻略列表项（isVideo 真=视频封面16:9，假=图文3:4；按id%5概率构造视频，仅笔记有视频）
 function genPost(id: number, type: 'note' | 'strategy') {
   const titles = type === 'note' ? noteTitles : strategyTitles
+  //+ 仅笔记可能是视频（约20%概率），攻略固定非视频
+  const isVideo = type === 'note' && id % 5 === 0
   return {
     id: String(id),
     type,
@@ -55,7 +57,9 @@ function genPost(id: number, type: 'note' | 'strategy') {
     title: titles[id % titles.length],
     tag: tagNames[id % tagNames.length],
     likeCount: 100 + (id * 7) % 400,
-    isLiked: id % 3 === 0
+    isLiked: id % 3 === 0,
+    //+ 是否为视频（true=封面16:9，false=封面3:4），来自后端字段
+    isVideo
   }
 }
 

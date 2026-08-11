@@ -10,7 +10,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import type { RootState, AppDispatch } from '@/store'
 import { useEffect, useCallback, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { fetchNoteDetail, toggleLike as toggleNoteLike, toggleFavorite as toggleNoteFavorite, patchNoteDetail } from '@/store/modules/note'
+import { Dialog } from '@nutui/nutui-react'
+import { fetchNoteDetail, toggleLike as toggleNoteLike, toggleFavorite as toggleNoteFavorite, patchNoteDetail, deleteNote } from '@/store/modules/note'
 import { toggleProfileFollow } from '@/store/modules/profile'
 import { updateFeedItem } from '@/store/modules/home'
 import type { Comment } from '@/types/entity'
@@ -36,6 +37,10 @@ const NoteDetail = () => {
   //+ 协调状态：CommentInput 发送成功后，构造新的 Comment 对象，通过 prop 塞给 CommentSection 自动追加
   //+ 用 id+时间戳 保证每次变化不同（id 相同时 externalNewComment useEffect 内的 ref 会去重）
   const [newComment, setNewComment] = useState<Comment | null>(null)
+
+  //+ 删除确认弹窗控制
+  const [deleteVisible, setDeleteVisible] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   useEffect(() => {
 
@@ -142,10 +147,55 @@ const NoteDetail = () => {
     setReplyTarget(null)
   }, [userId, userAvatar, userNickname])
 
+  //+ 头部 more 按钮点击：弹出 ActionSheet 选择删除
+  const handleMoreClick = useCallback(() => {
+    Taro.showActionSheet({
+      itemList: ['删除笔记'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          setDeleteVisible(true)
+        }
+      }
+    })
+  }, [])
+
+  //+ 确认删除笔记
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!id || deleteLoading) return
+    setDeleteLoading(true)
+    try {
+      const action = await dispatch(deleteNote(id))
+      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
+      if (ok) {
+        Taro.showToast({ title: '删除成功', icon: 'success' })
+        setDeleteVisible(false)
+        //+ 删除成功后返回上一页
+        setTimeout(() => {
+          Taro.navigateBack({ delta: 1 }).catch(() => {
+            Taro.switchTab({ url: '/pages/Home/index' })
+          })
+        }, 500)
+      } else {
+        Taro.showToast({ title: (action as any)?.payload || '删除失败', icon: 'none' })
+      }
+    } catch (err) {
+      console.warn('[NoteDetail] 删除失败:', err)
+      Taro.showToast({ title: '删除失败', icon: 'none' })
+    } finally {
+      setDeleteLoading(false)
+    }
+  }, [id, deleteLoading, dispatch])
+
   return (
     <div className='note-detail-container'>
       {/* 顶部标题和返回箭头 */}
-      <HeaderNavBar title='详情' backPageNum={1} fixed={false} />
+      <HeaderNavBar
+        title='详情'
+        backPageNum={1}
+        fixed={false}
+        more={!!noteDetail?.isOwner}
+        onMoreClick={handleMoreClick}
+      />
       <div className='note-detail-content'>
         {/* 轮播图/视频 */}
        
@@ -192,6 +242,17 @@ const NoteDetail = () => {
       />
       </div>
 
+      {/* 删除确认弹窗 */}
+      <Dialog
+        visible={deleteVisible}
+        title='确认删除笔记？'
+        content='删除后无法恢复，确定删除该笔记吗？'
+        confirmText='删除'
+        cancelText='取消'
+        confirmLoading={deleteLoading}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteVisible(false)}
+      />
     </div>
   )
 }

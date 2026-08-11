@@ -3,16 +3,17 @@
 //+ HeaderNavBar + 封面图 + 标签标题 + 信息面板 + 发起人 + 活动介绍 + 成员列表 + 底部操作栏
 //+ 报名/取消报名：文档8.1节要求取消确认弹窗，直接操作 + Toast 提示
 //+ 标签使用习惯：NutUI 组件优先（Button/Tag），其余用原生 HTML 标签（div/img/span）
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
-import { Button, Tag as NutuiTag } from '@nutui/nutui-react'
+import { Button, Tag as NutuiTag, Dialog } from '@nutui/nutui-react'
 import Tag from '@/components/Tag'
 import { useSelector, useDispatch } from 'react-redux'
 import type { AppDispatch, RootState } from '@/store'
 import {
   fetchActivityDetail,
   fetchToggleSignup,
-  clearCurrentActivity
+  clearCurrentActivity,
+  deleteActivity
 } from '@/store/modules/activity'
 import { toggleProfileFollow } from '@/store/modules/profile'
 import HeaderNavBar from '@/components/HeaderNavBar'
@@ -127,6 +128,10 @@ const ActivityDetail = () => {
   const [leaderFollowed, setLeaderFollowed] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
 
+  //+ 删除确认弹窗控制
+  const [deleteVisible, setDeleteVisible] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
   const handleFollow = async () => {
     const leaderId = currentActivity?.leader?.id
     if (!leaderId || followLoading) return
@@ -152,12 +157,51 @@ const ActivityDetail = () => {
     }
   }
 
+  //+ 头部 more 按钮点击：弹出 ActionSheet 选择删除
+  const handleMoreClick = useCallback(() => {
+    Taro.showActionSheet({
+      itemList: ['删除活动'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          setDeleteVisible(true)
+        }
+      }
+    })
+  }, [])
+
+  //+ 确认删除活动
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!activityId || deleteLoading) return
+    setDeleteLoading(true)
+    try {
+      const action = await dispatch(deleteActivity(activityId))
+      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
+      if (ok) {
+        Taro.showToast({ title: '删除成功', icon: 'success' })
+        setDeleteVisible(false)
+        //+ 删除成功后返回上一页
+        setTimeout(() => {
+          Taro.navigateBack({ delta: 1 }).catch(() => {
+            Taro.switchTab({ url: '/pages/Home/index' })
+          })
+        }, 500)
+      } else {
+        Taro.showToast({ title: (action as any)?.payload || '删除失败', icon: 'none' })
+      }
+    } catch (err) {
+      console.warn('[ActivityDetail] 删除失败:', err)
+      Taro.showToast({ title: '删除失败', icon: 'none' })
+    } finally {
+      setDeleteLoading(false)
+    }
+  }, [activityId, deleteLoading, dispatch])
+
   //+ 加载中骨架
   if (detailLoading) {
     return (
-      <div className="activity-detail-page">
-        <HeaderNavBar title="活动详情" backPageNum={1} fixed={false} />
-        <div className="loading-wrapper">加载中...</div>
+      <div className='activity-detail-page'>
+        <HeaderNavBar title='活动详情' backPageNum={1} fixed={false} />
+        <div className='loading-wrapper'>加载中...</div>
       </div>
     )
   }
@@ -165,9 +209,9 @@ const ActivityDetail = () => {
   //+ 加载失败/活动不存在
   if (!currentActivity) {
     return (
-      <div className="activity-detail-page">
-        <HeaderNavBar title="活动详情" backPageNum={1} fixed={false} />
-        <div className="empty-wrapper">活动不存在或已删除</div>
+      <div className='activity-detail-page'>
+        <HeaderNavBar title='活动详情' backPageNum={1} fixed={false} />
+        <div className='empty-wrapper'>活动不存在或已删除</div>
       </div>
     )
   }
@@ -177,23 +221,29 @@ const ActivityDetail = () => {
   const status = currentActivity.activityStatus || '报名中'
 
   return (
-    <div className="activity-detail-page">
-      <HeaderNavBar title="活动详情" backPageNum={1} fixed={false} />
+    <div className='activity-detail-page'>
+      <HeaderNavBar
+        title='活动详情'
+        backPageNum={1}
+        fixed={false}
+        more={!!currentActivity?.isOwner}
+        onMoreClick={handleMoreClick}
+      />
 
-      <div className="detail-scroll">
+      <div className='detail-scroll'>
         {/* 封面图 16:9 */}
-        <div className="cover-wrapper">
+        <div className='cover-wrapper'>
           <img
-            className="cover-img"
+            className='cover-img'
             src={currentActivity.coverImg}
             alt={currentActivity.title}
           />
         </div>
 
-        <div className="detail-content">
+        <div className='detail-content'>
                   {/* 标签 + 标题 */}
-                <div className="title-section">
-                  <div className="tag-row">
+                <div className='title-section'>
+                  <div className='tag-row'>
                     <Tag tagName={currentActivity.category} />
                     <NutuiTag
                       plain  
@@ -201,52 +251,52 @@ const ActivityDetail = () => {
                       {status}
                     </NutuiTag>
                   </div>
-                  <div className="activity-title">{currentActivity.title}</div>
+                  <div className='activity-title'>{currentActivity.title}</div>
                 </div>
 
                 {/* 活动信息面板 */}
-                <div className="info-panel">
-                  <div className="info-item">📅{formatTime(currentActivity.startTime)}</div>
-                  <div className="info-item">📍 {currentActivity.address}</div>
-                  <div className="info-item">💰 {formatPrice(currentActivity.price)}</div>
-                  <div className="info-item">
+                <div className='info-panel'>
+                  <div className='info-item'>📅{formatTime(currentActivity.startTime)}</div>
+                  <div className='info-item'>📍 {currentActivity.address}</div>
+                  <div className='info-item'>💰 {formatPrice(currentActivity.price)}</div>
+                  <div className='info-item'>
                     👥 {currentActivity.currentPeople}/{currentActivity.maxPeople}人
                   </div>
-                  <div className="info-item">📊 {currentActivity.difficulty}</div>
+                  <div className='info-item'>📊 {currentActivity.difficulty}</div>
                 </div>
 
                 {/* 发起人 */}
-                <div className="leader-section">
-                  <span className="section-title">发起人</span>
-                  <div className="leader-card">
-                    <Avatar url={currentActivity.leader.avatar} size="40px" />
-                    <div className="leader-info">
-                      <span className="leader-name">{currentActivity.leader.nickname}</span>
-                      <span className="leader-bio">帐篷就是我的第二个家</span>
+                <div className='leader-section'>
+                  <span className='section-title'>发起人</span>
+                  <div className='leader-card'>
+                    <Avatar url={currentActivity.leader.avatar} size='40px' />
+                    <div className='leader-info'>
+                      <span className='leader-name'>{currentActivity.leader.nickname}</span>
+                      <span className='leader-bio'>帐篷就是我的第二个家</span>
                     </div>
                     <Button onClick={handleFollow}>{leaderFollowed ? '已关注' : '+ 关注'}</Button>
                   </div>
                 </div>
 
         {/* 活动介绍 */}
-        <div className="intro-section">
-          <span className="section-title">活动介绍</span>
-          <div className="intro-content">
+        <div className='intro-section'>
+          <span className='section-title'>活动介绍</span>
+          <div className='intro-content'>
             {currentActivity.activityContent.split('\n').map((line, i) => (
-              <div key={i} className="intro-line">{line || ' '}</div>
+              <div key={i} className='intro-line'>{line || ' '}</div>
             ))}
           </div>
         </div>
 
         {/* 已报名成员 */}
-        <div className="members-section">
-          <span className="section-title">
+        <div className='members-section'>
+          <span className='section-title'>
             已报名（{currentActivity.currentPeople}人）
           </span>
-          <div className="members-list">
+          <div className='members-list'>
             {(currentActivity.members || []).map((m) => (
-              <div key={m.id} className="member-item">
-                <Avatar url={m.avatar} size="24px" />
+              <div key={m.id} className='member-item'>
+                <Avatar url={m.avatar} size='24px' />
                 
               </div>
             ))}
@@ -256,23 +306,23 @@ const ActivityDetail = () => {
       </div>
 
       {/* 底部操作栏：进度条 + 按钮 */}
-      <div className="bottom-bar">
-        <div className="progress-wrapper">
+      <div className='bottom-bar'>
+        <div className='progress-wrapper'>
           <div className='progress-info'>
-            <span className="progress-text">
+            <span className='progress-text'>
             已报 {currentActivity.currentPeople}/{currentActivity.maxPeople}人
           </span>
-          <span className="progress-percent">{progress}%</span>
+          <span className='progress-percent'>{progress}%</span>
           </div>
           
-          <div className="progress-bar">
-            <div className="progress-inner" style={{ width: `${progress}%` }} />
+          <div className='progress-bar'>
+            <div className='progress-inner' style={{ width: `${progress}%` }} />
           </div>
           
         </div>
         <Button
           className={`action-btn ${buttonConfig.btnClass}`}
-          type="default"
+          type='default'
           disabled={buttonConfig.disabled}
           loading={signupLoading}
           onClick={handleButtonClick}
@@ -280,6 +330,18 @@ const ActivityDetail = () => {
           {buttonConfig.text}
         </Button>
       </div>
+
+      {/* 删除确认弹窗 */}
+      <Dialog
+        visible={deleteVisible}
+        title='确认删除活动？'
+        content='删除后无法恢复，确定删除该活动吗？'
+        confirmText='删除'
+        cancelText='取消'
+        confirmLoading={deleteLoading}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteVisible(false)}
+      />
     </div>
   )
 }

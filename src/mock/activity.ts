@@ -117,7 +117,9 @@ function generateActivity(id: number) {
         nickname: member.nickname,
         avatar: member.avatar
       }
-    })
+    }),
+    //+ 是否为本人发布（领队id为'1'模拟当前登录用户）
+    isOwner: leader.id === '1'
   }
 }
 
@@ -182,7 +184,9 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
       difficulty: data?.difficulty || '中等',
       activityStatus: '报名中',
       joined: false,
-      members: [] as { id: string; nickname: string; avatar: string }[]
+      members: [] as { id: string; nickname: string; avatar: string }[],
+      //+ 新创建活动是本人发布
+      isOwner: true
     }
     mockActivities.unshift(newActivity)
     return successResponse(newActivity)
@@ -208,5 +212,16 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
   'GET /api/v1/user/activities': () => {
     const myActivities = mockActivities.filter(a => a.joined)
     return successResponse(myActivities)
+  },
+
+  //+ 删除活动（领队）
+  'DELETE /api/v1/activities/:id': (_, url) => {
+    const id = (url as string).split('/').pop() || '1'
+    const idx = mockActivities.findIndex(a => a.id === id)
+    if (idx >= 0) {
+      mockActivities.splice(idx, 1)
+      return successResponse({ message: '删除成功' })
+    }
+    return errorResponse('活动不存在')
   }
 }
