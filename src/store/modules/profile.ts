@@ -15,7 +15,8 @@ import {
   getLikedNotesAPI,
   getLikedStrategysAPI,
   getPublishActivityAPI,
-  getJoinActivityAPI
+  getJoinActivityAPI,
+  toggleProfileFollowAPI
 } from '@/apis/profile'
 import type {
   ProfileInfo,
@@ -120,6 +121,24 @@ export const fetchUpdateProfile = createAsyncThunk(
         return res.data
       }
       return rejectWithValue(res.message || '更新个人信息失败')
+    } catch (error: any) {
+      return rejectWithValue(error?.message || '网络错误')
+    }
+  }
+)
+
+//+ 关注/取关（切换式，POST /personal/follow/{followeeId}）
+//+ 统一入口：笔记详情、活动详情、攻略详情、关注/粉丝列表均可调用
+//+ 返回 { userId, isFollowed }，调用方据此同步本地状态
+export const toggleProfileFollow = createAsyncThunk(
+  'profile/toggleFollow',
+  async (followeeId: string, { rejectWithValue }) => {
+    try {
+      const res = await toggleProfileFollowAPI(followeeId)
+      if (res.code === 0 || res.code === 200) {
+        return { userId: followeeId, isFollowed: !!res.data?.isFollowed }
+      }
+      return rejectWithValue(res.message || '操作失败')
     } catch (error: any) {
       return rejectWithValue(error?.message || '网络错误')
     }

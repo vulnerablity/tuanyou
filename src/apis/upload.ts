@@ -1,123 +1,69 @@
 //+ 文件上传API封装
 //+ 对接后端：
-//+   - POST /upload/image   单张图片（头像/封面/活动背景等）
-//+   - POST /upload/images  批量图片（1~5 张，发布笔记时使用）
+//+   - POST /upload/images  批量图片（1~5 张），单张图片也走此接口传 1 张
+//+     【注意】后端按最新《默认模块.md》落地，不再注册单张接口 /upload/image，
+//+     因此 uploadImageAPI 内部改为复用批量接口传 1 张，返回 { urls: [url] } 再适配成 { url }。
 //+   - POST /upload/video   单个视频（返回 { videoUrl, coverUrl }，coverUrl 为 OSS 截帧地址）
-//+ 策略：先走真实后端，失败降级 Mock；Mock 模式直接调用 mock/upload.ts 的函数
-//+ 说明：文件上传走 Taro.uploadFile（multipart/form-data），不经 request.ts，
-//+       因此 Mock 由本文件直接导入 mock/upload.ts 的生成函数调用，不走 mockRoutes 拦截。
-import Taro from '@tarojs/taro'
-import { getToken } from '@/utils/token'
+//+ 上传底层统一走 @/utils/request 暴露的 upload / uploadBatch 封装（含：baseURL 拼接、Authorization 注入、
+//+   H5 blob→fetch+FormData 兼容、Mock 降级、响应规范化、401 跳转登录），
+//+   与项目 get/post/del 风格保持一致，避免硬编码。
+//+ Mock 实现来自 @/mock/upload（文件上传不走 request.ts 的 mockRoutes 拦截器）。
+import type { UploadType } from '@/types/upload'
+import { upload, uploadBatch } from '@/utils/request'
 import type { ResponseData } from '@/utils/request'
 import { mockUploadImage, mockUploadImages, mockUploadVideo } from '@/mock/upload'
 
-//+ 图片用途类型
-export type UploadType = 'avatar' | 'cover' | 'note' | 'activity' | 'bg'
-
-//+ 是否全局启用 Mock
-const isMock = process.env.TARO_APP_USE_MOCK === 'true'
-
 // ========== 图片相关 ==========
 
-//+ 上传单张图片（POST /upload/image）
+//+ 上传单张图片（复用 POST /upload/images 批量接口传 1 张）
 //+ 用于头像、封面、活动背景等单张场景；发布笔记时优先用批量接口
-//+ H5 端注意：与视频上传同理，blob:/data: URL 走 fetch + FormData 避开 Taro.uploadFile 缺陷
+//+ 适配原因：后端按《默认模块.md》只实现了 /upload/images，旧接口 /upload/image 已 404。
+//+ 调用方无需感知：返回结构仍为 { url: string }，与原契约一致。
 export async function uploadImageAPI(
   filePath: string,
   type?: UploadType
 ): Promise<ResponseData<{ url: string }>> {
-  if (isMock) {
-    console.log('[Upload] Mock 模式：上传单张图片')
-    return mockUploadImage(filePath)
-  }
-
-  const baseURL = process.env.TARO_APP_API_BASE || ''
-  const token = getToken()
-  const url = `${baseURL}/upload/image`
-
+  //+ 直接走底层 uploadBatch，不要调用 uploadImagesAPI（后者在非 H5 兜底时会回调 uploadImageAPI，会死循环）
   try {
-    //+ H5 端：blob:/data: URL 走 fetch + FormData
-    const isH5Blob =
-      typeof window !== 'undefined' &&
-      typeof fetch === 'function' &&
-      typeof FormData !== 'undefined' &&
-      (filePath.startsWith('blob:') || filePath.startsWith('data:'))
-
-    if (isH5Blob) {
-      const blob = await fetch(filePath).then(r => r.blob())
-      const formData = new FormData()
-      formData.append('file', blob, `image_${Date.now()}.jpg`)
-      if (type) formData.append('type', type)
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
-      })
-      const data = await res.json()
-      if (data.code === 0 || data.code === 200) {
-        return { ...data, __fromMock: false }
-      }
-      throw new Error(data.message || '上传失败')
-    }
-
-    //+ 非 H5 / 非 blob 路径：走 Taro.uploadFile
-    const uploadRes = await Taro.uploadFile({
-      url,
-      filePath,
-      name: 'file',
-      formData: type ? { type } : {},
-      header: token ? { Authorization: `Bearer ${token}` } : {}
+    const res = await uploadBatch<{ urls: string[] }>({
+      url: '/upload/images',
+      filePaths: [filePath],
+      name: 'files',
+      formData: type ? { type } : undefined
+      //+ 注意：此处不传 mockFn，保证批量失败时直接抛错，再在下面 catch 中按单张语义降级
     })
-    const data = JSON.parse(uploadRes.data)
-    if (data.code === 0 || data.code === 200) {
-      return { ...data, __fromMock: false }
-    }
-    throw new Error(data.message || '上传失败')
+    const urls = res.data?.urls ?? []
+    const url = urls[0] ?? ''
+    return { ...res, data: { url } }
   } catch (err: any) {
-    //+ 真实上传失败，降级 Mock
-    console.warn('[Upload] 单张图片真实上传失败，降级 Mock:', err?.message || err)
-    return mockUploadImage(filePath)
-  }
-}
-
-//+ H5 端通过 fetch + FormData 一次上传多张图片到 /upload/images
-async function batchUploadImagesViaFetch(
-  filePaths: string[],
-  type?: UploadType
-): Promise<ResponseData<{ urls: string[] }>> {
-  const baseURL = process.env.TARO_APP_API_BASE || ''
-  const token = getToken()
-
-  const formData = new FormData()
-  //+ 把本地临时路径转成真实文件（仅 H5 可行）
-  for (let i = 0; i < filePaths.length; i++) {
-    const fp = filePaths[i]
-    //+ blob/data URL：尝试 fetch 内容并 append 二进制
-    if (fp.startsWith('blob:') || fp.startsWith('data:')) {
-      const blob = await fetch(fp).then(r => r.blob())
-      formData.append('files', blob, `image_${i}.jpg`)
-    } else {
-      //+ 非 H5 blob 的路径（如本地文件路径），走回单张上传兜底
-      throw new Error('unsupported-file-path')
+    //+ 业务错误：不降级 Mock，直接向上抛
+    if (err && typeof err.code === 'number') throw err
+    //+ 非 H5 端（小程序）uploadBatch 不支持真实批量 fetch 会抛 'batch-not-supported' / 'not-all-blob'
+    //+   → 退回到 Taro.uploadFile 单张接口（仍然请求 /upload/images，fieldName='files'）
+    //+   → 若仍然失败再 Mock 降级
+    try {
+      const singleRes = await upload<{ url: string }>({
+        url: '/upload/images',
+        filePath,
+        name: 'files', //+ 后端批量接口字段名仍为 'files'
+        formData: type ? { type } : undefined,
+        //+ Taro.uploadFile 返回结构是 { urls: [...] } 时需做一次适配，
+        //+   但 upload 只做 JSON 解析，所以在下面再 normalize。
+        mockFn: (fp) => mockUploadImage(fp) as any
+      })
+      //+ 兼容两种返回：{ url } 或 { urls: [url] }
+      const d: any = (singleRes as any).data || {}
+      const url: string = d.url ?? (Array.isArray(d.urls) ? d.urls[0] : '') ?? ''
+      return { ...(singleRes as any), data: { url } }
+    } catch (innerErr: any) {
+      if (innerErr && typeof innerErr.code === 'number') throw innerErr
+      return mockUploadImage(filePath)
     }
   }
-  if (type) formData.append('type', type)
-
-  const res = await fetch(`${baseURL}/upload/images`, {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData
-  })
-  const data = await res.json()
-  if (data.code === 0 || data.code === 200) {
-    return { ...data, __fromMock: false }
-  }
-  throw new Error(data.message || '批量上传失败')
 }
 
 //+ 批量上传图片（POST /upload/images，1~5 张）
-//+ - H5 端：一次 fetch + FormData 真正批量上传
+//+ - H5 端：uploadBatch → fetch + FormData 真正批量上传
 //+ - 其他端（小程序等）：退化为逐个调用 uploadImageAPI（Taro.uploadFile 只支持单文件）
 //+ - 任何失败都走 Mock 降级
 export async function uploadImagesAPI(
@@ -127,36 +73,35 @@ export async function uploadImagesAPI(
 ): Promise<ResponseData<{ urls: string[] }>> {
   const targetPaths = filePaths.slice(0, maxCount)
   if (targetPaths.length === 0) {
-    return { code: 0, message: '成功', data: { urls: [] }, __fromMock: isMock }
+    return { code: 0, message: '成功', data: { urls: [] } }
   }
 
-  //+ Mock 模式：直接调用 mock 函数
-  if (isMock) {
-    console.log('[Upload] Mock 模式：上传批量图片')
-    return mockUploadImages(targetPaths)
-  }
-
-  //+ 策略：H5 尝试真批量 fetch；失败或非 H5 走逐张兜底
-  const isH5 = typeof window !== 'undefined' && typeof fetch === 'function' && typeof FormData !== 'undefined'
+  //+ 先尝试走统一的批量上传（H5 真正批量 fetch；非 H5 会抛 batch-not-supported 然后触发 Mock 降级，
+  //+   但我们需要"非 H5 兜底到逐张上传"而不是直接 Mock，所以用 try/catch 捕获后手动兜底）
   try {
-    if (isH5) {
-      const res = await batchUploadImagesViaFetch(targetPaths, type)
-      if (res.code === 0 || res.code === 200) return res
-      throw new Error((res as any).message || '批量上传失败')
-    }
-    throw new Error('not-h5')
-  } catch (outerErr: any) {
-    //+ 不是 H5 / fetch 方式失败 → 逐张调用单张接口
+    const res = await uploadBatch<{ urls: string[] }>({
+      url: '/upload/images',
+      filePaths: targetPaths,
+      name: 'files',
+      formData: type ? { type } : undefined,
+      //+ 注意：此处不直接传 mockFn 给 uploadBatch，避免"逐张上传还没试就 Mock 降级"
+    })
+    return res
+  } catch (err: any) {
+    //+ 业务错误：直接抛
+    if (err && typeof err.code === 'number') throw err
+
+    //+ 非 H5 / 不支持批量 → 逐张调用 uploadImageAPI 兜底
     try {
       const urls: string[] = []
-      for (const filePath of targetPaths) {
-        const one = await uploadImageAPI(filePath, type)
+      for (const fp of targetPaths) {
+        const one = await uploadImageAPI(fp, type)
         if (one.code === 0 || one.code === 200) urls.push(one.data.url)
       }
-      return { code: 0, message: '成功', data: { urls }, __fromMock: false }
+      return { code: 0, message: '成功', data: { urls } }
     } catch (innerErr: any) {
-      //+ 逐张也失败 → 降级 Mock
-      console.warn('[Upload] 批量图片上传全部失败，降级 Mock:', innerErr?.message || innerErr)
+      //+ 逐张也失败 → Mock 降级
+      if (innerErr && typeof innerErr.code === 'number') throw innerErr
       return mockUploadImages(targetPaths)
     }
   }
@@ -167,76 +112,29 @@ export async function uploadImagesAPI(
 //+ 上传单个视频（POST /upload/video）
 //+ 后端返回：{ videoUrl, coverUrl }，其中 coverUrl 由 OSS 即时截帧（无需前端单独传封面）
 //+ 发布笔记时：将 coverUrl 填入 images[0]，videoUrl 填入 videoUrl
-//+ H5 端注意：Taro.chooseVideo 返回的 tempFilePath 是 blob: URL，
-//+   Taro.uploadFile 在 H5 端无法正确处理 blob: URL（body 为空/格式错误，后端 400）；
-//+   因此 H5 端检测到 blob:/data: 时改走 fetch + FormData 直接上传。
 export async function uploadVideoAPI(
   filePath: string,
   type?: UploadType
 ): Promise<ResponseData<{ videoUrl: string; coverUrl: string }>> {
-  if (isMock) {
-    console.log('[Upload] Mock 模式：上传视频')
-    return mockUploadVideo(filePath)
-  }
-
-  const baseURL = process.env.TARO_APP_API_BASE || ''
-  const token = getToken()
-  const url = `${baseURL}/upload/video`
-
-  //+ 规范化响应：兼容后端旧字段 url，并按文档规则兜底拼 coverUrl
-  const normalize = (data: any): ResponseData<{ videoUrl: string; coverUrl: string }> => {
-    const d = data.data || {}
-    const videoUrl: string = d.videoUrl || d.url || ''
-    const coverUrl: string =
-      d.coverUrl ||
-      (videoUrl && !videoUrl.startsWith('blob:') && !videoUrl.startsWith('data:')
-        ? `${videoUrl}?x-oss-process=video/snapshot,t_0,f_jpg`
-        : videoUrl)
-    return { ...data, data: { videoUrl, coverUrl }, __fromMock: false }
-  }
-
-  try {
-    //+ H5 端：blob:/data: URL 走 fetch + FormData（避开 Taro.uploadFile 的 H5 blob 缺陷）
-    const isH5Blob =
-      typeof window !== 'undefined' &&
-      typeof fetch === 'function' &&
-      typeof FormData !== 'undefined' &&
-      (filePath.startsWith('blob:') || filePath.startsWith('data:'))
-
-    if (isH5Blob) {
-      const blob = await fetch(filePath).then(r => r.blob())
-      const formData = new FormData()
-      formData.append('file', blob, `video_${Date.now()}.mp4`)
-      if (type) formData.append('type', type)
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
-      })
-      const data = await res.json()
-      if (data.code === 0 || data.code === 200) {
-        return normalize(data)
-      }
-      throw new Error(data.message || '上传失败')
-    }
-
-    //+ 非 H5 / 非 blob 路径（小程序端 tempFilePath 是真实文件路径）：走 Taro.uploadFile
-    const uploadRes = await Taro.uploadFile({
-      url,
-      filePath,
-      name: 'file',
-      formData: type ? { type } : {},
-      header: token ? { Authorization: `Bearer ${token}` } : {}
-    })
-    const data = JSON.parse(uploadRes.data)
-    if (data.code === 0 || data.code === 200) {
-      return normalize(data)
-    }
-    throw new Error(data.message || '上传失败')
-  } catch (err: any) {
-    //+ 真实上传失败，降级 Mock
-    console.warn('[Upload] 视频真实上传失败，降级 Mock:', err?.message || err)
-    return mockUploadVideo(filePath)
-  }
+  //+ 注意：真实后端可能返回字段 { videoUrl, coverUrl } 或旧字段 { url }；
+  //+       request.upload 只解析 JSON，不再做字段兼容，
+  //+       因此在拿到结果后做一次 normalize，保证调用方永远拿到 videoUrl+coverUrl
+  const raw = await upload<any>({
+    url: '/upload/video',
+    filePath,
+    name: 'file',
+    formData: type ? { type } : undefined,
+    mockFn: mockUploadVideo
+  })
+  const d = raw.data || {}
+  const videoUrl: string = d.videoUrl || d.url || ''
+  const coverUrl: string =
+    d.coverUrl ||
+    (videoUrl && !videoUrl.startsWith('blob:') && !videoUrl.startsWith('data:')
+      ? `${videoUrl}?x-oss-process=video/snapshot,t_0,f_jpg`
+      : videoUrl)
+  return { ...raw, data: { videoUrl, coverUrl } }
 }
+
+//+ 为了保持 `import { UploadType } from '@/apis/upload'` 历史代码（如有）继续工作，做一次 re-export
+export type { UploadType }

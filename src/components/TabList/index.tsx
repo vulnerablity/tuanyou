@@ -2,6 +2,8 @@ import { Tabbar ,ActionSheet } from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
 import { useEffect, useState } from 'react'
 import Taro from '@tarojs/taro'
+import { useSelector } from 'react-redux'
+import type { RootState } from '@/store'
 //+ 阿里 iconfont 字符图标样式
 import '@/assets/iconfont.css'
 import './index.less'
@@ -63,6 +65,11 @@ function getCurrentTabIndex(): number {
 
 const TabList = () => {
   const [currentIndex, setCurrentIndex] = useState(() => getCurrentTabIndex())
+
+  //+ TabBar 消息 tab 未读红点：与消息页面未读数联动
+  const unreadTotal = useSelector((state: RootState) => state.message.unreadTotal)
+  //+ badge 格式：>0 显示数字（>99 显示"99+"），=0 不显示
+  const messageBadge = unreadTotal > 0 ? (unreadTotal > 99 ? '99+' : `${unreadTotal}`) : undefined
 
 
   const [isVisible, setIsVisible] = useState(false)
@@ -141,7 +148,7 @@ const TabList = () => {
         <Tabbar.Item className="publish" title="+"  />
         <Tabbar.Item title="消息" icon={
           <IconFont name="message" fontClassName="iconfont" classPrefix="icon" />
-        } value={3} />
+        } value={messageBadge} max={99} />
         <Tabbar.Item title="我的" icon={
           <IconFont name="wode" fontClassName="iconfont" classPrefix="icon" />
         } />

@@ -5,6 +5,7 @@
 //+   - activity：标签 + 标题 + 报名时间 + 参与人数
 import { useEffect, useState } from 'react'
 import { Swiper, SwiperItem, Indicator, Cell, ConfigProvider } from '@nutui/nutui-react'
+import Taro from '@tarojs/taro'
 import Tag from '@/components/Tag'
 import { useDispatch, useSelector } from 'react-redux'
 import type { RootState, AppDispatch } from '@/store'
@@ -69,6 +70,19 @@ const Banner = () => {
     }
   }, [dispatch, slides.length])
 
+  //+ 点击轮播项跳转对应详情页（note→笔记详情，guide→攻略详情，activity→活动详情）
+  const handleItemClick = (item: SlideItem) => {
+    const routeMap: Record<string, string> = {
+      note: '/pages/NoteDetail/index',
+      guide: '/pages/GuideDetail/index',
+      activity: '/pages/ActivityDetail/index',
+    }
+    const path = routeMap[item.type]
+    if (path) {
+      Taro.navigateTo({ url: `${path}?id=${item.id}` })
+    }
+  }
+
   if (slidesLoading) {
     return (
       <div className="banner-container">
@@ -86,7 +100,7 @@ const Banner = () => {
       <Swiper
         className="banner-swiper"
         autoPlay={3000}
-        loop={true}
+        loop
         indicator={
           <Cell className="banner-indicator">
             <ConfigProvider theme={indicatorTheme}>
@@ -99,13 +113,19 @@ const Banner = () => {
         }}
       >
         {slides.map((item,index) => (
-          <SwiperItem key={item.id} className="banner-item">
+          <SwiperItem key={`${item.id}-${index}`} className="banner-item" onClick={() => handleItemClick(item)}>
             <div className="banner-content">
               <div className="banner-bg">
                 <img
                   src={item.cover || 'http://192.168.10.7:89/logo.png'}
                   alt={item.title}
                   className="banner-img"
+                  onError={(e) => {
+                    //+ 后端返回的 cover 域名不可访问时，回退到本地占位图，避免控制台刷屏 ERR_NAME_NOT_RESOLVED
+                    const target = e.currentTarget as HTMLImageElement
+                    const fallback = 'http://192.168.10.7:89/logo.png'
+                    if (target.src !== fallback) target.src = fallback
+                  }}
                 />
               </div>
               <div className="banner-overlay"></div>

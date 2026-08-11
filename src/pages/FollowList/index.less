@@ -58,7 +58,7 @@
             margin-top: 0.2rem;
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap;
+            white-space: wrap;
         }
     }
 }
@@ -92,11 +92,14 @@
     }
 
 }
-.load-more,.no-more{
-    text-align:center;
-    margin-top:2rem;
-    font-size:0.6rem;
-    color:#999;
+.follow-list-page{
+    .load-more,
+        .no-more {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.6rem;
+            color: #999;
+        }
 }
 
 //+ 平板适配

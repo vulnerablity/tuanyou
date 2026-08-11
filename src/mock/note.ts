@@ -1,7 +1,6 @@
 //+ 笔记/攻略模块Mock数据和路由
 import { randomInt, randomItem, randomDate, createPageResponse, successResponse, errorResponse } from './utils'
 import { mockUsers } from './user'
-import user from '@/store/modules/user'
 
 //+ 分类列表（名称→ID映射）
 const CATEGORY_ID_MAP: Record<string, number> = {
@@ -93,6 +92,8 @@ export const mockNoteDetailPost: Record<string, any> = {
   "tags": ["骑行", "自行车", "骑行路线", "长途骑行"],
   "status": 1,
   "publishTime": "2026-04-15T08:30:00",
+  //+ 是否为本人发布（true=显示头部 more + 删除操作入口）
+  "isOwner": true
 
 }
 
@@ -585,7 +586,11 @@ function generatePost(id: number, member: typeof mockUsers[0], isGuide: boolean)
     tags: postTags,
     status: 1,
     publishTime: randomDate(30),
-    routeInfo: isGuide ? randomItem(routeInfos) : undefined
+    routeInfo: isGuide ? randomItem(routeInfos) : undefined,
+    //+ 是否为视频（true=封面比例16:9，false=3:4）
+    isVideo,
+    //+ 是否为本人发布（mockUsers[0]模拟当前登录用户）
+    isOwner: member.id === '1'
   }
 }
 
@@ -630,7 +635,7 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
     const category = data?.category
     if (category && category !== '全部') {
       const categoryId = Number(category)
-      if (!isNaN(categoryId)) {
+      if (!Number.isNaN(categoryId)) {
         filteredPosts = filteredPosts.filter(n => n.category === categoryId)
       }
     }
@@ -732,6 +737,22 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
     const mockNote = mockPosts.find(n => n.id === id)
     if (mockNote) {
       return successResponse(mockNoteCommentsPost)
+    }
+    return errorResponse('笔记不存在')
+  },
+
+  //+ 删除笔记
+  'DELETE /api/v1/notes/:id': (_, url) => {
+    //+ URL 格式 /api/v1/notes/{id}，从路径第4段取 id
+    const id = (url as string).split('/')[4] || '1'
+    const idx = mockPosts.findIndex(n => n.id === id)
+    if (idx >= 0) {
+      mockPosts.splice(idx, 1)
+      return successResponse({ message: '删除成功' })
+    }
+    //+ 详情模板也尝试删除
+    if (mockNoteDetailPost && mockNoteDetailPost.id === id) {
+      return successResponse({ message: '删除成功' })
     }
     return errorResponse('笔记不存在')
   },

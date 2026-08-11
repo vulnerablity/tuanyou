@@ -2,7 +2,7 @@
 //+ 说明：攻略相关逻辑已拆分到 src/store/modules/guide.ts，本模块仅处理笔记
 //+ 复用约定：与 guide.ts 保持结构对称，便于列表/详情/点赞/收藏逻辑复用
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import { getNotesAPI, toggleNoteLikeAPI, toggleNoteFavoriteAPI ,getNoteDetailAPI,getNoteCommentsAPI} from '@/apis/note'
+import { getNotesAPI, toggleNoteLikeAPI, toggleNoteFavoriteAPI ,getNoteDetailAPI,getNoteCommentsAPI, deleteNoteAPI} from '@/apis/note'
 import type {Post,PageResult ,Comment} from '@/types'
 
 //+ 笔记查询参数接口
@@ -137,6 +137,23 @@ export const fetchNoteComments = createAsyncThunk(
   }
 )
 
+//+ 删除笔记异步Action
+export const deleteNote = createAsyncThunk(
+  'note/deleteNote',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const res = await deleteNoteAPI(id)
+      if (res.code === 0 || res.code === 200) {
+        return { id }
+      } else {
+        return rejectWithValue(res.message || '删除笔记失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.message || '网络错误')
+    }
+  }
+)
+
 //+ 笔记Slice
 const noteSlice = createSlice({
   name: 'note',
@@ -237,6 +254,15 @@ const noteSlice = createSlice({
       .addCase(fetchNoteComments.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
+      })
+      //+ 删除笔记
+      .addCase(deleteNote.fulfilled, (state, action: PayloadAction<{ id: string }>) => {
+        //+ 从列表中移除已删除项
+        state.notes = state.notes.filter(n => n.id !== action.payload.id)
+        //+ 如果删除的是当前详情，清空详情
+        if (state.noteDetail && state.noteDetail.id === action.payload.id) {
+          state.noteDetail = null
+        }
       })
   }
 })

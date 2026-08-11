@@ -44,9 +44,11 @@ const strategyTitles = [
 ]
 const tagNames = ['徒步', '露营', '骑行', '登山', '跑步', '攀岩', '溯溪', '自驾']
 
-//+ 生成笔记/攻略列表项
+//+ 生成笔记/攻略列表项（isVideo 真=视频封面16:9，假=图文3:4；按id%5概率构造视频，仅笔记有视频）
 function genPost(id: number, type: 'note' | 'strategy') {
   const titles = type === 'note' ? noteTitles : strategyTitles
+  //+ 仅笔记可能是视频（约20%概率），攻略固定非视频
+  const isVideo = type === 'note' && id % 5 === 0
   return {
     id: String(id),
     type,
@@ -55,7 +57,9 @@ function genPost(id: number, type: 'note' | 'strategy') {
     title: titles[id % titles.length],
     tag: tagNames[id % tagNames.length],
     likeCount: 100 + (id * 7) % 400,
-    isLiked: id % 3 === 0
+    isLiked: id % 3 === 0,
+    //+ 是否为视频（true=封面16:9，false=封面3:4），来自后端字段
+    isVideo
   }
 }
 
@@ -115,6 +119,20 @@ function paged(items: any[], data?: any) {
   return successResponse(createPageResponse(items, page, size))
 }
 
+//+ 关注状态本地存储（mock 模式下持久化每个用户的关注状态，跨请求保持一致）
+//+ key=用户ID，value=是否已关注
+const FOLLOW_STATUS_KEY = '__profile_follow_status__'
+function getFollowStatusMap(): Record<string, boolean> {
+  if (!(globalThis as any)[FOLLOW_STATUS_KEY]) {
+    ;(globalThis as any)[FOLLOW_STATUS_KEY] = {}
+  }
+  return (globalThis as any)[FOLLOW_STATUS_KEY]
+}
+//+ 初始化：关注列表中 isFollowed=true 的用户预设为已关注
+mockFollowList.forEach(u => {
+  if (u.isFollowed) getFollowStatusMap()[u.followeeId] = true
+})
+
 //+ 个人中心Mock路由（key 与 request.ts 的 relativeUrl 对齐：/api/v1 + /personal/*）
 export const profileMockRoutes: Record<string, (data?: any, url?: string) => any> = {
   //+ 获取主页信息
@@ -140,5 +158,15 @@ export const profileMockRoutes: Record<string, (data?: any, url?: string) => any
 
   //+ 活动列表
   'GET /api/v1/personal/publish-activity': (data) => paged(mockPublishActivity, data),
-  'GET /api/v1/personal/join-activity': (data) => paged(mockJoinActivity, data)
+  'GET /api/v1/personal/join-activity': (data) => paged(mockJoinActivity, data),
+
+  //+ 关注/取关（切换式，返回最新 isFollowed）
+  //+ url 形如 /api/v1/personal/follow/2，取最后一段作为 followeeId
+  'POST /api/v1/personal/follow/:followeeId': (_, url) => {
+    const followeeId = (url || '').split('/').pop() || ''
+    const map = getFollowStatusMap()
+    const prev = !!map[followeeId]
+    map[followeeId] = !prev
+    return successResponse({ isFollowed: map[followeeId] })
+  }
 }

@@ -95,6 +95,7 @@ const Content = () => {
         title="我的内容"
         fixed={false}
         cancel={false}
+        
       />
 
       <div className="content-body">
@@ -119,6 +120,7 @@ const Content = () => {
             emptyText={activeTab === 0 ? '还没有发布笔记' : '还没有发布攻略'}
             onItemClick={handleItemClick}
             onLoadMore={() => currentPaged.loadMore()}
+            more={true}
           />
         </div>
       </div>

@@ -55,7 +55,7 @@ background-color: pink;
       position: absolute;
       top: 0.4rem;
       left: 0.3rem;
-      z-index: 2;
+      z-index: 0;
     }
 
     //+ 右上角收藏图标容器
@@ -205,11 +205,9 @@ background-color: pink;
 }
 
 //+ 没有更多
-.note-list-no-more {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0.8rem;
-  color: #ccc;
-  font-size: 0.24rem;
+.note-list-no-more, .note-list-load-more {
+  text-align: center;
+    margin-top: 2rem;
+    font-size: 0.6rem;
+    color: #999;
 }

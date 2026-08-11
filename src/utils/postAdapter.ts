@@ -22,7 +22,9 @@ export function toFeedItem(item: ProfilePostItem): FeedItem {
     likeCount: item.likeCount || 0,
     isLiked: !!item.isLiked,
     type: item.type === 'strategy' ? 'guide' : 'note',
-    category: (item as any).category
+    category: (item as any).category,
+    //+ 透传后端 isVideo 字段（true=视频封面16:9，false=图文3:4），优先级最高
+    isVideo: typeof item.isVideo === 'boolean' ? item.isVideo : undefined
   }
 }
 

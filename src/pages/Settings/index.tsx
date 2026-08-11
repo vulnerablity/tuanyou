@@ -13,16 +13,16 @@ import './index.less'
 
 //+ 开关项配置
 const switchItems = [
-  { key: 'notification', label: '消息通知', default: true },
-  { key: 'location', label: '位置服务', default: false },
+  { key: 'notification', label: '消息通知', default: true ,icon:'icon-xiaoxitongzhi'},
+  { key: 'location', label: '位置服务', default: false ,icon:'icon-weizhifuwu'},
 ]
 
 //+ 跳转项配置
 const navigateItems = [
-  { key: 'editUserInfo', label: '编辑资料', path: '/pages/EditUserInfo/index' },
-  { key: 'privacy', label: '隐私设置', path: '' },
-  { key: 'help', label: '帮助与反馈', path: '' },
-  { key: 'about', label: '关于途友', path: '' },
+  { key: 'editUserInfo', label: '编辑资料', path: '/pages/EditUserInfo/index',icon:'icon-bianjiziliao' },
+  { key: 'privacy', label: '隐私设置', path: '' ,icon:'icon-yinsishezhi'},
+  { key: 'help', label: '帮助与反馈', path: '',icon:'icon-bangzhuyufankui' },
+  { key: 'about', label: '关于途友', path: '',icon:'icon-guanyu' },
 ]
 
 //+ 底部按钮配置
@@ -95,7 +95,7 @@ const Settings = () => {
         <div className="section">
           {switchItems.map((item, index) => (
             <div key={item.key} className="section-item">
-              <span className="item-label">{item.label}</span>
+              <span className={`item-icon iconfont ${item.icon} item-label`}>{item.label}</span>
               <Switch
                 checked={switchState[item.key]}
                 onChange={(v) => handleSwitchChange(item.key, v)}
@@ -113,7 +113,7 @@ const Settings = () => {
               className="section-item clickable"
               onClick={() => handleNavigate(item)}
             >
-              <span className="item-label">{item.label}</span>
+              <span className={`item-icon iconfont ${item.icon} item-label`}>{item.label}</span>
               <ArrowRight className="item-arrow" />
             </div>
           ))}

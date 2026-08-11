@@ -1,15 +1,14 @@
 //taro
-import {NavBar} from '@nutui/nutui-react'
-import {ArrowLeft,More} from '@nutui/icons-react'
+import { NavBar, Dialog } from '@nutui/nutui-react'
+import { ArrowLeft, More } from '@nutui/icons-react'
 import Taro from '@tarojs/taro'
 import { useState } from 'react'
-import { Dialog } from '@nutui/nutui-react'
 //样式
 import './index.less'
 
 
 
-const HeaderNavBar = ({title='详情',backPageNum=1,more=false,fallbackUrl='/pages/Home/index',fixed=true,cancel=false}: {title?: string,backPageNum?: number,more?: boolean,fallbackUrl?: string,fixed?: boolean,cancel?:boolean}) => {
+const HeaderNavBar = ({title='详情',backPageNum=1,more=false,fallbackUrl='/pages/Home/index',fixed=true,cancel=false,onMoreClick}: {title?: string,backPageNum?: number,more?: boolean,fallbackUrl?: string,fixed?: boolean,cancel?:boolean,onMoreClick?: () => void}) => {
 
   // 健壮的返回逻辑：navigateBack 失败时降级到浏览器 history，再失败则跳转首页
   const handleBack = () => {
@@ -38,18 +37,18 @@ const HeaderNavBar = ({title='详情',backPageNum=1,more=false,fallbackUrl='/pag
   return (
   <>
  <NavBar
-      className='header-nav-bar'
-      back={<div onClick={()=>setDialogVisible(true)} className='back-btn'><ArrowLeft className='arrow-left' />{cancel? '取消':''}</div>}
-      right={more ? <More onClick={() => Taro.showToast({ title: '更多功能开发中', icon: 'none' })} /> : null}
-      fixed={fixed}
-      onBackClick={cancel? ()=>{}:handleBack}
-      title={title}
-    />
+   className='header-nav-bar'
+   back={<div onClick={()=>setDialogVisible(true)} className='back-btn'><ArrowLeft className='arrow-left' />{cancel? '取消':''}</div>}
+   right={more ? <More onClick={() => onMoreClick ? onMoreClick() : Taro.showToast({ title: '更多功能开发中', icon: 'none' })} /> : null}
+   fixed={fixed}
+   onBackClick={cancel? ()=>{}:handleBack}
+   title={title}
+ />
     {cancel&&<Dialog
       visible={dialogVisible}
-      title="确认取消编辑吗？"
-      confirmText="确认"
-      cancelText="取消"
+      title='确认取消编辑吗？'
+      confirmText='确认'
+      cancelText='取消'
       onCancel={() => setDialogVisible(false)}
      
       onConfirm={handleBack}

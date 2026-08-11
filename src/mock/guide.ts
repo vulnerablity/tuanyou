@@ -15,7 +15,7 @@ export const guideMockRoutes: Record<string, (data?: any, url?: string) => any> 
     const category = data?.category
     if (category && category !== '全部') {
       const categoryId = Number(category)
-      if (!isNaN(categoryId)) filtered = filtered.filter(n => n.category === categoryId)
+      if (!Number.isNaN(categoryId)) filtered = filtered.filter(n => n.category === categoryId)
     }
     const sort = data?.sort || '推荐'
     if (sort === '最新') filtered.sort((a, b) => new Date(b.publishTime).getTime() - new Date(a.publishTime).getTime())
@@ -61,7 +61,11 @@ export const guideMockRoutes: Record<string, (data?: any, url?: string) => any> 
       tags: data?.tags || [],
       status: 1,
       publishTime: randomDate(0),
-      routeInfo
+      routeInfo,
+      //+ 是否为视频（攻略不含视频，固定false）
+      isVideo: false,
+      //+ 新创建攻略是本人发布
+      isOwner: true
     }
     mockPosts.unshift(newGuide as any)
     return successResponse(newGuide)

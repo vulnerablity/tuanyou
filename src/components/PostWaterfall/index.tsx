@@ -32,6 +32,8 @@ export interface PostWaterfallProps {
   showFavorite?: boolean
   //+ 收藏切换成功回调（用于我的收藏列表取消收藏后移除项）
   onToggleFavorite?: (item: FeedItem, newIsFavorited: boolean) => void
+  //+ 是否显示更多按钮（默认 true）
+  more?: boolean
 }
 
 /**
@@ -67,6 +69,7 @@ const FeedCard = ({
   actionType = 'like',
   showFavorite = false,
   onToggleFavorite
+  
 }: {
   item: FeedItem
   onClick?: () => void
@@ -74,11 +77,12 @@ const FeedCard = ({
   actionType?: 'like' | 'favorite'
   showFavorite?: boolean
   onToggleFavorite?: PostWaterfallProps['onToggleFavorite']
+ 
 }) => {
   //+ 封面图：第一张图片作为封面
   const coverImg = item.images[0] || ''
-  //+ 判断是否为视频内容
-  const isVideo = !!item.videoUrl
+  //+ 判断是否为视频内容：优先后端字段 isVideo，其次降级用 videoUrl 推断
+  const isVideo = typeof item.isVideo === 'boolean' ? item.isVideo : !!item.videoUrl
 
   //+ 点赞状态（乐观更新，避免刷新整个列表）
   const [localLiked, setLocalLiked] = useState<boolean>(item.isLiked)
@@ -157,8 +161,8 @@ const FeedCard = ({
   }
 
   return (
-    <div className="feed-item" onClick={handleClick}>
-      <div className="feed-cover">
+    <div className='feed-item' onClick={handleClick}>
+      <div className='feed-cover'>
         <img
           //+ 问题2修复：视频封面统一用 coverImg（第一张图），videoUrl 不是图片，不应作为 img src
           src={coverImg}
@@ -167,41 +171,41 @@ const FeedCard = ({
         />
         {/* 左上角分类标签：取 tags[0] */}
         {item.tags.length > 0 && (
-          <div className="feed-tag-wrapper">
+          <div className='feed-tag-wrapper'>
             <Tag tagName={item.tags[0]} />
           </div>
         )}
         {/* 右上角收藏图标（仅 showFavorite=true 且 actionType!='favorite' 时显示；favorite 模式下收藏图标已移到底部） */}
         {showFavorite && actionType !== 'favorite' && (
-          <div className="feed-favorite-wrapper" onClick={handleFavClick}>
+          <div className='feed-favorite-wrapper' onClick={handleFavClick}>
             <span className={`iconfont ${localFav ? 'icon-shoucangfill feed-fav-fill' : 'icon-shoucang feed-fav-empty'}`}></span>
           </div>
         )}
         {/* 视频播放图标（居中） */}
         {isVideo && (
-          <div className="feed-play-icon">
+          <div className='feed-play-icon'>
             <span>▶</span>
           </div>
         )}
       </div>
-      <div className="feed-info">
-        <div className="feed-title">{item.title}</div>
-        <div className="feed-meta">
+      <div className='feed-info'>
+        <div className='feed-title'>{item.title}</div>
+        <div className='feed-meta'>
           <img
-            className="user-avatar"
+            className='user-avatar'
             src={item.member.avatar}
             alt={item.member.nickname}
           />
-          <span className="user-name">{item.member.nickname}</span>
+          <span className='user-name'>{item.member.nickname}</span>
           {actionType === 'favorite' ? (
             //+ 收藏模式：底部右侧显示收藏图标（替代点赞图标），点击取消收藏
             <span className={`feed-likes ${localFav ? 'is-faved' : ''}`} onClick={handleFavClick}>
-              <span className="like-icon"> {localFav ? '⭐' : '☆'} </span>
+              <span className='like-icon'> {localFav ? '⭐' : '☆'} </span>
             </span>
           ) : (
             //+ 默认点赞模式：♥/♡ + 点赞数
             <span className={`feed-likes ${localLiked ? 'is-liked' : ''}`} onClick={handleLikeClick}>
-              <span className="like-icon"> {localLiked ? '♥' : '♡'} </span> {localLikeCount}
+              <span className='like-icon'> {localLiked ? '♥' : '♡'} </span> {localLikeCount}
             </span>
           )}
         </div>
@@ -226,7 +230,7 @@ export function PostWaterfall({
   //+ 加载中且无数据
   if (loading && feed.length === 0) {
     return (
-      <div className="note-list-loading">
+      <div className='note-list-loading'>
         <Loading>加载中...</Loading>
       </div>
     )
@@ -235,19 +239,20 @@ export function PostWaterfall({
   //+ 空状态
   if (feed.length === 0) {
     return (
-      <div className="note-list-empty">
+      <div className='note-list-empty'>
         <p>{emptyText}</p>
       </div>
     )
   }
 
   return (
-    <div className="note-list-container">
+    <div className='note-list-container'>
       {/* 瀑布流布局 */}
-      <div className="waterfall-container">
-        <div className="waterfall-column">
+      <div className='waterfall-container'>
+        <div className='waterfall-column'>
           {feed.filter((_, i) => i % 2 === 0).map(item => (
             <FeedCard
+             
               key={item.id}
               item={item}
               onClick={() => onItemClick?.(item)}
@@ -258,9 +263,10 @@ export function PostWaterfall({
             />
           ))}
         </div>
-        <div className="waterfall-column">
+        <div className='waterfall-column'>
           {feed.filter((_, i) => i % 2 === 1).map(item => (
             <FeedCard
+            
               key={item.id}
               item={item}
               onClick={() => onItemClick?.(item)}
@@ -275,14 +281,14 @@ export function PostWaterfall({
 
       {/* 加载更多（备用：默认由上拉触发，此处保留手动兜底） */}
       {hasMore && onLoadMore && (
-        <div className="note-list-load-more" onClick={onLoadMore}>
+        <div className='note-list-load-more' onClick={onLoadMore}>
           {loading ? <Loading>加载中...</Loading> : <span>加载更多</span>}
         </div>
       )}
 
       {/* 没有更多 */}
       {!hasMore && feed.length > 0 && (
-        <div className="note-list-no-more">
+        <div className='note-list-no-more'>
           <span>已加载全部</span>
         </div>
       )}

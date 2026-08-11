@@ -104,9 +104,24 @@
   color: #666;
 }
 .activity-card .progress-footer .nut-button {
-  background-color: #2e7d32;
   height: 1.4rem;
-  border: none;
   line-height: 1.4rem;
   border-radius: 1.4rem;
+  border: none;
+}
+.activity-card .progress-footer .nut-button.ac-btn-signup {
+  background-color: #2e7d32 !important;
+  color: #fff !important;
+}
+.activity-card .progress-footer .nut-button.ac-btn-cancel {
+  background-color: #e6b01e !important;
+  color: #fff !important;
+  border: none !important;
+}
+.activity-card .progress-footer .nut-button.ac-btn-disabled,
+.activity-card .progress-footer .nut-button[disabled] {
+  background-color: #CCCCCC !important;
+  color: #fff !important;
+  border: none !important;
+  opacity: 1 !important;
 }

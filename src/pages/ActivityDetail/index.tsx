@@ -3,17 +3,19 @@
 //+ HeaderNavBar + 封面图 + 标签标题 + 信息面板 + 发起人 + 活动介绍 + 成员列表 + 底部操作栏
 //+ 报名/取消报名：文档8.1节要求取消确认弹窗，直接操作 + Toast 提示
 //+ 标签使用习惯：NutUI 组件优先（Button/Tag），其余用原生 HTML 标签（div/img/span）
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
-import { Button, Tag as NutuiTag } from '@nutui/nutui-react'
+import { Button, Tag as NutuiTag, Dialog } from '@nutui/nutui-react'
 import Tag from '@/components/Tag'
 import { useSelector, useDispatch } from 'react-redux'
 import type { AppDispatch, RootState } from '@/store'
 import {
   fetchActivityDetail,
   fetchToggleSignup,
-  clearCurrentActivity
+  clearCurrentActivity,
+  deleteActivity
 } from '@/store/modules/activity'
+import { toggleProfileFollow } from '@/store/modules/profile'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import Avatar from '@/components/Avatar'
 import './index.less'
@@ -60,22 +62,23 @@ const ActivityDetail = () => {
   }
 
   //+ 按钮文案与状态（文档3.3节状态矩阵，含满员判断）
+  //+ 颜色与 ActivityCard 保持一致：立即报名=绿主色，取消报名=半透明绿，禁用=灰
   const getButtonConfig = () => {
-    if (!currentActivity) return { text: '', disabled: true, type: 'default' as const }
+    if (!currentActivity) return { text: '', disabled: true, btnClass: 'ac-btn-disabled' }
     const { joined, activityStatus, currentPeople, maxPeople } = currentActivity
     const status = activityStatus || '报名中'
 
     if (joined) {
       //+ 已报名：报名中可取消，进行中/已结束不可操作
-      if (status === '报名中') return { text: '取消报名', disabled: false, type: 'warning' as const }
-      return { text: '已结束', disabled: true, type: 'default' as const }
+      if (status === '报名中') return { text: '取消报名', disabled: false, btnClass: 'ac-btn-cancel' }
+      return { text: '已结束', disabled: true, btnClass: 'ac-btn-disabled' }
     }
     //+ 未报名：满员显示"已满员"
-    if (currentPeople >= maxPeople) return { text: '已满员', disabled: true, type: 'default' as const }
+    if (currentPeople >= maxPeople) return { text: '已满员', disabled: true, btnClass: 'ac-btn-disabled' }
     //+ 未报名：报名中可报名，进行中/已结束不可操作
-    if (status === '报名中') return { text: '立即报名', disabled: false, type: 'primary' as const }
-    if (status === '进行中') return { text: '已开始，无法报名', disabled: true, type: 'default' as const }
-    return { text: '已结束', disabled: true, type: 'default' as const }
+    if (status === '报名中') return { text: '立即报名', disabled: false, btnClass: 'ac-btn-signup' }
+    if (status === '进行中') return { text: '已开始，无法报名', disabled: true, btnClass: 'ac-btn-disabled' }
+    return { text: '已结束', disabled: true, btnClass: 'ac-btn-disabled' }
   }
 
   //+ 点击底部按钮：直接报名/取消报名（文档8.1节：取消确认弹窗，直接操作 + Toast）
@@ -120,17 +123,85 @@ const ActivityDetail = () => {
     }
   }
 
-  //+ 关注按钮占位
-  const handleFollow = () => {
-    Taro.showToast({ title: '关注功能开发中', icon: 'none' })
+  //+ 关注/取关发起人（统一走 profile/toggleProfileFollow，POST /personal/follow/{id}）
+  //+ Activity.leader 无 isFollowed 字段，用本地 state 管理
+  const [leaderFollowed, setLeaderFollowed] = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
+
+  //+ 删除确认弹窗控制
+  const [deleteVisible, setDeleteVisible] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  const handleFollow = async () => {
+    const leaderId = currentActivity?.leader?.id
+    if (!leaderId || followLoading) return
+    setFollowLoading(true)
+    const prev = leaderFollowed
+    setLeaderFollowed(!prev) // 乐观更新
+    try {
+      const action = await dispatch(toggleProfileFollow(leaderId))
+      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
+      if (ok) {
+        const finalIsFollowed = (action as any)?.payload?.isFollowed ?? !prev
+        setLeaderFollowed(finalIsFollowed)
+        Taro.showToast({ title: finalIsFollowed ? '关注成功' : '已取消关注', icon: 'success' })
+      } else {
+        setLeaderFollowed(prev) // 回滚
+        Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
+      }
+    } catch (err) {
+      setLeaderFollowed(prev) // 回滚
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    } finally {
+      setFollowLoading(false)
+    }
   }
+
+  //+ 头部 more 按钮点击：弹出 ActionSheet 选择删除
+  const handleMoreClick = useCallback(() => {
+    Taro.showActionSheet({
+      itemList: ['删除活动'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          setDeleteVisible(true)
+        }
+      }
+    })
+  }, [])
+
+  //+ 确认删除活动
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!activityId || deleteLoading) return
+    setDeleteLoading(true)
+    try {
+      const action = await dispatch(deleteActivity(activityId))
+      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
+      if (ok) {
+        Taro.showToast({ title: '删除成功', icon: 'success' })
+        setDeleteVisible(false)
+        //+ 删除成功后返回上一页
+        setTimeout(() => {
+          Taro.navigateBack({ delta: 1 }).catch(() => {
+            Taro.switchTab({ url: '/pages/Home/index' })
+          })
+        }, 500)
+      } else {
+        Taro.showToast({ title: (action as any)?.payload || '删除失败', icon: 'none' })
+      }
+    } catch (err) {
+      console.warn('[ActivityDetail] 删除失败:', err)
+      Taro.showToast({ title: '删除失败', icon: 'none' })
+    } finally {
+      setDeleteLoading(false)
+    }
+  }, [activityId, deleteLoading, dispatch])
 
   //+ 加载中骨架
   if (detailLoading) {
     return (
-      <div className="activity-detail-page">
-        <HeaderNavBar title="活动详情" backPageNum={1} fixed={false} />
-        <div className="loading-wrapper">加载中...</div>
+      <div className='activity-detail-page'>
+        <HeaderNavBar title='活动详情' backPageNum={1} fixed={false} />
+        <div className='loading-wrapper'>加载中...</div>
       </div>
     )
   }
@@ -138,9 +209,9 @@ const ActivityDetail = () => {
   //+ 加载失败/活动不存在
   if (!currentActivity) {
     return (
-      <div className="activity-detail-page">
-        <HeaderNavBar title="活动详情" backPageNum={1} fixed={false} />
-        <div className="empty-wrapper">活动不存在或已删除</div>
+      <div className='activity-detail-page'>
+        <HeaderNavBar title='活动详情' backPageNum={1} fixed={false} />
+        <div className='empty-wrapper'>活动不存在或已删除</div>
       </div>
     )
   }
@@ -150,23 +221,29 @@ const ActivityDetail = () => {
   const status = currentActivity.activityStatus || '报名中'
 
   return (
-    <div className="activity-detail-page">
-      <HeaderNavBar title="活动详情" backPageNum={1} fixed={false} />
+    <div className='activity-detail-page'>
+      <HeaderNavBar
+        title='活动详情'
+        backPageNum={1}
+        fixed={false}
+        more={!!currentActivity?.isOwner}
+        onMoreClick={handleMoreClick}
+      />
 
-      <div className="detail-scroll">
+      <div className='detail-scroll'>
         {/* 封面图 16:9 */}
-        <div className="cover-wrapper">
+        <div className='cover-wrapper'>
           <img
-            className="cover-img"
+            className='cover-img'
             src={currentActivity.coverImg}
             alt={currentActivity.title}
           />
         </div>
 
-        <div className="detail-content">
+        <div className='detail-content'>
                   {/* 标签 + 标题 */}
-                <div className="title-section">
-                  <div className="tag-row">
+                <div className='title-section'>
+                  <div className='tag-row'>
                     <Tag tagName={currentActivity.category} />
                     <NutuiTag
                       plain  
@@ -174,52 +251,52 @@ const ActivityDetail = () => {
                       {status}
                     </NutuiTag>
                   </div>
-                  <div className="activity-title">{currentActivity.title}</div>
+                  <div className='activity-title'>{currentActivity.title}</div>
                 </div>
 
                 {/* 活动信息面板 */}
-                <div className="info-panel">
-                  <div className="info-item">📅{formatTime(currentActivity.startTime)}</div>
-                  <div className="info-item">📍 {currentActivity.address}</div>
-                  <div className="info-item">💰 {formatPrice(currentActivity.price)}</div>
-                  <div className="info-item">
+                <div className='info-panel'>
+                  <div className='info-item'>📅{formatTime(currentActivity.startTime)}</div>
+                  <div className='info-item'>📍 {currentActivity.address}</div>
+                  <div className='info-item'>💰 {formatPrice(currentActivity.price)}</div>
+                  <div className='info-item'>
                     👥 {currentActivity.currentPeople}/{currentActivity.maxPeople}人
                   </div>
-                  <div className="info-item">📊 {currentActivity.difficulty}</div>
+                  <div className='info-item'>📊 {currentActivity.difficulty}</div>
                 </div>
 
                 {/* 发起人 */}
-                <div className="leader-section">
-                  <span className="section-title">发起人</span>
-                  <div className="leader-card">
-                    <Avatar url={currentActivity.leader.avatar} size="40px" />
-                    <div className="leader-info">
-                      <span className="leader-name">{currentActivity.leader.nickname}</span>
-                      <span className="leader-bio">帐篷就是我的第二个家</span>
+                <div className='leader-section'>
+                  <span className='section-title'>发起人</span>
+                  <div className='leader-card'>
+                    <Avatar url={currentActivity.leader.avatar} size='40px' />
+                    <div className='leader-info'>
+                      <span className='leader-name'>{currentActivity.leader.nickname}</span>
+                      <span className='leader-bio'>帐篷就是我的第二个家</span>
                     </div>
-                    <Button onClick={handleFollow}>+ 关注</Button>
+                    <Button onClick={handleFollow}>{leaderFollowed ? '已关注' : '+ 关注'}</Button>
                   </div>
                 </div>
 
         {/* 活动介绍 */}
-        <div className="intro-section">
-          <span className="section-title">活动介绍</span>
-          <div className="intro-content">
+        <div className='intro-section'>
+          <span className='section-title'>活动介绍</span>
+          <div className='intro-content'>
             {currentActivity.activityContent.split('\n').map((line, i) => (
-              <div key={i} className="intro-line">{line || ' '}</div>
+              <div key={i} className='intro-line'>{line || ' '}</div>
             ))}
           </div>
         </div>
 
         {/* 已报名成员 */}
-        <div className="members-section">
-          <span className="section-title">
+        <div className='members-section'>
+          <span className='section-title'>
             已报名（{currentActivity.currentPeople}人）
           </span>
-          <div className="members-list">
+          <div className='members-list'>
             {(currentActivity.members || []).map((m) => (
-              <div key={m.id} className="member-item">
-                <Avatar url={m.avatar} size="24px" />
+              <div key={m.id} className='member-item'>
+                <Avatar url={m.avatar} size='24px' />
                 
               </div>
             ))}
@@ -229,23 +306,23 @@ const ActivityDetail = () => {
       </div>
 
       {/* 底部操作栏：进度条 + 按钮 */}
-      <div className="bottom-bar">
-        <div className="progress-wrapper">
+      <div className='bottom-bar'>
+        <div className='progress-wrapper'>
           <div className='progress-info'>
-            <span className="progress-text">
+            <span className='progress-text'>
             已报 {currentActivity.currentPeople}/{currentActivity.maxPeople}人
           </span>
-          <span className="progress-percent">{progress}%</span>
+          <span className='progress-percent'>{progress}%</span>
           </div>
           
-          <div className="progress-bar">
-            <div className="progress-inner" style={{ width: `${progress}%` }} />
+          <div className='progress-bar'>
+            <div className='progress-inner' style={{ width: `${progress}%` }} />
           </div>
           
         </div>
         <Button
-          className="action-btn"
-          type={buttonConfig.type}
+          className={`action-btn ${buttonConfig.btnClass}`}
+          type='default'
           disabled={buttonConfig.disabled}
           loading={signupLoading}
           onClick={handleButtonClick}
@@ -253,6 +330,18 @@ const ActivityDetail = () => {
           {buttonConfig.text}
         </Button>
       </div>
+
+      {/* 删除确认弹窗 */}
+      <Dialog
+        visible={deleteVisible}
+        title='确认删除活动？'
+        content='删除后无法恢复，确定删除该活动吗？'
+        confirmText='删除'
+        cancelText='取消'
+        confirmLoading={deleteLoading}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteVisible(false)}
+      />
     </div>
   )
 }

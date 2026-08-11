@@ -46,7 +46,7 @@
   margin-top: 0.2rem;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: wrap;
 }
 .follow-btn {
   min-width: 3rem;
@@ -71,8 +71,8 @@
 .follow-btn.followed .nut-button__text {
   color: #888;
 }
-.load-more,
-.no-more {
+.follow-list-page .load-more,
+.follow-list-page .no-more {
   text-align: center;
   margin-top: 2rem;
   font-size: 0.6rem;

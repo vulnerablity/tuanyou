@@ -2,17 +2,26 @@
 //+ 按《活动模块开发文档》实现完整表单：
 //+ 封面上传 + 标题 + 类型 + 开始/结束时间 + 地点 + 费用 + 人数 + 难度 + 活动介绍
 //+ 标签使用习惯：NutUI 组件（Input/Picker/DatePicker/TextArea/Button）+ 原生 HTML（div）
-import { useState } from 'react'
-import Taro from '@tarojs/taro'
+//+ 模块化链路：页面 → dispatch(uploadImage thunk) → upload store → apis/upload.ts → request.ts
+import { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import Taro, { useDidHide } from '@tarojs/taro'
 import { Button, TextArea, Input, Picker, DatePicker } from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import { createActivityAPI } from '@/apis/activity'
-import { uploadImageAPI } from '@/apis/upload'
+import {
+  uploadImage,
+  resetImage as resetUploadImage,
+  resetUpload,
+  clearUploadError
+} from '@/store/modules/upload'
+import { CATEGORY_MAP } from '@/types'
+import type { RootState, AppDispatch } from '@/store'
 import './index.less'
 
-//+ 活动类型选项（与后端枚举一致）
-const TYPE_OPTIONS = ['徒步', '露营', '骑行', '登山', '跑步', '攀岩', '溯溪']
+//+ 活动类型选项：复用 types/api.ts 的 CATEGORY_MAP 值，避免双份硬编码导致漂移
+const TYPE_OPTIONS = Object.values(CATEGORY_MAP)
 //+ 难度选项
 const DIFFICULTY_OPTIONS = ['入门', '中等', '中高等', '高等']
 
@@ -67,6 +76,17 @@ const formatPickerDate = (values: (string | number)[]): string => {
 }
 
 const PublishActivity = () => {
+  const dispatch: AppDispatch = useDispatch()
+  //+ 从 upload store 读取封面图上传状态与结果
+  const { imageStatus, lastImageUrl, error: uploadError } = useSelector(
+    (state: RootState) => state.upload
+  )
+
+  //+ 离开页面时清空 upload 缓存，防止下次进入误读上次结果
+  useDidHide(() => {
+    dispatch(resetUpload())
+  })
+
   const [form, setForm] = useState<FormState>(initialForm)
   //+ 提交中 Loading 状态（防重复提交）
   const [submitting, setSubmitting] = useState(false)
@@ -89,20 +109,28 @@ const PublishActivity = () => {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  //+ 封面图上传：选择图片 → 调用 uploadImageAPI 上传 → 获取URL
+  //+ 封面上传成功 → 写回 form.coverImg；失败 → toast 提示
+  //+ 通过 useEffect 监听 upload store 的 imageStatus 变化，与 PublishNote 同样的链路
+  useEffect(() => {
+    if (imageStatus === 'success' && lastImageUrl) {
+      updateField('coverImg', lastImageUrl)
+      dispatch(resetUploadImage())
+    } else if (imageStatus === 'error' && uploadError) {
+      Taro.showToast({ title: uploadError, icon: 'none' })
+      dispatch(clearUploadError())
+    }
+  }, [imageStatus, lastImageUrl, uploadError])
+
+  //+ 封面图上传：选择图片 → dispatch(uploadImage) → store 完成后 useEffect 写回 form
+  //+ type 固定为 'activity'（与后端联调、业务分流目录一致），不要改 'cover'
   const handleUploadCover = async () => {
+    if (imageStatus === 'loading') return
     try {
       const chooseRes = await Taro.chooseImage({ count: 1, sizeType: ['compressed'] })
       const filePath = chooseRes.tempFilePaths[0]
-      const res = await uploadImageAPI(filePath, 'activity')
-      if (res.code === 0 || res.code === 200) {
-        updateField('coverImg', res.data.url)
-      } else {
-        Taro.showToast({ title: res.message || '上传失败', icon: 'none' })
-      }
+      dispatch(uploadImage({ filePath, type: 'activity' }))
     } catch (err) {
-      console.warn('[PublishActivity] 封面上传失败:', err)
-      Taro.showToast({ title: '图片上传失败', icon: 'none' })
+      console.warn('[PublishActivity] 选择图片失败:', err)
     }
   }
 
@@ -197,6 +225,11 @@ const PublishActivity = () => {
       Taro.showToast({ title: '请输入活动介绍', icon: 'none' })
       return false
     }
+    //+ 封面正在上传中不允许提交
+    if (imageStatus === 'loading') {
+      Taro.showToast({ title: '封面上传中，请稍候', icon: 'none' })
+      return false
+    }
     return true
   }
 
@@ -222,6 +255,8 @@ const PublishActivity = () => {
 
       if (res.code === 0 || res.code === 200) {
         Taro.showToast({ title: '发布成功', icon: 'success' })
+        //+ 发布成功后清空上传缓存
+        dispatch(resetUpload())
         setTimeout(() => {
           //+ 三级降级返回：优先 navigateBack，其次 window.history.back()，最后 redirectTo 首页
           //+ 兼容 H5 环境下刷新、停留久后 Taro 内部 pageStack 丢失的问题
@@ -250,7 +285,6 @@ const PublishActivity = () => {
     } catch (err: any) {
       Taro.showToast({ title: err?.message || '发布失败，请重试', icon: 'none' })
     } finally {
-      
       setSubmitting(false)
     }
   }
@@ -271,9 +305,13 @@ const PublishActivity = () => {
             </div>
           ) : (
             <div className="cover-upload" onClick={handleUploadCover}>
-              <div className="cover-placeholder">
-                <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
-              </div>
+              {imageStatus === 'loading' ? (
+                <span className="uploading-text">上传中...</span>
+              ) : (
+                <div className="cover-placeholder">
+                  <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -423,7 +461,7 @@ const PublishActivity = () => {
           type="primary"
           block
           loading={submitting}
-          disabled={submitting}
+          disabled={submitting || imageStatus === 'loading'}
           onClick={handleSubmit}
         >
           {submitting ? '发布中...' : '发布活动'}

@@ -1,0 +1,234 @@
+//+ 评论区组件样式骨架
+//+ 仅实现布局结构（缩进、对齐、弹层位置等），具体尺寸/颜色/字体按用户后期调整
+.comment-section {
+  position: relative;
+  padding: 24px 30px 0; //+ 底部因为有 fixed 输入框，靠 placeholder 撑开，不写 padding-bottom
+
+  //+ 4.1 标题
+  .comment-title {
+    font-size: 32px;
+    font-weight: 800;
+    color: #333;
+    margin-bottom: 24px;
+  }
+
+  //+ 评论列表
+  .comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 32px; //+ 一级评论之间的间距
+    padding-bottom:60px;
+  }
+
+  .comment-empty {
+    text-align: center;
+    color: #999;
+    padding: 48px 0;
+    font-size: 28px;
+  }
+}
+
+// ========== 单条评论（一级/二级共用）==========
+.comment-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start; //+ 头像和文字顶部对齐
+
+  //+ 头像
+  .comment-avatar {
+    flex: 0 0 auto;
+    margin-right: 12px; //+ 头像和右侧的间距
+    //+ 内部为用户封装的 Avatar 组件（NutUI Avatar），通过 :global 穿透控制尺寸
+   
+ 
+  }
+
+  //+ 右侧：昵称 + 内容 + 元信息
+  .comment-right {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  
+  }
+
+  //+ 昵称
+  .comment-nickname {
+    font-size: 24px;
+    font-weight: 400;
+    color: #999;
+    margin-bottom: 5px;
+
+    .nickname-at {
+      // color: #999;
+      margin:0 2px 0 12px;
+      display: inline-block;
+      width: 0;
+      height: 0;
+      border-radius: 5px;
+      border: 10px solid transparent;
+      border-left-color: #999;
+  
+    }
+    // .nickname-target {
+    
+    // }
+  }
+
+  //+ 评论内容
+  .comment-content {
+    font-size: 28px;
+    color: #333;
+    line-height: 1.6;
+    word-break: break-word;
+    margin-bottom: 12px;
+  }
+
+  //+ 元信息：时间 / 回复 / 点赞
+  .comment-meta {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    //+ 时间在左，回复在中间，点赞靠右
+    //+ 采用"时间贴左，回复贴中间，点赞贴右"的三段式
+    justify-content: flex-start;
+    gap: 24px;
+    font-size: 22px;
+    color: #999;
+
+    .comment-time {
+      //+ 贴左
+    }
+    .comment-reply-btn {
+      font-size: 24px;
+      color: #999;
+      cursor: pointer;
+      //+ 按文档 4.2：昵称、评论、时间竖直对齐 → 回复在时间的右侧同一行
+    }
+    .comment-like {
+      margin-left: auto; //+ 推到最右
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+
+      .like-icon {
+        font-size: 24px;
+        color: #999;
+      }
+      .like-icon.liked {
+        color: #2e7d32; //+ 红色
+      }
+      .like-count {
+        font-size: 22px;
+        color: #999;
+        min-width: 0;
+      }
+    }
+  }
+}
+
+//+ 二级评论：左侧缩进 48px（一个头像宽度 + 头像与文字间隔）
+.comment-level-2 {
+  //+ 样式通过 .comment-replies-wrap 容器缩进，此处不需要额外写
+}
+
+//+ 二级评论容器
+.comment-level1-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 24px; //+ 一级与二级之间间距
+}
+
+.comment-replies-wrap {
+
+  //+ 文档 4.3：二级评论左侧缩进 48px
+  padding-left: 60px; //+ 头像 80 + 间距 16 = 96px
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+// ========== 展开/收起控制 ==========
+.comment-expand-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  //+ 文档要求：灰色长横线 + 展示更多 / 收起，与昵称竖直对齐（即左端对齐头像右侧）
+  padding-left: 60px; //+ 与二级评论缩进一致
+  margin-top: -4px;
+
+  .comment-expand-line {
+    //+ 灰色长横线，占据剩余空间
+    width: 6%;
+    height: 1px;
+    background-color: #999;
+    margin-right: 16px;
+  }
+  .comment-expand-btn {
+    flex: 0 0 auto;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+  }
+  .comment-expand-icon {
+    
+    color: #999;
+    
+  }
+ 
+}
+
+// ========== 删除确认弹层 ==========
+.delete-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  .delete-panel {
+    width: 80%;
+    max-width: 520px;
+    background-color: #fff;
+    border-radius: 16px;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .delete-title {
+    font-size: 32px;
+    font-weight: 600;
+    color: #333;
+    text-align: center;
+  }
+  .delete-sub {
+    font-size: 24px;
+    color: #999;
+    text-align: center;
+  }
+  .delete-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    justify-content: space-between;
+  }
+  .delete-cancel-btn {
+    flex: 1;
+  }
+  .delete-confirm-btn {
+    flex: 1;
+  }
+}
+@media screen and (min-width: 768px) {
+  .comment-replies-wrap {
+    padding-left: 40px;
+  }
+}
