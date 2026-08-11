@@ -164,6 +164,7 @@ export interface ActivityListItem {
   address: string
   startTime: string
   endTime: string
+  signUpStart: string
   signUpEnd: string
   price: number
   maxPeople: number
@@ -173,7 +174,10 @@ export interface ActivityListItem {
   joined: boolean
 }
 
-//+ 评论数据结构
+//+ 评论数据结构（两级）
+//+ 一级评论：replyToId=null，replyToName=null，可能有 replies 数组（二级评论）
+//+ 二级评论：replyToId 指向父评论 id；若回复另一个二级评论则 replyToName 为被回复人昵称（渲染"A @ B"格式）
+//+ canDelete：由后端结合"评论本人/内容作者"权限返回
 export interface Comment {
   id: string
   member: {
@@ -185,14 +189,17 @@ export interface Comment {
   likeCount: number
   isLiked: boolean
   replyToId: string | null
+  replyToName: string | null
   createdAt: string
+  canDelete: boolean
   replies?: Comment[]
 }
 
 //+ 互动消息数据结构
+//+ type: like=点赞 favorite=收藏 follow=关注 comment=评论
 export interface InteractionMessage {
   id: string
-  type: 'like' | 'comment' | 'follow' | 'reply'
+  type: 'like' | 'favorite' | 'follow' | 'comment'
   member: {
     id: string
     nickname: string
@@ -203,6 +210,8 @@ export interface InteractionMessage {
   createdAt: string
   read: boolean
   replyCount: number
+  //+ 评论消息的已展开回复列表（仅 type='comment' 时有值）
+  replies?: { id: string; author: 'me' | 'ta'; content: string }[]
 }
 
 //+ 系统消息数据结构

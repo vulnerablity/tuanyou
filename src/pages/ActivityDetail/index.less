@@ -270,15 +270,31 @@
     }
   }
 
-  //+ 右侧按钮（约 30%）
+  //+ 右侧按钮（约 30%）— 颜色与 ActivityCard 保持一致
   .action-btn {
     flex-shrink: 0;
     height: 2rem;
     border-radius: 2rem;
     padding:0 0.5rem;
     min-width: 4rem;
-    background: #2e7d32;
     border: none;
+    //+ 立即报名：绿主色（#4CAF50）
+    &.ac-btn-signup {
+      background-color: #2e7d32 !important;
+      color: #fff !important;
+    }
+    //+ 取消报名：主色基础上加透明度
+    &.ac-btn-cancel {
+      background-color: #e6b01e !important;
+      color: #fff !important;
+    }
+    //+ 禁用态：灰色
+    &.ac-btn-disabled,
+    &[disabled] {
+      background-color: #CCCCCC !important;
+      color: #fff !important;
+      opacity: 1 !important;
+    }
   }
 }
  /* 平板 */
@@ -329,7 +345,6 @@
        border-radius: 1.5rem;
        padding: 0 0.1rem;
        min-width: 4rem;
-       background: #2e7d32;
        border: none;
      }
 

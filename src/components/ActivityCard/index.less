@@ -134,11 +134,29 @@ color: #666;
       }
     }
     .nut-button{
-      background-color: #2e7d32;
       height: 1.4rem;
-      border: none;
       line-height: 1.4rem;
       border-radius: 1.4rem;
+      border: none;
+    }
+    //+ 状态详细定义表：主色按钮（立即报名）→ 绿色（#4CAF50）
+    .nut-button.ac-btn-signup {
+      background-color: #2e7d32 !important;
+      color: #fff !important;
+    }
+    //+ 状态详细定义表：已报名/取消报名 → 主色基础上加透明度
+    .nut-button.ac-btn-cancel {
+      background-color: #e6b01e !important;
+      color: #fff !important;
+      border: none !important;
+    }
+    //+ 状态详细定义表：禁用态 → 灰色背景 + 浅灰文字
+    .nut-button.ac-btn-disabled,
+    .nut-button[disabled] {
+      background-color: #CCCCCC !important;
+      color: #fff !important;
+      border: none !important;
+      opacity: 1 !important;
     }
   }
 }

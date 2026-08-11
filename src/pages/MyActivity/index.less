@@ -1,12 +1,13 @@
 //+ 我的活动页样式
 //+ 卡片样式复用 components/ActivityCard，本文件只负责页面外壳
-.favorite-page {
+.my-activity-page {
     display: flex;
     flex-direction: column;
     height: 100vh;
-
+    background-color: #f5f6f8;
+    
     //+ HeaderNavBar 用 fixed={false}，在文档流中占位，无需 padding-top
-    padding-bottom: 60px; // 底部操作栏高度
+    padding-bottom: 0; // 底部操作栏高度
     overflow: hidden;
 }
 
@@ -44,7 +45,12 @@
     font-size: 0.9rem;
     padding-top: 30vh;
 }
-
+.load-more,.no-more{
+    text-align:center;
+    margin-top:2rem;
+    font-size:0.6rem;
+    color:#999;
+}
 //+ 平板适配
 @media screen and (min-width: 768px) {
     .my-activity-list {

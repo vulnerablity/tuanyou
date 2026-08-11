@@ -4,7 +4,7 @@
 import { Loading } from '@nutui/nutui-react'
 import Taro from '@tarojs/taro'
 import Tag from '@/components/Tag'
-import type { FeedItem } from '@/types'
+import type { FeedItem, Post } from '@/types'
 import { useState, useEffect } from 'react'
 import { toggleNoteLikeAPI, toggleNoteFavoriteAPI } from '@/apis/note'
 import { toggleGuideLikeAPI, toggleGuideFavoriteAPI } from '@/apis/guide'
@@ -32,6 +32,8 @@ export interface PostWaterfallProps {
   showFavorite?: boolean
   //+ 收藏切换成功回调（用于我的收藏列表取消收藏后移除项）
   onToggleFavorite?: (item: FeedItem, newIsFavorited: boolean) => void
+  //+ 是否显示更多按钮（默认 true）
+  more?: boolean
 }
 
 /**
@@ -67,6 +69,7 @@ const FeedCard = ({
   actionType = 'like',
   showFavorite = false,
   onToggleFavorite
+  
 }: {
   item: FeedItem
   onClick?: () => void
@@ -74,6 +77,7 @@ const FeedCard = ({
   actionType?: 'like' | 'favorite'
   showFavorite?: boolean
   onToggleFavorite?: PostWaterfallProps['onToggleFavorite']
+ 
 }) => {
   //+ 封面图：第一张图片作为封面
   const coverImg = item.images[0] || ''
@@ -248,6 +252,7 @@ export function PostWaterfall({
         <div className="waterfall-column">
           {feed.filter((_, i) => i % 2 === 0).map(item => (
             <FeedCard
+             
               key={item.id}
               item={item}
               onClick={() => onItemClick?.(item)}
@@ -261,6 +266,7 @@ export function PostWaterfall({
         <div className="waterfall-column">
           {feed.filter((_, i) => i % 2 === 1).map(item => (
             <FeedCard
+            
               key={item.id}
               item={item}
               onClick={() => onItemClick?.(item)}

@@ -1,6 +1,6 @@
 //+ 个人中心模块API接口封装
 //+ 对接后端 /personal/* 系列接口（服务于 Profile/我的 页面）
-import { get, put } from '@/utils/request'
+import { get, post, put } from '@/utils/request'
 import type {
   ProfileInfo,
   ProfileUpdate,
@@ -75,4 +75,11 @@ export function getPublishActivityAPI(params: PageParams) {
 //+ 参加的活动
 export function getJoinActivityAPI(params: PageParams) {
   return get<PageResult<ActivityListItem>>('/personal/join-activity', params)
+}
+
+//+ 关注/取关（切换式）
+//+ 文档：POST /personal/follow/{followeeId}
+//+ 调用一次翻转一次，返回 { isFollowed: boolean }，前端无需判断当前状态
+export function toggleProfileFollowAPI(followeeId: string) {
+  return post<{ isFollowed: boolean }>(`/personal/follow/${followeeId}`)
 }

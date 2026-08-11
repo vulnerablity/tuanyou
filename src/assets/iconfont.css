@@ -84,6 +84,34 @@
 .icon-bianji:before {
   content: "\e647";
 }
+
+.icon-xiaoxi:before {
+  content: "\e60a";
+}
+
+.icon-guanyu:before {
+  content: "\e604";
+}
+
+.icon-bianjiziliao:before {
+  content: "\e663";
+}
+
+.icon-xiaoxitongzhi:before {
+  content: "\e64c";
+}
+
+.icon-yinsishezhi:before {
+  content: "\e616";
+}
+
+.icon-bangzhuyufankui:before {
+  content: "\e6b7";
+}
+
+.icon-weizhifuwu:before {
+  content: "\e603";
+}
 @media screen and (min-width: 768px) {
   .iconfont {
     font-size: 24px;

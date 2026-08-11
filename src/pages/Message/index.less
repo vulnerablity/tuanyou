@@ -1,0 +1,349 @@
+//+ 消息页面样式
+//+ 布局：flex column，header + tabs 固定，list 可滑动
+//+ 样式为骨架，用户后续调整参数
+
+// ========== 页面容器 ==========
+.message-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f5f5;
+  overflow: hidden;
+  padding-bottom:100px;
+}
+
+// ========== 头部：消息标题 + 全部已读 ==========
+.message-header {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 32px 16px;
+  background: #fff;
+
+  .message-header-title {
+    font-size: 40px;
+    font-weight: 700;
+    color: #000;
+  }
+  .message-header-readall {
+    font-size: 26px;
+    color: #2e7d32;
+    font-weight: 400;
+    cursor: pointer;
+  }
+}
+
+// ========== Tab 切换 ==========
+.message-tabs {
+  .nut-badge-number{
+    text-align: center;
+    line-height: 0.9; 
+   }
+ .nut-tabs-titles-item-line{
+  background:#428a46;
+  width: 20%;
+ }
+ .nut-tabs-titles-item-active{
+  color: #428a46;
+  font-weight: 700;
+ }
+  .nut-tabs-titles {
+    background: #fff;
+  }
+  // .nut-tabs-titles-item-text {
+  //   color: #333 !important;
+  // }
+  // .nut-tabs-titles-item-active .nut-tabs-titles-item-text {
+  //   color: #428a46 !important;
+  // }
+}
+
+//+ Tab 标题 + 未读数红点
+//+ 红点要求：在文字的右上角，且贴近文字
+.message-tab-title {
+  display: inline-flex;
+  align-items: flex-start;
+  position: relative;
+  padding-right: 8px; // 预留红点空间，避免被其他 tab 挡住
+
+  > span:first-child {
+    display: inline-block;
+    line-height: 1.2;
+  }
+
+  .message-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ff4d4f;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    //+ 贴近文字右上角：以"标题文字"为锚点（相对 tab-title 定位）
+    position: absolute;
+    top: -10px;
+    //+ right 对齐到"第一个文字 span"的右上角：
+    //+ 因为第一个 span 是文字本身、右侧是 padding，
+    //+ 这里用 right: 6px 让红点贴近文字右边缘（padding-right=8 留 2px 余量）
+    right: 0;
+    transform: translateX(40%);
+    white-space: nowrap;
+  }
+}
+
+// ========== 消息列表容器（可滑动） ==========
+.message-list-container {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.message-empty {
+  text-align: center;
+  color: #999;
+  font-size: 28px;
+  padding: 80px 0;
+}
+
+// ========== 消息项通用样式 ==========
+.message-item {
+  display: flex;
+  flex-direction: row;
+  padding: 24px 32px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  position: relative;
+  cursor: pointer;
+
+  //+ 未读：浅绿色背景
+  &.unread {
+    background: #e8f5e9;
+
+    //+ 右上角绿色实心小圆点
+    .message-item-unread-dot {
+      position: absolute;
+      top: 24px;
+      right: 32px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #4caf50;
+    }
+  }
+}
+
+//+ 头像
+.message-item-avatar {
+  flex: 0 0 auto;
+  margin-right: 20px;
+}
+
+//+ 右侧内容区
+.message-item-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0; //+ 让 flex 子项可以收缩
+}
+
+//+ 第一行：昵称 + 图标
+.message-item-nickname-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+
+  .message-item-nickname {
+    font-size: 28px;
+    font-weight: 500;
+    color: #333;
+  }
+  .message-item-type-icon {
+    font-size: 32px;
+    color: #999;
+  }
+}
+
+//+ 内容：超2行省略
+.message-item-content {
+  font-size: 28px;
+  color: #555;
+  line-height: 1.5;
+
+  //+ 折叠状态：2行省略
+  &.collapsed {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  //+ 展开状态：完整显示
+  &.expanded {
+    display: block;
+  }
+}
+
+//+ 展开/收起按钮（绿色细体文字）
+.message-item-expand-btn {
+  font-size: 24px;
+  color: #2e7d32;
+  font-weight: 400;
+  align-self: flex-start;
+  cursor: pointer;
+}
+
+//+ 时间行
+.message-item-time-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 24px;
+}
+
+.message-item-time {
+  font-size: 22px;
+  color: #999;
+}
+
+//+ 回复/查看回复/收起回复（灰色细体文字，与展开同大小粗细）
+//+ 单个按钮如需"绿色"（例如"回复"），加 .action-green 类
+.message-item-action-btn {
+  font-size: 24px;
+  color: #999;
+  font-weight: 400;
+  cursor: pointer;
+  &.action-green {
+    color: #2e7d32; //+ 与"展开/收起"按钮同色
+  }
+}
+
+// ========== 评论消息：回复列表框 ==========
+.reply-list-box {
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+//+ 单条回复：我/ta + 内容
+.reply-list-row {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+
+  .reply-author {
+    font-size: 26px;
+    color: #2e7d32; //+ 绿色细体文字
+    font-weight: 400;
+    flex: 0 0 auto;
+  }
+  .reply-content-text {
+    font-size: 26px;
+    color: #555; //+ 黑灰色细体文字
+    font-weight: 400;
+  }
+}
+
+//+ 收起回复（灰色，与查看回复同样式）
+//+ 注意：此样式保留给"时间行"显示的收起回复（原 reply-collapse-btn 内部按钮已移除，避免重复）
+.reply-collapse-btn {
+  font-size: 24px;
+  color: #999;
+  font-weight: 400;
+  cursor: pointer;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+// ========== 评论消息：回复输入框 ==========
+.reply-input-box {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+
+  //+ 输入框：无边框，灰色背景，圆角类圆形
+  .reply-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: #f0f0f0;
+    border-radius: 999px;
+    padding: 12px 24px;
+    font-size: 26px;
+    color: #333;
+
+    &::placeholder {
+      color: #999; //+ 深灰色占位符
+    }
+  }
+
+  //+ 发送：绿色细体文字（与展开同色）
+  .reply-send-btn {
+    font-size: 26px;
+    color: #2e7d32;
+    font-weight: 400;
+    cursor: pointer;
+    flex: 0 0 auto;
+
+    &.disabled {
+      color: #ccc;
+      cursor: not-allowed;
+    }
+  }
+
+  //+ 取消：灰色细体文字（与查看回复同色）
+  .reply-cancel-btn {
+    font-size: 26px;
+    color: #999;
+    font-weight: 400;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+}
+
+// ========== 系统通知消息项 ==========
+.system-message-item {
+  //+ 系统通知的 body 不需要昵称行
+  .message-item-body {
+    gap: 12px;
+  }
+}
+
+//+ 左侧圆形图标盒子：无论已读/未读都浅绿色背景 + 绿色图标
+.system-icon-box {
+  flex: 0 0 auto;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #e8f5e9; //+ 始终浅绿色
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20px;
+
+  .system-icon {
+    font-size: 40px;
+    color: #428a46; //+ 始终绿色
+  }
+}
+
+// ========== 平板适配 ==========
+@media screen and (min-width: 768px) {
+  .message-page {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+}

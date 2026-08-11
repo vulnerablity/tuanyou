@@ -1,13 +1,12 @@
 //+ 个人中心主页
-//+ 从 Redux store 获取用户信息，无数据时使用静态数据兜底
+//+ 数据来源：GET /personal（fetchProfileInfo）为主，state.user.userInfo 兜底，静态数据末位兜底
 //+ 标签使用习惯：NutUI 组件（Avatar/ArrowRight）+ 原生 HTML + IconFont 图标
-import { useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { useDidShow } from '@tarojs/taro'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { ArrowRight } from '@nutui/icons-react'
 import Avatar from '@/components/Avatar'
 import { getUserInfo } from '@/store/modules/user'
+import { fetchProfileInfo } from '@/store/modules/profile'
 import type { RootState, AppDispatch } from '@/store'
 import './index.less'
 
@@ -30,29 +29,32 @@ const menuItems = [
 
 const Profile = () => {
   const dispatch = useDispatch<AppDispatch>()
-  //+ 从 store 获取用户信息
+  //+ profile.info（GET /personal）为主；user.userInfo（登录态）兜底
   const { userInfo, isLoggedIn } = useSelector((state: RootState) => state.user)
+  const profileInfo = useSelector((state: RootState) => state.profile.info)
 
-  //+ 页面显示时获取用户信息（确保数据最新）
+  //+ 页面显示时拉取主页信息（GET /personal），保证发布/关注/粉丝计数实时
+  //+ 同时若 user 模块无数据则补拉一次（登录后首次进入场景）
   useDidShow(() => {
+    dispatch(fetchProfileInfo())
     if (isLoggedIn && !userInfo) {
       dispatch(getUserInfo())
     }
   })
 
-  //+ 兼容处理：从 store 获取或使用兜底数据
+  //+ 展示数据：优先 profile.info，其次 user.userInfo，最后静态兜底
   const displayData = {
-    avatar: userInfo?.avatar || fallbackUserData.avatar,
-    nickname: userInfo?.nickname || fallbackUserData.nickname,
-    signature: userInfo?.bio || fallbackUserData.signature,
-    bgImg: userInfo?.bgImg || fallbackUserData.bgImg,
+    avatar: profileInfo?.avatar || userInfo?.avatar || fallbackUserData.avatar,
+    nickname: profileInfo?.nickname || userInfo?.nickname || fallbackUserData.nickname,
+    signature: profileInfo?.bio || userInfo?.bio || fallbackUserData.signature,
+    bgImg: profileInfo?.bgImg || userInfo?.bgImg || fallbackUserData.bgImg,
   }
 
-  //+ 社交数据：优先使用 store，无数据时显示 0
+  //+ 社交数据：优先 profile.info，其次 user.userInfo，无数据时显示 0
   const socialStats = {
-    notes: userInfo?.publishCount ?? 0,
-    following: userInfo?.followCount ?? 0,
-    followers: userInfo?.fansCount ?? 0,
+    notes: profileInfo?.publishCount ?? userInfo?.publishCount ?? 0,
+    following: profileInfo?.followCount ?? userInfo?.followCount ?? 0,
+    followers: profileInfo?.fansCount ?? userInfo?.fansCount ?? 0,
   }
 
   //+ 点击社交数据跳转

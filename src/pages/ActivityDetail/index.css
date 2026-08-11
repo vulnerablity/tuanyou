@@ -212,8 +212,21 @@
   border-radius: 2rem;
   padding: 0 0.5rem;
   min-width: 4rem;
-  background: #2e7d32;
   border: none;
+}
+.bottom-bar .action-btn.ac-btn-signup {
+  background-color: #2e7d32 !important;
+  color: #fff !important;
+}
+.bottom-bar .action-btn.ac-btn-cancel {
+  background-color: #e6b01e !important;
+  color: #fff !important;
+}
+.bottom-bar .action-btn.ac-btn-disabled,
+.bottom-bar .action-btn[disabled] {
+  background-color: #CCCCCC !important;
+  color: #fff !important;
+  opacity: 1 !important;
 }
 /* 平板 */
 @media screen and (min-width: 768px) {
@@ -257,7 +270,6 @@
     border-radius: 1.5rem;
     padding: 0 0.1rem;
     min-width: 4rem;
-    background: #2e7d32;
     border: none;
   }
 }

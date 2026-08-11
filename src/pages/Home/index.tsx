@@ -5,9 +5,9 @@ import SearchBar from '@/components/SearchBar'
 import Banner from '@/components/Banner'
 import { PostWaterfall } from '@/components/PostWaterfall'
 import { Tabs } from '@nutui/nutui-react'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import Taro, { useDidShow, useReachBottom, usePullDownRefresh } from '@tarojs/taro'
+import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { RootState, AppDispatch } from '@/store'
 import { fetchFeed, resetFeed, softSyncFeed, updateFeedItem } from '@/store/modules/home'
 import type { FeedItem } from '@/types'
@@ -26,6 +26,11 @@ const Home = () => {
     feedHasMore,
     feedPage
   } = useSelector((state: RootState) => state.home)
+
+  //+ 滚动容器 ref：用于监听容器级滚动触底加载下一页
+  //+ 原因：.home-content 是 overflow-y:auto 的容器级滚动，外层 .home-container height:100vh overflow:hidden
+  //+       导致页面级 useReachBottom 在 H5 端无法触发；改为容器 onScroll，与 Activity 列表一致
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   //+ 静态配置（分类、排序列表）
   const categories = ['全部', '徒步', '露营', '骑行', '登山', '跑步', '攀岩', '溯溪']
@@ -62,6 +67,19 @@ const Home = () => {
     }))
   }, [dispatch, categoryName, sortName, feedLoading, feedHasMore, feedPage])
 
+  //+ 容器级滚动监听：距底 50px 触发加载下一页
+  //+ 与 Activity 列表页一致；原 useReachBottom 在容器滚动布局下不生效，已移除
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget
+    if (
+      scrollHeight - scrollTop - clientHeight < 50 &&
+      !feedLoading &&
+      feedHasMore
+    ) {
+      loadNextPage()
+    }
+  }
+
   //+ 问题2修复：从详情返回首页时使用软同步，不回到顶部、不打乱顺序
   //+ 首次进入页面时 useEffect 已调 loadFirstPage，这里跳过；只有"从其他页面返回"时触发软同步
   const loadedOnceRef = { current: false }
@@ -78,11 +96,6 @@ const Home = () => {
     }
   })
 
-  //+ Q7：taro上拉加载更多
-  useReachBottom(() => {
-    loadNextPage()
-  })
-  
   //+ Q7：taro下拉刷新（重新加载第一页）
   usePullDownRefresh(async () => {
     dispatch(resetFeed())
@@ -111,7 +124,7 @@ const Home = () => {
       </div>
 
       {/* 中间内容区域：占剩余空间，可滚动 */}
-      <div className="home-content">
+      <div className="home-content" ref={scrollRef} onScroll={handleScroll}>
         {/* 轮播图区域 */}
         <div className="home-banner">
           <Banner />

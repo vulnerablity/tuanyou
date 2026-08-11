@@ -26,7 +26,7 @@ export type {
 
 //+ API 协议域（枚举/常量/分页/请求DTO/统一响应）
 export {
-  UserRole,
+  type UserRole,
   CATEGORY_MAP,
   getCategoryName
 } from './api'

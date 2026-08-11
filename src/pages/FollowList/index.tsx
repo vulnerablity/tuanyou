@@ -9,7 +9,7 @@ import HeaderNavBar from '@/components/HeaderNavBar'
 import Avatar from '@/components/Avatar'
 import { usePagedList } from '@/hooks/usePagedList'
 import { fetchFollowList } from '@/store/modules/profile'
-import { toggleFollowAPI } from '@/apis/user'
+import { toggleProfileFollowAPI } from '@/apis/profile'
 import type { FollowItem, UserPublic, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
 import './index.less'
@@ -69,14 +69,19 @@ const FollowList = () => {
     paged.loadMore()
   })
 
-  //+ 切换关注状态（调用真实 API，乐观更新）
+  //+ 切换关注状态（调用 /personal/follow/{id}，乐观更新，失败回滚）
   const handleToggleFollow = async (e: any, id: string, currentStatus: boolean) => {
     e.stopPropagation()
     const newStatus = !currentStatus
     paged.updateItem(i => i.id === id, item => ({ ...item, isFollowed: newStatus }))
     try {
-      await toggleFollowAPI(id)
-      Taro.showToast({ title: newStatus ? '关注成功' : '已取消关注', icon: 'success' })
+      const res = await toggleProfileFollowAPI(id)
+      //+ 以服务端返回的 isFollowed 为准（切换式接口）
+      const serverStatus = !!(res?.data?.isFollowed)
+      if (serverStatus !== newStatus) {
+        paged.updateItem(i => i.id === id, item => ({ ...item, isFollowed: serverStatus }))
+      }
+      Taro.showToast({ title: serverStatus ? '关注成功' : '已取消关注', icon: 'success' })
     } catch (err) {
       paged.updateItem(i => i.id === id, item => ({ ...item, isFollowed: currentStatus }))
       Taro.showToast({ title: '操作失败', icon: 'none' })

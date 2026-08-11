@@ -11,7 +11,7 @@
 .banner-container .nut-swiper-item img {
   height: 100%;
   border-radius: 0.8rem;
-  object-fit: contain;
+  object-fit: cover;
   width: 100%;
 }
 .banner-container .banner-overlay {

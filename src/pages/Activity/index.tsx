@@ -96,6 +96,11 @@ const Activity = () => {
     Taro.navigateTo({ url: `/pages/ActivityDetail/index?id=${activity.id}` })
   }
 
+  //+ 点击取消报名按钮：同样跳转详情页操作（列表页不直接调接口）
+  const handleCancelSignup = (activity: ActivityListItem) => {
+    Taro.navigateTo({ url: `/pages/ActivityDetail/index?id=${activity.id}` })
+  }
+
   //+ 页面再次显示时刷新列表（文档4.2节方案一：从详情页返回时同步报名状态）
   useDidShow(() => {
     //+ 仅在已有数据时刷新，保留当前筛选条件和页码
@@ -135,6 +140,7 @@ const Activity = () => {
               activity={activity}
               onClick={handleCardClick}
               onSignup={handleSignup}
+              onCancelSignup={handleCancelSignup}
             />
           ))}
         </div>

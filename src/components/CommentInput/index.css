@@ -9,24 +9,25 @@
   align-items: center !important;
   justify-content: space-between !important;
   margin: 0;
-  border-radius: 0 !important;
+  display: flex;
   padding: 0.4rem 0.8rem;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
 }
-.comment-input-container .comment-input-cell .nut-input-container {
+.comment-input-container .comment-input-cell .comment-input {
+  flex: 1;
   height: 1.7rem;
-  background-color: #f3f4f6;
   border-radius: 1.7rem;
-  margin-right: 0;
+  background-color: #f3f4f6;
+  border: none;
+  padding-left: 0.8rem;
 }
-.comment-input-container .comment-input-cell .nut-input-container .nut-input-native::placeholder {
+.comment-input-container .comment-input-cell .comment-input::placeholder {
   color: #8c929e;
   font-weight: 320;
 }
 .comment-input-container .comment-input-cell .iconfont {
   color: #a09e9e;
   background-color: #fff;
-  margin-left: 0.88rem;
+  margin-left: 0.8rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -48,6 +49,25 @@
   border-radius: 1.2rem 1.2rem 0 0;
   overflow: hidden;
 }
+.comment-input-container .nut-popup .close-icon {
+  color: #999;
+}
+.comment-input-container .nut-popup .nut-popup-title {
+  padding: 0.8rem 0.8rem 0 0.8rem;
+  justify-content: flex-start;
+}
+.comment-input-container .nut-popup .nut-popup-title .nut-popup-title-title .reply-to-name {
+  color: #999;
+  font-size: 28px;
+  font-weight: 350;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.comment-input-container .nut-popup .nut-popup-title .nut-popup-title-title .reply-to-name .name {
+  margin-left: 0.3rem;
+  color: #438046;
+}
 .comment-input-container .nut-popup .nut-form .nut-cell-group-wrap {
   display: flex;
   flex-direction: row;
@@ -55,7 +75,7 @@
   justify-content: center;
   flex-wrap: nowrap;
   margin: 0;
-  padding: 1rem 0.8rem;
+  padding: 0.8rem 0.8rem 1rem 0.8rem;
 }
 .comment-input-container .nut-popup .nut-form .nut-cell-group-wrap > div:first-child {
   flex: 1;
@@ -84,10 +104,10 @@
 .comment-input-container .nut-popup .nut-form .nut-cell-group-wrap .nut-button {
   border: none;
   padding: 0;
-  background-color: #c8d6c9;
   color: #fff;
   height: 1.75rem;
   border-radius: 1.7rem;
+  line-height: 1.7rem;
   font-weight: 300;
   transition: background-color 0.2s;
 }
@@ -95,22 +115,20 @@
   background-color: #2e7d32;
 }
 .comment-input-container .nut-popup .nut-form .nut-cell-group-wrap .nut-button.nut-button-disabled {
-  background-color: #c8d6c9 !important;
+  background-color: #2e7d3286 !important;
 }
 @media screen and (min-width: 768px) {
   .comment-input-container .comment-input-cell {
     padding: 0.2rem 0.4rem;
-    box-shadow: 0 0 1px rgba(0, 0, 0, 0.4);
   }
-  .comment-input-container .comment-input-cell .nut-input-container {
-    height: 1rem;
-    border-radius: 1rem;
+  .comment-input-container .comment-input-cell .comment-input {
+    height: 0.8rem;
+    border-radius: 0.8rem;
   }
-  .comment-input-container .comment-input-cell .nut-input-container .nut-input-native::placeholder {
+  .comment-input-container .comment-input-cell .comment-input .nut-input-native::placeholder {
     font-weight: 350;
   }
   .comment-input-container .comment-input-cell .iconfont {
-    color: #a09e9e;
     margin-left: 0.5rem;
     font-size: 0.8rem;
   }

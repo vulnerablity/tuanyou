@@ -3,7 +3,7 @@
 //+ HeaderNavBar + 封面图 + 标签标题 + 信息面板 + 发起人 + 活动介绍 + 成员列表 + 底部操作栏
 //+ 报名/取消报名：文档8.1节要求取消确认弹窗，直接操作 + Toast 提示
 //+ 标签使用习惯：NutUI 组件优先（Button/Tag），其余用原生 HTML 标签（div/img/span）
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Button, Tag as NutuiTag } from '@nutui/nutui-react'
 import Tag from '@/components/Tag'
@@ -14,6 +14,7 @@ import {
   fetchToggleSignup,
   clearCurrentActivity
 } from '@/store/modules/activity'
+import { toggleProfileFollow } from '@/store/modules/profile'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import Avatar from '@/components/Avatar'
 import './index.less'
@@ -60,22 +61,23 @@ const ActivityDetail = () => {
   }
 
   //+ 按钮文案与状态（文档3.3节状态矩阵，含满员判断）
+  //+ 颜色与 ActivityCard 保持一致：立即报名=绿主色，取消报名=半透明绿，禁用=灰
   const getButtonConfig = () => {
-    if (!currentActivity) return { text: '', disabled: true, type: 'default' as const }
+    if (!currentActivity) return { text: '', disabled: true, btnClass: 'ac-btn-disabled' }
     const { joined, activityStatus, currentPeople, maxPeople } = currentActivity
     const status = activityStatus || '报名中'
 
     if (joined) {
       //+ 已报名：报名中可取消，进行中/已结束不可操作
-      if (status === '报名中') return { text: '取消报名', disabled: false, type: 'warning' as const }
-      return { text: '已结束', disabled: true, type: 'default' as const }
+      if (status === '报名中') return { text: '取消报名', disabled: false, btnClass: 'ac-btn-cancel' }
+      return { text: '已结束', disabled: true, btnClass: 'ac-btn-disabled' }
     }
     //+ 未报名：满员显示"已满员"
-    if (currentPeople >= maxPeople) return { text: '已满员', disabled: true, type: 'default' as const }
+    if (currentPeople >= maxPeople) return { text: '已满员', disabled: true, btnClass: 'ac-btn-disabled' }
     //+ 未报名：报名中可报名，进行中/已结束不可操作
-    if (status === '报名中') return { text: '立即报名', disabled: false, type: 'primary' as const }
-    if (status === '进行中') return { text: '已开始，无法报名', disabled: true, type: 'default' as const }
-    return { text: '已结束', disabled: true, type: 'default' as const }
+    if (status === '报名中') return { text: '立即报名', disabled: false, btnClass: 'ac-btn-signup' }
+    if (status === '进行中') return { text: '已开始，无法报名', disabled: true, btnClass: 'ac-btn-disabled' }
+    return { text: '已结束', disabled: true, btnClass: 'ac-btn-disabled' }
   }
 
   //+ 点击底部按钮：直接报名/取消报名（文档8.1节：取消确认弹窗，直接操作 + Toast）
@@ -120,9 +122,34 @@ const ActivityDetail = () => {
     }
   }
 
-  //+ 关注按钮占位
-  const handleFollow = () => {
-    Taro.showToast({ title: '关注功能开发中', icon: 'none' })
+  //+ 关注/取关发起人（统一走 profile/toggleProfileFollow，POST /personal/follow/{id}）
+  //+ Activity.leader 无 isFollowed 字段，用本地 state 管理
+  const [leaderFollowed, setLeaderFollowed] = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
+
+  const handleFollow = async () => {
+    const leaderId = currentActivity?.leader?.id
+    if (!leaderId || followLoading) return
+    setFollowLoading(true)
+    const prev = leaderFollowed
+    setLeaderFollowed(!prev) // 乐观更新
+    try {
+      const action = await dispatch(toggleProfileFollow(leaderId))
+      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
+      if (ok) {
+        const finalIsFollowed = (action as any)?.payload?.isFollowed ?? !prev
+        setLeaderFollowed(finalIsFollowed)
+        Taro.showToast({ title: finalIsFollowed ? '关注成功' : '已取消关注', icon: 'success' })
+      } else {
+        setLeaderFollowed(prev) // 回滚
+        Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
+      }
+    } catch (err) {
+      setLeaderFollowed(prev) // 回滚
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    } finally {
+      setFollowLoading(false)
+    }
   }
 
   //+ 加载中骨架
@@ -197,7 +224,7 @@ const ActivityDetail = () => {
                       <span className="leader-name">{currentActivity.leader.nickname}</span>
                       <span className="leader-bio">帐篷就是我的第二个家</span>
                     </div>
-                    <Button onClick={handleFollow}>+ 关注</Button>
+                    <Button onClick={handleFollow}>{leaderFollowed ? '已关注' : '+ 关注'}</Button>
                   </div>
                 </div>
 
@@ -244,8 +271,8 @@ const ActivityDetail = () => {
           
         </div>
         <Button
-          className="action-btn"
-          type={buttonConfig.type}
+          className={`action-btn ${buttonConfig.btnClass}`}
+          type="default"
           disabled={buttonConfig.disabled}
           loading={signupLoading}
           onClick={handleButtonClick}

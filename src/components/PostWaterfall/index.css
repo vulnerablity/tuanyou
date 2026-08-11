@@ -44,6 +44,28 @@
   position: absolute;
   top: 0.4rem;
   left: 0.3rem;
+  z-index: 0;
+}
+.feed-item .feed-cover .feed-favorite-wrapper {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.25);
+  z-index: 2;
+}
+.feed-item .feed-cover .feed-favorite-wrapper .feed-fav-fill {
+  color: #ff6b6b;
+  font-size: 0.8rem;
+}
+.feed-item .feed-cover .feed-favorite-wrapper .feed-fav-empty {
+  color: #fff;
+  font-size: 0.8rem;
 }
 .feed-item .feed-cover .feed-play-icon {
   position: absolute;
@@ -109,6 +131,9 @@
 .feed-item .feed-info .feed-likes .like-icon {
   color: #38833c;
 }
+.feed-item .feed-info .feed-likes.is-faved .like-icon {
+  color: #f5a623;
+}
 .note-list-loading {
   display: flex;
   justify-content: center;
@@ -138,11 +163,10 @@
 .note-list-load-more:active {
   color: #60b464;
 }
-.note-list-no-more {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0.8rem;
-  color: #ccc;
-  font-size: 0.24rem;
+.note-list-no-more,
+.note-list-load-more {
+  text-align: center;
+  margin-top: 2rem;
+  font-size: 0.6rem;
+  color: #999;
 }

@@ -8,6 +8,7 @@ import homeReducer from './modules/home'
 import profileReducer from './modules/profile'
 import tagReducer from './modules/tag'
 import uploadReducer from './modules/upload'
+import messageReducer from './modules/message'
 
 //+ 创建Store
 export const store = configureStore({
@@ -19,7 +20,8 @@ export const store = configureStore({
     home: homeReducer,
     profile: profileReducer,
     tag: tagReducer,
-    upload: uploadReducer
+    upload: uploadReducer,
+    message: messageReducer,
   }
 })
 

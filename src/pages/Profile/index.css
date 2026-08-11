@@ -34,7 +34,7 @@
   height: 100%;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(60, 60, 60, 0.3) 40%, rgba(120, 120, 120, 0.1) 70%, rgba(200, 200, 200, 0) 100%);
 }
-.user-info {
+.profile-page .user-info {
   position: relative;
   z-index: 1;
   display: flex;
@@ -42,26 +42,26 @@
   justify-content: space-between;
   padding: 0 1rem;
 }
-.user-info .user-detail {
+.profile-page .user-info .user-detail {
   display: flex;
   flex-direction: column;
   justify-content: center;
   margin-left: 0.8rem;
   flex: 1;
 }
-.user-info .edit-icon {
+.profile-page .user-info .edit-icon {
   margin-left: 0.5rem;
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
 }
-.user-info .nickname {
+.profile-page .user-info .nickname {
   font-size: 1rem;
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
-.user-info .signature {
+.profile-page .user-info .signature {
   margin-top: 0.1rem;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.85);
