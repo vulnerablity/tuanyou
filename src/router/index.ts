@@ -5,6 +5,9 @@ export const ROUTE_PATHS = {
   FORGOT_PASSWORD: '/pages/ForgotPassword/index',
   HOME: '/pages/Home/index',
   LOGOUT: '/pages/Logout/index',
+  PUBLISH_NOTE: '/pages/PublishNote/index',
+  PUBLISH_GUIDE: '/pages/PublishGuide/index',
+  PUBLISH_ACTIVITY: '/pages/PublishActivity/index',
   NOTE_DETAIL: '/pages/NoteDetail/index',
   GUIDE_DETAIL: '/pages/GuideDetail/index',
   ACTIVITY_DETAIL: '/pages/ActivityDetail/index'
