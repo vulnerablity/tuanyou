@@ -1,7 +1,7 @@
 //+ 内容瀑布流组件（原 NoteList 语义化重命名为 PostWaterfall，支持笔记/攻略混合）
 //+ 卡片布局：封面（Tag左上角 + 收藏/视频图标）+ 标题 + 头像昵称点赞
 //+ 图片 3:4 比例，视频 16:9 比例，严格两列布局
-import { Loading } from '@nutui/nutui-react'
+import { Loading, Skeleton } from '@nutui/nutui-react'
 import Taro from '@tarojs/taro'
 import Tag from '@/components/Tag'
 import type { FeedItem } from '@/types'
@@ -161,7 +161,8 @@ const FeedCard = ({
   }
 
   return (
-    <div className='feed-item' onClick={handleClick}>
+    
+      <div className='feed-item' onClick={handleClick}>
       <div className='feed-cover'>
         <img
           //+ 问题2修复：视频封面统一用 coverImg（第一张图），videoUrl 不是图片，不应作为 img src
@@ -211,6 +212,8 @@ const FeedCard = ({
         </div>
       </div>
     </div>
+ 
+    
   )
 }
 
