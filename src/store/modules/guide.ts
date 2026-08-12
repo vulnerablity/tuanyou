@@ -7,7 +7,8 @@ import {
   getGuideDetailAPI,
   toggleGuideLikeAPI,
   toggleGuideFavoriteAPI,
-  getGuideCommentsAPI
+  getGuideCommentsAPI,
+  deleteGuideAPI
 } from '@/apis/guide'
 import type { Post, PageResult, Comment } from '@/types'
 
@@ -140,6 +141,23 @@ export const fetchGuideComments = createAsyncThunk(
   }
 )
 
+//+ 删除攻略异步Action
+export const deleteGuide = createAsyncThunk(
+  'guide/deleteGuide',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const res = await deleteGuideAPI(id)
+      if (res.code === 0 || res.code === 200) {
+        return { id }
+      } else {
+        return rejectWithValue(res.message || '删除攻略失败')
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.message || '网络错误')
+    }
+  }
+)
+
 //+ 攻略Slice
 const guideSlice = createSlice({
   name: 'guide',
@@ -240,6 +258,15 @@ const guideSlice = createSlice({
       .addCase(fetchGuideComments.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
+      })
+      //+ 删除攻略
+      .addCase(deleteGuide.fulfilled, (state, action: PayloadAction<{ id: string }>) => {
+        //+ 从列表中移除已删除项
+        state.guides = state.guides.filter(g => g.id !== action.payload.id)
+        //+ 如果删除的是当前详情，清空详情
+        if (state.guideDetail && state.guideDetail.id === action.payload.id) {
+          state.guideDetail = null
+        }
       })
   }
 })
