@@ -16,14 +16,15 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1;
- 
 
 }
 
 //+ 中间内容区域：flex:1 占满剩余空间，可垂直滚动
 .home-content {
-
+  position: sticky;
+  top: 0;
+    left: 0;
+    right: 0;
   width: 100%;
   flex: 1;
   overflow: hidden;
@@ -35,18 +36,22 @@
 
 //+ 轮播图区域：与头部有间距（顶部0.3rem），16:9比例
 .home-banner {
-  margin: 0.6rem 0;
-  padding:0 0.8rem;
+  margin: 0;
+  padding:0.6rem 0.8rem;
   width: 100%;
     aspect-ratio: 16/9;
     border-radius: 0.8rem;
     overflow: hidden;
 
+
 }
 //==========分类+筛选==========
 .home-filter {
+  
   position: sticky;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
   background-color: #fff;
 
@@ -54,6 +59,7 @@
 
 .category-tabs {
   margin: 0 1rem;
+  
   .nut-tabs-titles-item-active {
     .nut-tabs-titles-item-line {
           width: var(--nutui-tabs-tab-line-width, calc(40px * var(--nut-scale-f, 1)));
@@ -91,7 +97,9 @@
 }
 }
 
-
+.home-feed{
+  width: 100%;
+}
 //+ ========== 媒体查询响应式设计 ==========
 
 //+ 平板设备（768px - 1024px）
@@ -135,7 +143,7 @@
   }
   
   .home-content {
-    padding-top: 60px;
+ 
     padding-bottom: 160px;
   }
   

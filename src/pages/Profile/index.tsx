@@ -4,6 +4,7 @@
 import { useSelector, useDispatch } from 'react-redux'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { ArrowRight } from '@nutui/icons-react'
+import { Ellipsis } from '@nutui/nutui-react'
 import Avatar from '@/components/Avatar'
 import { getUserInfo } from '@/store/modules/user'
 import { fetchProfileInfo } from '@/store/modules/profile'
@@ -89,8 +90,8 @@ const Profile = () => {
         <div className="user-info">
           <Avatar url={displayData.avatar} size="50" />
           <div className="user-detail">
-              <span className="nickname">{displayData.nickname}</span>
-              <span className="signature">{displayData.signature}</span>
+              <Ellipsis className="nickname" content={displayData.nickname} rows={1} />
+              <Ellipsis className="signature" content={displayData.signature} rows={2} />
             </div>
 
           <div className="edit-icon iconfont icon-bianji" onClick={handleEditProfile}></div>

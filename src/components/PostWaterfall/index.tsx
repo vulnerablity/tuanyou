@@ -1,11 +1,12 @@
-//+ 内容瀑布流组件（原 NoteList 语义化重命名为 PostWaterfall，支持笔记/攻略混合）
-//+ 卡片布局：封面（Tag左上角 + 收藏/视频图标）+ 标题 + 头像昵称点赞
-//+ 图片 3:4 比例，视频 16:9 比例，严格两列布局
-import { Loading, Skeleton } from '@nutui/nutui-react'
+//+ 内容瀑布流组件（PostWaterfall）
+//+ 布局：Masonry 错落排布（按累计列高分配，非奇偶）
+//+ 封面：CoverBox 统一封装，onError 渲染兜底 UI，容器尺寸不受图片加载影响
+//+ 渲染：直接渲染 FeedCard，H5/小程序逻辑统一，无离屏回收闪动
+import { Loading, Ellipsis } from '@nutui/nutui-react'
 import Taro from '@tarojs/taro'
 import Tag from '@/components/Tag'
 import type { FeedItem } from '@/types'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { toggleNoteLikeAPI, toggleNoteFavoriteAPI } from '@/apis/note'
 import { toggleGuideLikeAPI, toggleGuideFavoriteAPI } from '@/apis/guide'
 import './index.less'
@@ -36,10 +37,49 @@ export interface PostWaterfallProps {
   more?: boolean
 }
 
+//+ Masonry 信息区 rem 定义（对应 less）：feed-info padding 0.6rem*2 + title 2行 + margin-bottom 0.4rem + meta 1rem ≈ 4.7rem
+//+ 不写死 px，挂载后读取 html fontSize 动态换算，避免 Taro 缩放后 1rem 不是 16px 导致列高分配偏差累积
+const INFO_HEIGHT_REM = 4.7
+const CARD_GAP_REM = 0.4
+
+/**
+ * 计算单张卡片理论总高度（封面响应式高度 + 信息区固定高度）
+ * 封面比例：图片 3:4，视频 16:9；封面高度 = 列宽 / 比例
+ * infoHeightPx 由调用方动态传入（每次测量列宽时同步读取 html fontSize）
+ */
+function calcCardHeight(item: FeedItem, colWidth: number, infoHeightPx: number): number {
+  const isVideo = typeof item.isVideo === 'boolean' ? item.isVideo : !!item.videoUrl
+  //+ 封面高度：图片 colWidth * 4/3，视频 colWidth * 9/16
+  const coverHeight = isVideo ? colWidth * 9 / 16 : colWidth * 4 / 3
+  return coverHeight + infoHeightPx
+}
+
+/**
+ * Masonry 砖石算法：遍历 feed，根据列宽计算每张卡片理论高度，放入累计高度更小的列
+ * 返回 { left: FeedItem[], right: FeedItem[] }
+ */
+function masonryDistribute(feed: FeedItem[], colWidth: number, infoHeightPx: number, cardGapPx: number): { left: FeedItem[], right: FeedItem[] } {
+  const left: FeedItem[] = []
+  const right: FeedItem[] = []
+  let leftHeight = 0
+  let rightHeight = 0
+  for (const item of feed) {
+    const h = calcCardHeight(item, colWidth, infoHeightPx)
+    if (leftHeight <= rightHeight) {
+      left.push(item)
+      leftHeight += h + cardGapPx
+    } else {
+      right.push(item)
+      rightHeight += h + cardGapPx
+    }
+  }
+  return { left, right }
+}
+
 /**
  * 统一点赞接口（按内容类型分发）
  */
-async function toggleLikeByType(item: FeedItem): Promise<{ isLiked: boolean; likeCount: number }> {
+async function toggleLikeByType(item: FeedItem): Promise<{ isLiked: boolean, likeCount: number }> {
   const raw = item.type === 'guide'
     ? await toggleGuideLikeAPI(item.id)
     : await toggleNoteLikeAPI(item.id)
@@ -61,26 +101,66 @@ async function toggleFavoriteByType(item: FeedItem): Promise<{ isFavorited: bool
   return { isFavorited: !!data?.isFavorited }
 }
 
+//+ CoverBox：封面容器，维持 aspect-ratio；图片 onError 渲染兜底 UI，容器尺寸不受图片加载影响
+const CoverBox = ({
+  item,
+  isVideo
+}: {
+  item: FeedItem
+  isVideo: boolean
+}) => {
+  const coverImg = item.images[0] || ''
+  const [imgError, setImgError] = useState(false)
+
+  //+ 切换 item 时重置错误状态（同 item 切图也需处理）
+  useEffect(() => {
+    setImgError(false)
+  }, [coverImg])
+
+  return (
+    <div className={`feed-cover ${isVideo ? 'cover-video-box' : 'cover-image-box'}`}>
+      {!imgError && coverImg ? (
+        <img
+          //+ 视频封面统一用 coverImg（第一张图），videoUrl 不是图片，不应作为 img src
+          src={coverImg}
+          alt={item.title}
+          className={isVideo ? 'cover-video' : 'cover-image'}
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        //+ 兜底 UI：封面加载失败/链接为空时渲染提示，不使用 alt 文字避免撑开盒子
+        <div className='cover-fallback'>
+          <span>{isVideo ? '视频封面' : '图片'}加载失败</span>
+        </div>
+      )}
+      {/* 左上角分类标签：取 tags[0] */}
+      {item.tags.length > 0 ? (
+        <div className='feed-tag-wrapper'>
+          <Tag tagName={item.tags[0]} />
+        </div>
+      ) : null}
+      {/* 视频播放图标（居中） */}
+      {isVideo && (
+        <div className='feed-play-icon'>
+          <span>▶</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 //+ 渲染单个Feed卡片
 const FeedCard = ({
   item,
-  onClick,
   onToggleLike,
   actionType = 'like',
-  showFavorite = false,
   onToggleFavorite
-  
 }: {
   item: FeedItem
-  onClick?: () => void
   onToggleLike?: PostWaterfallProps['onToggleLike']
   actionType?: 'like' | 'favorite'
-  showFavorite?: boolean
   onToggleFavorite?: PostWaterfallProps['onToggleFavorite']
- 
 }) => {
-  //+ 封面图：第一张图片作为封面
-  const coverImg = item.images[0] || ''
   //+ 判断是否为视频内容：优先后端字段 isVideo，其次降级用 videoUrl 推断
   const isVideo = typeof item.isVideo === 'boolean' ? item.isVideo : !!item.videoUrl
 
@@ -150,10 +230,6 @@ const FeedCard = ({
 
   //+ 点击跳转详情（note→NoteDetail, guide→GuideDetail）
   const handleClick = () => {
-    // if (onClick) {
-    //   onClick()
-    //   return
-    // }
     const pagePath = item.type === 'guide'
       ? '/pages/GuideDetail/index'
       : '/pages/NoteDetail/index'
@@ -161,36 +237,10 @@ const FeedCard = ({
   }
 
   return (
-    
-      <div className='feed-item' onClick={handleClick}>
-      <div className='feed-cover'>
-        <img
-          //+ 问题2修复：视频封面统一用 coverImg（第一张图），videoUrl 不是图片，不应作为 img src
-          src={coverImg}
-          alt={item.title}
-          className={isVideo ? 'cover-video' : 'cover-image'}
-        />
-        {/* 左上角分类标签：取 tags[0] */}
-        {item.tags.length > 0 && (
-          <div className='feed-tag-wrapper'>
-            <Tag tagName={item.tags[0]} />
-          </div>
-        )}
-        {/* 右上角收藏图标（仅 showFavorite=true 且 actionType!='favorite' 时显示；favorite 模式下收藏图标已移到底部） */}
-        {showFavorite && actionType !== 'favorite' && (
-          <div className='feed-favorite-wrapper' onClick={handleFavClick}>
-            <span className={`iconfont ${localFav ? 'icon-shoucangfill feed-fav-fill' : 'icon-shoucang feed-fav-empty'}`}></span>
-          </div>
-        )}
-        {/* 视频播放图标（居中） */}
-        {isVideo && (
-          <div className='feed-play-icon'>
-            <span>▶</span>
-          </div>
-        )}
-      </div>
+    <div className='feed-item' onClick={handleClick}>
+      <CoverBox item={item} isVideo={isVideo} />
       <div className='feed-info'>
-        <div className='feed-title'>{item.title}</div>
+        <Ellipsis className='feed-title' content={item.title} rows={2} />
         <div className='feed-meta'>
           <img
             className='user-avatar'
@@ -212,24 +262,85 @@ const FeedCard = ({
         </div>
       </div>
     </div>
- 
-    
   )
 }
 
 //+ Feed列表组件（语义化主名：PostWaterfall）
+//+ 注：onItemClick / showFavorite / more 保留在 Props 接口供外部传入兼容，但内部不再使用（FeedCard 自行处理点击与收藏图标）
 export function PostWaterfall({
   feed,
   loading = false,
   hasMore = false,
   onLoadMore,
-  onItemClick,
   emptyText = '暂无内容',
   onToggleLike,
   actionType = 'like',
-  showFavorite = false,
   onToggleFavorite
 }: PostWaterfallProps) {
+  //+ 列宽 ref：挂载后从 DOM 获取真实列宽，用于 Masonry 分配
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [colWidth, setColWidth] = useState(0)
+  //+ html fontSize（1rem=?px）：动态读取用于 rem→px 换算，避免 Taro 缩放偏差导致列高分配误差累积
+  const [remPx, setRemPx] = useState(16)
+
+  //+ 测量：同时读取列宽 + html fontSize（Taro 根据视口动态设置 1rem）
+  const measureLayout = useCallback(() => {
+    //+ html fontSize：H5 取 documentElement.style.fontSize 计算值，SSR/小程序兜底 16
+    const htmlEl = typeof document !== 'undefined' ? document.documentElement : null
+    const computedFontSize = htmlEl ? parseFloat(getComputedStyle(htmlEl).fontSize) : NaN
+    const currentRemPx = Number.isFinite(computedFontSize) && computedFontSize > 0 ? computedFontSize : 16
+    setRemPx(currentRemPx)
+
+    const el = containerRef.current
+    if (!el) return
+    //+ 容器内宽 - gap（动态换算 CARD_GAP_REM），再平分两列
+    const cardGapPx = CARD_GAP_REM * currentRemPx
+    const containerWidth = el.clientWidth
+    if (containerWidth > 0) {
+      setColWidth(Math.floor((containerWidth - cardGapPx) / 2))
+    }
+  }, [])
+
+  //+ 挂载后测量 + 监听 resize/orientationchange 重排 Masonry
+  useEffect(() => {
+    measureLayout()
+    const handleResize = () => measureLayout()
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
+    }
+  }, [measureLayout])
+
+  //+ Masonry 分配：列宽 / remPx / feed 变化时重新计算
+  const { leftColumn, rightColumn } = useMemo(() => {
+    if (colWidth === 0) {
+      //+ 列宽未就绪：退化为奇偶分配，避免首屏空白（轻微布局抖动，方案固有代价）
+      const left = feed.filter((_, i) => i % 2 === 0)
+      const right = feed.filter((_, i) => i % 2 === 1)
+      return { leftColumn: left, rightColumn: right }
+    }
+    const infoHeightPx = INFO_HEIGHT_REM * remPx
+    const cardGapPx = CARD_GAP_REM * remPx
+    const { left, right } = masonryDistribute(feed, colWidth, infoHeightPx, cardGapPx)
+    return { leftColumn: left, rightColumn: right }
+  }, [feed, colWidth, remPx])
+
+  //+ 渲染单列卡片（共用逻辑，避免重复）
+  //+ 已移除 VirtualItem 离屏回收：直接渲染 FeedCard，H5/小程序逻辑统一，消除闪动
+  const renderColumn = (items: FeedItem[]) => {
+    return items.map(item => (
+      <FeedCard
+        key={item.id}
+        item={item}
+        onToggleLike={onToggleLike}
+        actionType={actionType}
+        onToggleFavorite={onToggleFavorite}
+      />
+    ))
+  }
+
   //+ 加载中且无数据
   if (loading && feed.length === 0) {
     return (
@@ -250,35 +361,13 @@ export function PostWaterfall({
 
   return (
     <div className='note-list-container'>
-      {/* 瀑布流布局 */}
-      <div className='waterfall-container'>
+      {/* Masonry 瀑布流布局：按累计列高分配，两列直接渲染 FeedCard */}
+      <div className='waterfall-container' ref={containerRef}>
         <div className='waterfall-column'>
-          {feed.filter((_, i) => i % 2 === 0).map(item => (
-            <FeedCard
-             
-              key={item.id}
-              item={item}
-              onClick={() => onItemClick?.(item)}
-              onToggleLike={onToggleLike}
-              actionType={actionType}
-              showFavorite={showFavorite}
-              onToggleFavorite={onToggleFavorite}
-            />
-          ))}
+          {renderColumn(leftColumn)}
         </div>
         <div className='waterfall-column'>
-          {feed.filter((_, i) => i % 2 === 1).map(item => (
-            <FeedCard
-            
-              key={item.id}
-              item={item}
-              onClick={() => onItemClick?.(item)}
-              onToggleLike={onToggleLike}
-              actionType={actionType}
-              showFavorite={showFavorite}
-              onToggleFavorite={onToggleFavorite}
-            />
-          ))}
+          {renderColumn(rightColumn)}
         </div>
       </div>
 

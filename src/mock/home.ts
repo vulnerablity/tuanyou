@@ -122,14 +122,13 @@ export const homeMockRoutes: Record<string, (data?: any, url?: string) => any> =
 
     let filteredFeed = [...mockFeed]
 
-    //+ 根据分类筛选（后端按数字ID精确匹配）
+    //+ 根据分类筛选：category 为 0/未传/'全部' 时不筛选，其余按数字 ID 精确匹配
+    //+ 修复：原逻辑 category===0 时会进入分支，filter(item.category===0) 把所有数据过滤掉
+    //+       导致首屏 list 为空、total=0、total_page=0、hasMore=false，触底加载永不触发
     const category = data?.category
-    if (category && category !== '全部') {
-      //+ category参数是数字字符串（如\"1\"），需要转为数字比较
-      const categoryId = Number(category)
-      if (!isNaN(categoryId)) {
-        filteredFeed = filteredFeed.filter(item => item.category === categoryId)
-      }
+    const categoryId = Number(category)
+    if (category !== undefined && category !== null && category !== '' && !Number.isNaN(categoryId) && categoryId > 0) {
+      filteredFeed = filteredFeed.filter(item => item.category === categoryId)
     }
 
     //+ 排序

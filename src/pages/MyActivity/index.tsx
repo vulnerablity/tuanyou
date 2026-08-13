@@ -2,9 +2,9 @@
 //+ Q2 需求：Tab懒加载，默认先加载"我发布的"；每次切Tab实时刷新
 //+ Q7 需求：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
 //+ 结构：HeaderNavBar + Tabs（我发布的 / 我参与的） + ActivityCard 列表
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useDispatch } from 'react-redux'
-import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
+import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { Tabs } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import ActivityCard from '@/components/ActivityCard'
@@ -18,6 +18,8 @@ const MyActivity = () => {
   const dispatch: AppDispatch = useDispatch()
   //+ Tab: 0=我发布的 1=我参与的
   const [activeTab, setActiveTab] = useState(0)
+  //+ 滚动容器 ref：容器级 onScroll 触底加载（与 Home/Activity 一致，useReachBottom 在容器滚动布局下不生效）
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   //+ 两个独立分页实例：发布/参与（互相独立，互不干扰）
   const publishPaged = usePagedList<ActivityListItem>({
@@ -62,10 +64,17 @@ const MyActivity = () => {
     Taro.stopPullDownRefresh()
   })
 
-  //+ Q7：上拉加载更多（当前Tab）
-  useReachBottom(() => {
-    currentPaged.loadMore()
-  })
+  //+ Q7：容器级 onScroll 触底加载更多（当前Tab，与 Home/Activity 一致）
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget
+    if (
+      scrollHeight - scrollTop - clientHeight < 50 &&
+      !currentPaged.loading &&
+      currentPaged.hasMore
+    ) {
+      currentPaged.loadMore()
+    }
+  }
 
   //+ 点击卡片：跳转详情
   const handleCardClick = (activity: ActivityListItem) => {
@@ -85,23 +94,23 @@ const MyActivity = () => {
   }
 
   return (
-    <div className="my-activity-page">
-      <HeaderNavBar title="我的活动" fixed={false} cancel={false} />
+    <div className='my-activity-page'>
+      <HeaderNavBar title='我的活动' fixed={false} cancel={false} />
 
-      <div className="my-activity-body">
+      <div className='my-activity-body' ref={scrollRef} onScroll={handleScroll}>
         <Tabs
           value={activeTab}
           onChange={handleTabChange}
-          activeColor="#428a46"
-          className="my-activity-tabs"
+          activeColor='#428a46'
+          className='my-activity-tabs'
         >
-          <Tabs.TabPane title="我发布的" value={0} />
-          <Tabs.TabPane title="我参与的" value={1} />
+          <Tabs.TabPane title='我发布的' value={0} />
+          <Tabs.TabPane title='我参与的' value={1} />
         </Tabs>
 
-        <div className="my-activity-list">
+        <div className='my-activity-list'>
           {currentList.length === 0 && !loading ? (
-            <div className="empty-state">
+            <div className='empty-state'>
               {activeTab === 0 ? '还没有发布活动' : '还没有参与任何活动'}
             </div>
           ) : (
@@ -117,12 +126,12 @@ const MyActivity = () => {
 
           {/* 加载更多提示 */}
           {hasMore && currentList.length > 0 && (
-            <div className="load-more" onClick={() => currentPaged.loadMore()}>
+            <div className='load-more' onClick={() => currentPaged.loadMore()}>
               {loading ? '加载中...' : '加载更多'}
             </div>
           )}
           {!hasMore && currentList.length > 0 && (
-            <div className="no-more">已加载全部</div>
+            <div className='no-more'>已加载全部</div>
           )}
         </div>
       </div>
