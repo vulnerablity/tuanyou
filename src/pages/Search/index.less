@@ -94,10 +94,15 @@
 }
 
 //+ ===== 主内容区 =====
+//+ 统一滚动容器（与首页 .home-content 模式一致）：flex:1 + overflow-y:auto
+//+ 外层 100vh + overflow:hidden，因此页面级 useReachBottom 不生效；
+//+ 改为容器 onScroll，距底 50px 自动触发上拉加载更多
 .g-search-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   background-color: #fff;
+  -webkit-overflow-scrolling: touch;
 }
 
 //+ ===== 热门搜索区 =====
@@ -132,14 +137,18 @@
 }
 
 //+ ===== 搜索结果区 =====
+//+ 滚动统一交给 .g-search-body；这里不再使用独立 overflow，避免双层滚动导致 onScroll 无法触底
 .g-search-result {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
+//+ Tabs 吸顶（与首页筛选区 sticky 一致）：跟随滚动容器滚到顶部时停住
 .g-search-tabs {
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background-color: #fff;
   cursor: pointer;
 
@@ -179,9 +188,8 @@
   }
 }
 
+//+ 结果列表：去掉独立 overflow，让 .g-search-body 统一滚动（与首页一致）
 .g-search-result-body {
-  flex: 1;
-  overflow-y: auto;
   padding: 0 0.5rem;
 }
 

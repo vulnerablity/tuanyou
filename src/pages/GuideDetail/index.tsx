@@ -13,7 +13,7 @@ import { useEffect, useCallback, useState } from 'react'
 import Taro from '@tarojs/taro'
 import { Dialog } from '@nutui/nutui-react'
 import { fetchGuideDetail, toggleLike as toggleGuideLike, toggleFavorite as toggleGuideFavorite, patchGuideDetail, deleteGuide } from '@/store/modules/guide'
-import { toggleFollow } from '@/store/modules/user'
+import { toggleProfileFollow } from '@/store/modules/profile'
 import { updateFeedItem } from '@/store/modules/home'
 import type { Comment } from '@/types/entity'
 import './index.less'
@@ -89,11 +89,11 @@ const GuideDetail = () => {
     }
   }, [guideDetail, dispatch])
 
-  //+ 关注/取消关注（user 模块 thunk，成功后同步到攻略详情的 isFollowed）
+  //+ 关注/取消关注（统一走 profile/toggleProfileFollow，POST /personal/follow/{id}）
   const handleToggleFollow = useCallback(async (authorUserId: string, nextIsFollowed: boolean) => {
     if (!authorUserId) return
     try {
-      const action = await dispatch(toggleFollow(authorUserId))
+      const action = await dispatch(toggleProfileFollow(authorUserId))
       const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
       if (ok) {
         const payload = (action as any)?.payload || {}
