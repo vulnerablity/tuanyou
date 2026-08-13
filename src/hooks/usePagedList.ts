@@ -69,11 +69,13 @@ export function usePagedList<T>(options: UsePagedListOptions<T>): UsePagedListRe
       const res = await fetcher({ page: 1, size })
       if (res.code === 0 || res.code === 200) {
         const payload = res.data as PageResult<T>
+        //+ total_page 优先用后端返回；后端不返回时前端按 total/size 计算（与 home store 一致）
+        const calcTotalPage = payload.total_page ?? Math.ceil(payload.total / (payload.size || size))
         setList(payload.list || [])
         setPage(payload.page)
-        setTotalPage(payload.total_page)
+        setTotalPage(calcTotalPage)
         setTotal(payload.total)
-        setHasMore(payload.page < payload.total_page)
+        setHasMore(payload.page < calcTotalPage)
         return payload
       }
       return null
@@ -93,11 +95,13 @@ export function usePagedList<T>(options: UsePagedListOptions<T>): UsePagedListRe
       const res = await fetcher({ page: nextPage, size })
       if (res.code === 0 || res.code === 200) {
         const payload = res.data as PageResult<T>
+        //+ total_page 优先用后端返回；后端不返回时前端按 total/size 计算（与 home store 一致）
+        const calcTotalPage = payload.total_page ?? Math.ceil(payload.total / (payload.size || size))
         setList(prev => [...prev, ...(payload.list || [])])
         setPage(payload.page)
-        setTotalPage(payload.total_page)
+        setTotalPage(calcTotalPage)
         setTotal(payload.total)
-        setHasMore(payload.page < payload.total_page)
+        setHasMore(payload.page < calcTotalPage)
         return payload
       }
       return null

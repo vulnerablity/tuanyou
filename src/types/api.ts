@@ -23,12 +23,13 @@ export function getCategoryName(categoryId?: number): string {
 }
 
 //+ 分页响应数据结构（通用）
+//+ total_page 可选：真实后端只返回 total+size，需前端自行计算；Mock 会返回 total_page
 export interface PageResult<T> {
   list: T[]
   total: number
   page: number
   size: number
-  total_page: number
+  total_page?: number
 }
 
 //+ 活动列表分页响应 data 结构（调用方 import ActivityListResult from '@/types' 时保持一致）

@@ -26,6 +26,7 @@ import './index.less'
 //+ 最大图片数量
 const MAX_IMAGES = 5
 //+ 最大标签数量（1-3个）
+const MIN_TAGS = 1
 const MAX_TAGS = 3
 //+ 标题/内容长度限制
 const MAX_TITLE = 50
@@ -230,6 +231,14 @@ const PublishNote = () => {
     }
     if (!form.noteContent.trim()) {
       Taro.showToast({ title: '请输入笔记内容', icon: 'none' })
+      return false
+    }
+    if(form.tags.length < MIN_TAGS) {
+      Taro.showToast({ title: `请至少选择${MIN_TAGS}个标签`, icon: 'none' })
+      return false
+    }
+    if(form.tags.length > MAX_TAGS) {
+      Taro.showToast({ title: `最多选择${MAX_TAGS}个标签`, icon: 'none' })
       return false
     }
     return true

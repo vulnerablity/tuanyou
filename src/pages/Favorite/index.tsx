@@ -5,7 +5,7 @@
 //+ Q8：取消收藏 → 调用真实API → 延迟移除（离开页面时统一清理，给用户反悔机会）
 import { useState, useCallback, useMemo, useRef } from 'react'
 import { useDispatch } from 'react-redux'
-import Taro, { useDidShow, useDidHide, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
+import Taro, { useDidShow, useDidHide, usePullDownRefresh } from '@tarojs/taro'
 import { Tabs } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import { PostWaterfall } from '@/components/PostWaterfall'
@@ -19,6 +19,8 @@ import './index.less'
 const Favorite = () => {
   const dispatch: AppDispatch = useDispatch()
   const [activeTab, setActiveTab] = useState(0)
+  //+ 滚动容器 ref：容器级 onScroll 触底加载（与 Home/Activity 一致，useReachBottom 在容器滚动布局下不生效）
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   //+ 记录已取消收藏但暂未移除的项（延迟到离开页面时移除，防止手误给用户反悔机会）
   const pendingRemoveRef = useRef<Set<string | number>>(new Set())
@@ -67,9 +69,17 @@ const Favorite = () => {
     Taro.stopPullDownRefresh()
   })
 
-  useReachBottom(() => {
-    currentPaged.loadMore()
-  })
+  //+ 容器级 onScroll 触底加载更多（与 Home/Activity 一致）
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget
+    if (
+      scrollHeight - scrollTop - clientHeight < 50 &&
+      !currentPaged.loading &&
+      currentPaged.hasMore
+    ) {
+      currentPaged.loadMore()
+    }
+  }
 
   //+ Q8 改造：取消收藏不立即移除，标记为待移除；再次收藏则撤销标记（给用户反悔机会）
   const handleToggleFavorite = (item: FeedItem, newIsFavorited: boolean) => {
@@ -98,10 +108,10 @@ const Favorite = () => {
   const { loading, hasMore } = currentPaged
 
   return (
-    <div className="favorite-page">
-      <HeaderNavBar title="我的收藏" fixed={false} cancel={false} />
+    <div className='favorite-page'>
+      <HeaderNavBar title='我的收藏' fixed={false} cancel={false} />
 
-      <div className="favorite-body">
+      <div className='favorite-body' ref={scrollRef} onScroll={handleScroll}>
         <Tabs
           value={activeTab}
           onChange={(v) => {
@@ -110,11 +120,11 @@ const Favorite = () => {
             //+ Q2：切 Tab 实时请求新 Tab 第一页（不累积旧数据）
             ;(next === 0 ? notesPaged : strategysPaged).loadFirstPage()
           }}
-          activeColor="#428a46"
-          className="favorite-tabs"
+          activeColor='#428a46'
+          className='favorite-tabs'
         >
-          <Tabs.TabPane title="笔记" value={0} />
-          <Tabs.TabPane title="攻略" value={1} />
+          <Tabs.TabPane title='笔记' value={0} />
+          <Tabs.TabPane title='攻略' value={1} />
         </Tabs>
 
         {/* Q3 修复：瀑布流容器 + 加载更多分离，加载更多放在外层（下方） */}
@@ -126,7 +136,7 @@ const Favorite = () => {
           emptyText={activeTab === 0 ? '还没有收藏的笔记' : '还没有收藏的攻略'}
           onItemClick={handleItemClick}
           onLoadMore={() => currentPaged.loadMore()}
-          actionType="favorite"
+          actionType='favorite'
           onToggleFavorite={handleToggleFavorite}
         />
       </div>

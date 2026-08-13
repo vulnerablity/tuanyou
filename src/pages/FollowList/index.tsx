@@ -1,9 +1,9 @@
 //+ FollowList 关注列表页
 //+ 结构：HeaderNavBar（无取消文字，固定头部） + 关注列表 + 关注按钮切换
 //+ 统一接入 usePagedList + fetchFollowList + 上拉加载/下拉刷新 + 真实关注API
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { useDispatch } from 'react-redux'
-import Taro, { useDidShow, useReachBottom, usePullDownRefresh } from '@tarojs/taro'
+import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { Button } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import Avatar from '@/components/Avatar'
@@ -32,6 +32,8 @@ const toUserPublic = (item: FollowItem): UserPublic => ({
 
 const FollowList = () => {
   const dispatch: AppDispatch = useDispatch()
+  //+ 滚动容器 ref：容器级 onScroll 触底加载（与 Home/Activity 一致，useReachBottom 在容器滚动布局下不生效）
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const paged = usePagedList<UserPublic>({
     size: 10,
@@ -65,9 +67,17 @@ const FollowList = () => {
     Taro.stopPullDownRefresh()
   })
 
-  useReachBottom(() => {
-    paged.loadMore()
-  })
+  //+ 容器级 onScroll 触底加载更多（与 Home/Activity 一致）
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget
+    if (
+      scrollHeight - scrollTop - clientHeight < 50 &&
+      !paged.loading &&
+      paged.hasMore
+    ) {
+      paged.loadMore()
+    }
+  }
 
   //+ 切换关注状态（调用 /personal/follow/{id}，乐观更新，失败回滚）
   const handleToggleFollow = async (e: any, id: string, currentStatus: boolean) => {
@@ -96,24 +106,24 @@ const FollowList = () => {
   const { list, loading, hasMore } = paged
 
   return (
-    <div className="follow-list-page">
-      <HeaderNavBar title="关注" fixed={false} cancel={false} />
+    <div className='follow-list-page'>
+      <HeaderNavBar title='关注' fixed={false} cancel={false} />
 
-      <div className="list-wrapper">
+      <div className='list-wrapper' ref={scrollRef} onScroll={handleScroll}>
         {list.length === 0 && !loading ? (
-          <div className="empty-state">还没有关注的人</div>
+          <div className='empty-state'>还没有关注的人</div>
         ) : (
           list.map(user => (
-            <div key={user.id} className="user-item" onClick={() => handleUserClick(user)}>
-              <Avatar url={user.avatar} size="35" />
-              <div className="user-info">
-                <span className="user-nickname">{user.nickname}</span>
-                <span className="user-bio">{user.bio}</span>
+            <div key={user.id} className='user-item' onClick={() => handleUserClick(user)}>
+              <Avatar url={user.avatar} size='35' />
+              <div className='user-info'>
+                <span className='user-nickname'>{user.nickname}</span>
+                <span className='user-bio'>{user.bio}</span>
               </div>
               <Button
                 className={`follow-btn ${user.isFollowed ? 'followed' : ''}`}
                 type={user.isFollowed ? 'default' : 'primary'}
-                size="small"
+                size='small'
                 onClick={(ev) => handleToggleFollow(ev, user.id, !!user.isFollowed)}
               >
                 {user.isFollowed ? '已关注' : '关注'}
@@ -124,12 +134,12 @@ const FollowList = () => {
 
         {/* 加载更多 */}
         {hasMore && list.length > 0 && (
-          <div className="load-more" onClick={() => paged.loadMore()}>
+          <div className='load-more' onClick={() => paged.loadMore()}>
             {loading ? '加载中...' : '加载更多'}
           </div>
         )}
         {!hasMore && list.length > 0 && (
-          <div className="no-more">已加载全部</div>
+          <div className='no-more'>已加载全部</div>
         )}
       </div>
     </div>

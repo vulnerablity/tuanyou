@@ -115,10 +115,7 @@ const Activity = () => {
       <div className="activity-header">
         <SearchBar />
       </div>
-
-      {/* 可滚动内容区 */}
-      <div className="activity-content" ref={scrollRef} onScroll={handleScroll}>
-        {/* 分类筛选栏：横向滚动，圆形图标 + 分类名 */}
+      {/* 分类筛选栏：横向滚动，圆形图标 + 分类名 */}
         <div className="category-bar">
           {CATEGORY_LIST.map((cat) => (
             <div
@@ -131,6 +128,9 @@ const Activity = () => {
             </div>
           ))}
         </div>
+      {/* 可滚动内容区 */}
+      <div className="activity-content" ref={scrollRef} onScroll={handleScroll}>
+        
 
         {/* 活动列表 */}
         <div className="activity-list">

@@ -6,22 +6,26 @@
 //+ 瀑布流容器
 .waterfall-container {
   display: flex;
-  justify-content: space-between;
   gap: 0.4rem;
   padding: 0.5rem 0.65rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-//+ 瀑布流列
+//+ 瀑布流列：强制两列各占一半（平分容器宽度），min-width:0 防止卡片内容把列撑开
 .waterfall-column {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
-//+ Feed卡片项
+//+ Feed卡片项：强制占满列宽（100%），避免内容决定宽度导致两列不一致
 .feed-item {
   position: relative;
+  width: 100%;
+  box-sizing: border-box;
   background-color: #fff;
   border-radius: 0.6rem;
   overflow: hidden;
@@ -29,25 +33,45 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  //+ 封面图容器（用于定位Tag标签和播放图标）
+
+  //+ 封面图容器（CoverBox）：维持 aspect-ratio，尺寸不受图片加载结果影响
   .feed-cover {
     position: relative;
     width: 100%;
-background-color: pink;
-    //+ 图片封面：3:4比例
-    .cover-image {
-      display: block;
-      width: 100%;
-      object-fit:cover;
+    background-color: #f5f5f5;
+
+    //+ 图片封面容器：3:4 比例
+    &.cover-image-box {
       aspect-ratio: 3/4;
     }
 
-    //+ 视频封面：16:9比例
-    .cover-video {
-      width: 100%;
-      object-fit: cover;
+    //+ 视频封面容器：16:9 比例
+    &.cover-video-box {
       aspect-ratio: 16/9;
+    }
+
+    //+ 图片/视频封面 img：撑满容器，object-fit: cover 防变形
+    .cover-image,
+    .cover-video {
       display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    //+ 封面加载失败兜底 UI：居中提示，不使用 alt 文字避免撑开盒子
+    .cover-fallback {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f0f0f0;
+      color: #999;
+      font-size: 0.6rem;
     }
 
     //+ 左上角Tag标签容器
@@ -207,7 +231,7 @@ background-color: pink;
 //+ 没有更多
 .note-list-no-more, .note-list-load-more {
   text-align: center;
-    margin-top: 2rem;
-    font-size: 0.6rem;
-    color: #999;
+  margin-top: 2rem;
+  font-size: 0.6rem;
+  color: #999;
 }

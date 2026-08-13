@@ -2,9 +2,9 @@
 //+ Q2 需求：Tab懒加载，默认先请求笔记；每次切Tab才请求对应Tab（实时刷新，不累积）
 //+ Q7 需求：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
 //+ 结构：HeaderNavBar + Tab（笔记/攻略） + PostWaterfall 瀑布流 + 删除弹窗（待接口）
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useDispatch } from 'react-redux'
-import Taro, { useDidShow, usePullDownRefresh, useReachBottom } from '@tarojs/taro'
+import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { Tabs, Dialog } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import { PostWaterfall } from '@/components/PostWaterfall'
@@ -23,6 +23,8 @@ const Content = () => {
   const [activeTab, setActiveTab] = useState<number>(0)
   //+ 删除弹窗控制
   const [deleteVisible, setDeleteVisible] = useState(false)
+  //+ 滚动容器 ref：容器级 onScroll 触底加载（与 Home/Activity 一致，useReachBottom 在容器滚动布局下不生效）
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   //+ 两个独立的分页实例：一个给笔记，一个给攻略（相互独立不共享状态）
   const notesPaged = usePagedList<ProfilePostItem>({
@@ -69,10 +71,19 @@ const Content = () => {
     Taro.stopPullDownRefresh()
   })
 
-  //+ Q7：上拉加载更多（只加载当前 Tab）
-  useReachBottom(() => {
-    currentPaged.loadMore()
-  })
+  //+ Q7：容器级 onScroll 触底加载更多（只加载当前 Tab）
+  //+ 原因：.content-body 是 overflow-y:auto 的容器级滚动，外层 .content-page height:100vh overflow:hidden
+  //+       导致页面级 useReachBottom 在 H5 端无法触发；改为容器 onScroll，与 Home/Activity 一致
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget
+    if (
+      scrollHeight - scrollTop - clientHeight < 50 &&
+      !currentPaged.loading &&
+      currentPaged.hasMore
+    ) {
+      currentPaged.loadMore()
+    }
+  }
 
   //+ 点击详情：传 isMine=1 标识详情页显示删除按钮
   const handleItemClick = (item: FeedItem) => {
@@ -90,29 +101,29 @@ const Content = () => {
   }
 
   return (
-    <div className="content-page">
+    <div className='content-page'>
       <HeaderNavBar
-        title="我的内容"
+        title='我的内容'
         fixed={false}
         cancel={false}
         
       />
 
-      <div className="content-body">
+      <div className='content-body' ref={scrollRef} onScroll={handleScroll}>
         {/* 顶部 Tab */}
         <Tabs
           value={activeTab}
           onChange={handleTabChange}
-          activeColor="#428a46"
-          className="content-tabs"
-          activeType="card"
+          activeColor='#428a46'
+          className='content-tabs'
+          activeType='card'
         >
-          <Tabs.TabPane title="笔记" value={0} />
-          <Tabs.TabPane title="攻略" value={1} />
+          <Tabs.TabPane title='笔记' value={0} />
+          <Tabs.TabPane title='攻略' value={1} />
         </Tabs>
 
         {/* 瀑布流列表：用统一的 PostWaterfall 组件 */}
-        <div className="feed-wrapper">
+        <div className='feed-wrapper'>
           <PostWaterfall
             feed={currentList}
             loading={currentPaged.loading && currentList.length === 0}
@@ -120,7 +131,7 @@ const Content = () => {
             emptyText={activeTab === 0 ? '还没有发布笔记' : '还没有发布攻略'}
             onItemClick={handleItemClick}
             onLoadMore={() => currentPaged.loadMore()}
-            more={true}
+            more
           />
         </div>
       </div>
@@ -128,10 +139,10 @@ const Content = () => {
       {/* 删除确认弹窗 */}
       <Dialog
         visible={deleteVisible}
-        title="确认删除？"
-        content="删除后无法恢复，确定删除该内容吗？"
-        confirmText="删除"
-        cancelText="取消"
+        title='确认删除？'
+        content='删除后无法恢复，确定删除该内容吗？'
+        confirmText='删除'
+        cancelText='取消'
         onConfirm={() => {
           //+ 暂未实现删除接口，此处仅关闭弹窗
           setDeleteVisible(false)
