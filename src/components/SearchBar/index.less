@@ -23,13 +23,22 @@
   flex-shrink: 0;
 }
 
-.search-bar-input {
+//+ 外层包裹的可点击容器：承接 NutSearchBar 的点击（内部 input 会吞 H5 点击事件）
+.search-bar-trigger {
   flex: 1;
   margin: 0 3vw;
   flex-shrink: 0;
+  cursor: pointer;
+}
+
+.search-bar-input {
+  flex: 1;
+  margin: 0;
   border: none;
   padding: 0;
   background-color: transparent;
+  //+ H5 只读场景：让内部 input 不拦截点击，事件交给外层 .search-bar-trigger 处理
+  pointer-events: none;
   .nut-searchbar-content{
     border:none;
     background-color: #f3f4f6;

@@ -61,6 +61,34 @@
 .detail-info .info-tags .tag .tag-icon {
   font-weight: 450;
 }
+.detail-info .info-actions {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.5rem;
+}
+.detail-info .info-actions .action-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: #666;
+  cursor: pointer;
+  user-select: none;
+}
+.detail-info .info-actions .action-item.active {
+  color: #f76a55;
+}
+.detail-info .info-actions .action-item .action-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.detail-info .info-actions .action-item .action-text {
+  font-size: 0.7rem;
+  line-height: 1;
+}
 @media screen and (min-width: 768px) {
   .detail-info {
     padding: 0.6rem 0.4rem;

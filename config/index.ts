@@ -97,6 +97,7 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
           '/pages/Activity/index': '/activity',
           '/pages/Message/index': '/message',
           '/pages/Profile/index': '/profile',
+          '/pages/Search/index': '/search',
           //发布界面
           '/pages/PublishNote/index': '/publish/note',
           '/pages/PublishGuide/index': '/publish/guide',

@@ -5,9 +5,13 @@ export const ROUTE_PATHS = {
   FORGOT_PASSWORD: '/pages/ForgotPassword/index',
   HOME: '/pages/Home/index',
   LOGOUT: '/pages/Logout/index',
+  PUBLISH_NOTE: '/pages/PublishNote/index',
+  PUBLISH_GUIDE: '/pages/PublishGuide/index',
+  PUBLISH_ACTIVITY: '/pages/PublishActivity/index',
   NOTE_DETAIL: '/pages/NoteDetail/index',
   GUIDE_DETAIL: '/pages/GuideDetail/index',
-  ACTIVITY_DETAIL: '/pages/ActivityDetail/index'
+  ACTIVITY_DETAIL: '/pages/ActivityDetail/index',
+  SEARCH: '/pages/Search/index'
 } as const
 
 //+ H5端路由别名
@@ -16,7 +20,8 @@ export const ROUTE_ALIAS = {
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
   HOME: '/home',
-  LOGOUT: '/logout'
+  LOGOUT: '/logout',
+  SEARCH: '/search'
 } as const
 
 //+ 路由配置类型
@@ -26,7 +31,7 @@ export type RouteKey = keyof typeof ROUTE_PATHS
 export const AUTH_REQUIRED_ROUTES: RouteKey[] = []
 
 //+ 白名单路由（无需登录）
-export const PUBLIC_ROUTES: RouteKey[] = ['HOME', 'LOGIN', 'REGISTER', 'FORGOT_PASSWORD', 'LOGOUT']
+export const PUBLIC_ROUTES: RouteKey[] = ['HOME', 'LOGIN', 'REGISTER', 'FORGOT_PASSWORD', 'LOGOUT', 'SEARCH']
 
 import Taro from '@tarojs/taro'
 import { getToken } from '@/utils/token'
