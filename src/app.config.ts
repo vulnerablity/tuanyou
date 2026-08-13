@@ -28,8 +28,7 @@ export default defineAppConfig({
     'pages/Favorite/index',
     'pages/Like/index',
     'pages/Settings/index',
-
-
+    'pages/Search/index',
 
   ],
   window: {
