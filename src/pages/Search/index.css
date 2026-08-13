@@ -85,7 +85,9 @@
 .g-search-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   background-color: #fff;
+  -webkit-overflow-scrolling: touch;
 }
 .g-search-hot {
   padding: 0.4rem 1.2rem;
@@ -116,10 +118,12 @@
 .g-search-result {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 .g-search-tabs {
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background-color: #fff;
   cursor: pointer;
 }
@@ -153,8 +157,6 @@
   font-weight: 350;
 }
 .g-search-result-body {
-  flex: 1;
-  overflow-y: auto;
   padding: 0 0.5rem;
 }
 .g-search-empty {
