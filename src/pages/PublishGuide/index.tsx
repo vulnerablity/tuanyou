@@ -19,6 +19,7 @@ import './index.less'
 //+ 最大图片数量（与笔记一致：1~5 张）
 const MAX_IMAGES = 5
 //+ 最大标签数量（1-3个）
+const MIN_TAGS = 1
 const MAX_TAGS = 3
 //+ 标题/内容长度限制
 const MAX_TITLE = 50
@@ -238,6 +239,10 @@ const PublishGuide = () => {
     }
     if (!form.guideContent.trim() || form.guideContent.length > MAX_CONTENT) {
       Taro.showToast({ title: `请填写攻略内容（1-${MAX_CONTENT}字）`, icon: 'none' })
+      return false
+    }
+    if (form.tags.length < MIN_TAGS) {
+      Taro.showToast({ title: `请至少选择${MIN_TAGS}个标签`, icon: 'none' })
       return false
     }
     return true
