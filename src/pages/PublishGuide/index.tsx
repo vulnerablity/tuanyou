@@ -25,6 +25,10 @@ const MAX_TAGS = 3
 //+ 标题/内容长度限制
 const MAX_TITLE = 50
 const MAX_CONTENT = 2000
+//+ 路线信息字段字数上限
+const MAX_ROUTE_DISTANCE = 30
+const MAX_ROUTE_DURATION = 30
+const MAX_ROUTE_TRANSPORT = 50
 
 //+ 媒体类型：图片 或 视频（互斥）
 type MediaType = 'image' | 'video'
@@ -104,8 +108,17 @@ const PublishGuide = () => {
   const [videoCoverUrl, setVideoCoverUrl] = useState<string>('')
 
   //+ 通用字段更新（泛型）
+  //+ 路线信息三字段（distance/duration/transport）手动截断到上限
   const updateField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
-    setForm(prev => ({ ...prev, [field]: value }))
+    let finalValue = value
+    if (field === 'distance' && typeof finalValue === 'string') {
+      finalValue = finalValue.slice(0, MAX_ROUTE_DISTANCE) as FormState[K]
+    } else if (field === 'duration' && typeof finalValue === 'string') {
+      finalValue = finalValue.slice(0, MAX_ROUTE_DURATION) as FormState[K]
+    } else if (field === 'transport' && typeof finalValue === 'string') {
+      finalValue = finalValue.slice(0, MAX_ROUTE_TRANSPORT) as FormState[K]
+    }
+    setForm(prev => ({ ...prev, [field]: finalValue }))
   }
 
   //+ 多图上传：选择图片 → uploadImagesAPI → 合并 URL
@@ -426,6 +439,7 @@ const PublishGuide = () => {
             className="field-input"
             type="text"
             placeholder="例如：20km"
+            maxLength={MAX_ROUTE_DISTANCE}
             value={form.distance}
             onChange={(v) => updateField('distance', v)}
           />
@@ -437,6 +451,7 @@ const PublishGuide = () => {
             className="field-input"
             type="text"
             placeholder="例如：6小时 / 2天1夜"
+            maxLength={MAX_ROUTE_DURATION}
             value={form.duration}
             onChange={(v) => updateField('duration', v)}
           />
@@ -464,6 +479,7 @@ const PublishGuide = () => {
             className="field-input"
             type="text"
             placeholder="例如：高铁至XX站，包车至起点"
+            maxLength={MAX_ROUTE_TRANSPORT}
             value={form.transport}
             onChange={(v) => updateField('transport', v)}
           />
@@ -489,7 +505,7 @@ const PublishGuide = () => {
         {/* 标签 */}
         <div className="field-section column">
           <div className="section-label">
-            添加标签（{form.tags.length}/{MAX_TAGS}）
+            添加标签（{MIN_TAGS}/{MAX_TAGS}）
           </div>
           <div className="tag-list">
             {tagLoading && tagOptions.length === 0 ? (

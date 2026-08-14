@@ -13,7 +13,7 @@ import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import Taro from '@tarojs/taro'
 import { Dialog } from '@nutui/nutui-react'
 import { fetchGuideDetail, toggleLike as toggleGuideLike, toggleFavorite as toggleGuideFavorite, patchGuideDetail, deleteGuide } from '@/store/modules/guide'
-import { toggleFollow } from '@/store/modules/user'
+import { toggleProfileFollow } from '@/store/modules/profile'
 import { updateFeedItem } from '@/store/modules/home'
 import {
   fetchComments, loadMoreComments, createComment,
@@ -161,6 +161,7 @@ const GuideDetail = () => {
 
   //+ 关注/取消关注（user 模块 thunk，成功后同步到攻略详情的 isFollowed）
   //+ 性能优化：按被关注 userId 请求锁 + AbortController
+  //+ 关注/取消关注（统一走 profile/toggleProfileFollow，POST /personal/follow/{id}）
   const handleToggleFollow = useCallback(async (authorUserId: string, nextIsFollowed: boolean) => {
     if (!authorUserId) return
     const resKey = `follow:${authorUserId}`
@@ -169,12 +170,13 @@ const GuideDetail = () => {
     const prev = promiseRef.current.get(resKey)
     if (prev) prev.abort()
 
-    const promise = dispatch(toggleFollow(authorUserId))
+    const promise = dispatch(toggleProfileFollow(authorUserId))
     promiseRef.current.set(resKey, promise)
     let wasAborted = false
     try {
       const action = await promise
       wasAborted = (action as any)?.payload === 'aborted'
+      // const action = await dispatch(toggleProfileFollow(authorUserId))
       const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
       if (ok) {
         const payload = (action as any)?.payload || {}
