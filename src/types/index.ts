@@ -28,7 +28,8 @@ export type {
 export {
   type UserRole,
   CATEGORY_MAP,
-  getCategoryName
+  getCategoryName,
+  COMMENT_TARGET_TYPE
 } from './api'
 
 export type {
@@ -36,7 +37,13 @@ export type {
   ActivityListResult,
   ProfileInfo,
   ProfileUpdate,
-  ApiResponse
+  ApiResponse,
+  CommentUserDTO,
+  CommentDTO,
+  CommentListResult,
+  CreateCommentParams,
+  CommentQueryParams,
+  CommentRepliesQueryParams
 } from './api'
 
 //+ 上传专项

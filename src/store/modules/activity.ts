@@ -198,7 +198,7 @@ const activitySlice = createSlice({
         state.loading = false
         state.loadingMore = false
         state.page = page
-        state.totalPage = total_page
+        state.totalPage = total_page ??1
         //+ 加载更多追加，否则替换
         if (loadMore) {
           state.activityList = [...state.activityList, ...list]
@@ -243,10 +243,15 @@ const activitySlice = createSlice({
           listItem.currentPeople = currentPeople
         }
       })
-      .addCase(fetchToggleSignup.rejected, (state) => {
+      .addCase(fetchToggleSignup.rejected, (state, action) => {
         state.signupLoading = false
+        state.error = action.payload as string
       })
       //+ 删除活动
+      .addCase(deleteActivity.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
       .addCase(deleteActivity.fulfilled, (state, action) => {
         const deletedId = action.payload.id
         //+ 从列表中移除
@@ -255,6 +260,10 @@ const activitySlice = createSlice({
         if (state.currentActivity && state.currentActivity.id === deletedId) {
           state.currentActivity = null
         }
+      })
+      .addCase(deleteActivity.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
       })
   },
 })

@@ -9,6 +9,7 @@ import profileReducer from './modules/profile'
 import tagReducer from './modules/tag'
 import uploadReducer from './modules/upload'
 import messageReducer from './modules/message'
+import commentReducer from './modules/comment'
 
 //+ 创建Store
 export const store = configureStore({
@@ -22,6 +23,7 @@ export const store = configureStore({
     tag: tagReducer,
     upload: uploadReducer,
     message: messageReducer,
+    comment: commentReducer,
   }
 })
 

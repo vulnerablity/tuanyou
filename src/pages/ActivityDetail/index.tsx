@@ -165,6 +165,12 @@ const ActivityDetail = () => {
         if (res.tapIndex === 0) {
           setDeleteVisible(true)
         }
+      },
+      //+ 用户点击取消时 Taro 会触发 fail，静默处理避免 Uncaught (in promise)
+      fail: (err) => {
+        if (!/cancel/i.test(err.errMsg || '')) {
+          console.warn('[ActivityDetail] showActionSheet fail:', err)
+        }
       }
     })
   }, [])
@@ -338,7 +344,7 @@ const ActivityDetail = () => {
         content='删除后无法恢复，确定删除该活动吗？'
         confirmText='删除'
         cancelText='取消'
-        confirmLoading={deleteLoading}
+        // confirmLoading={deleteLoading}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteVisible(false)}
       />

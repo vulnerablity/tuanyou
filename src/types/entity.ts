@@ -201,6 +201,8 @@ export interface Comment {
   replyToName: string | null
   createdAt: string
   canDelete: boolean
+  //+ 该一级评论下二级评论总数（后端返回，供"展开X条回复"使用；二级评论无此字段）
+  replyCount?: number
   replies?: Comment[]
 }
 

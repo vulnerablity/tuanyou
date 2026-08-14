@@ -15,7 +15,12 @@ import { Dialog } from '@nutui/nutui-react'
 import { fetchGuideDetail, toggleLike as toggleGuideLike, toggleFavorite as toggleGuideFavorite, patchGuideDetail, deleteGuide } from '@/store/modules/guide'
 import { toggleFollow } from '@/store/modules/user'
 import { updateFeedItem } from '@/store/modules/home'
-import type { Comment } from '@/types/entity'
+import {
+  fetchComments, loadMoreComments, createComment,
+  toggleCommentLike, deleteComment, fetchReplies,
+  resetComments, findCommentById
+} from '@/store/modules/comment'
+import { COMMENT_TARGET_TYPE } from '@/types'
 import './index.less'
 
 const GuideDetail = () => {
@@ -25,8 +30,6 @@ const GuideDetail = () => {
   const guideDetail = useSelector((state: RootState) => state.guide.guideDetail)
   //+ 当前用户ID（用于判断 isSelf，本人不显示关注按钮）
   const userId = useSelector((state: RootState) => state.user.userInfo?.id || '')
-  const userAvatar = useSelector((state: RootState) => state.user.userInfo?.avatar || '')
-  const userNickname = useSelector((state: RootState) => state.user.userInfo?.nickname || '我')
 
   //+ 路由参数：id（攻略ID）
   const router = Taro.getCurrentInstance().router
@@ -35,8 +38,10 @@ const GuideDetail = () => {
   //+ 协调状态：CommentSection 点"回复"时设置 replyTarget → 传入 CommentInput 打开回复模式弹层
   const [replyTarget, setReplyTarget] = useState<CommentInputReplyTarget | null>(null)
 
-  //+ 协调状态：CommentInput 发送成功后，构造新的 Comment 对象，通过 prop 塞给 CommentSection 自动追加
-  const [newComment, setNewComment] = useState<Comment | null>(null)
+  //+ 评论列表（来自 comment store，作为 CommentSection 的单一数据源）
+  const commentList = useSelector((state: RootState) => state.comment.list)
+  const commentHasMore = useSelector((state: RootState) => state.comment.hasMore)
+  const commentLoadingMore = useSelector((state: RootState) => state.comment.loadingMore)
 
   //+ 删除确认弹窗控制
   const [deleteVisible, setDeleteVisible] = useState(false)
@@ -45,6 +50,9 @@ const GuideDetail = () => {
   useEffect(() => {
     if (id) {
       dispatch(fetchGuideDetail({ id }))
+      //+ 评论列表：切换目标时重置后拉取首页（targetType=2 攻略）
+      dispatch(resetComments())
+      dispatch(fetchComments({ targetType: COMMENT_TARGET_TYPE.GUIDE, targetId: id }))
     }
   }, [dispatch, id])
 
@@ -128,29 +136,65 @@ const GuideDetail = () => {
     setReplyTarget(null)
   }, [])
 
-  //+ CommentInput 点击"发送"（一级或回复模式）→ 构造新的 Comment 对象塞给 CommentSection
-  const handleSendComment = useCallback((payload: CommentInputSendPayload) => {
-    const tempId = `local-${Date.now()}`
-    const newOne: Comment = {
-      id: tempId,
-      member: {
-        id: userId || 'me',
-        nickname: userNickname,
-        avatar: userAvatar
-      },
-      content: payload.content,
-      likeCount: 0,
-      isLiked: false,
-      replyToId: payload.replyToId,
-      replyToName: payload.replyToName,
-      createdAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      canDelete: true,
-      replies: []
+  //+ CommentInput 点击"发送"（一级或回复模式）→ 调用 createComment thunk，成功后 store 自动追加并同步到列表
+  //+ 失败时 throw，触发 CommentInput 的"评论失败"提示并保留输入内容
+  const handleSendComment = useCallback(async (payload: CommentInputSendPayload) => {
+    if (!id) return
+    //+ API 入参：replyToId 为一级评论 ID（即 parentCommentId）；回复二级评论时需传 replyToMemberId
+    let apiReplyToId: string | undefined
+    let replyToMemberId: string | undefined
+    if (payload.parentCommentId) {
+      apiReplyToId = payload.parentCommentId
+      //+ 回复二级评论时（replyToId 与 parentCommentId 不同）必传被回复用户 ID
+      if (payload.replyToId && payload.replyToId !== payload.parentCommentId) {
+        const replied = findCommentById(commentList, payload.replyToId)
+        replyToMemberId = replied?.member.id
+      }
     }
-    setNewComment(newOne)
-    //+ 发送后切回一级模式
-    setReplyTarget(null)
-  }, [userId, userAvatar, userNickname])
+    const action = await dispatch(createComment({
+      targetType: COMMENT_TARGET_TYPE.GUIDE,
+      targetId: id,
+      content: payload.content,
+      replyToId: apiReplyToId,
+      replyToMemberId
+    }))
+    if ((action as any)?.meta?.requestStatus === 'fulfilled') {
+      //+ store 已追加新评论 → initData 同步展示；切回一级模式
+      setReplyTarget(null)
+    } else {
+      throw new Error((action as any)?.payload || '发表评论失败')
+    }
+  }, [dispatch, id, commentList])
+
+  //+ 加载更多一级评论（store 追加 → initData 同步）
+  const handleLoadMoreComments = useCallback(async () => {
+    await dispatch(loadMoreComments())
+  }, [dispatch])
+
+  //+ 加载更多二级评论（store 追加到对应一级评论 → initData 同步）
+  const handleLoadMoreReplies = useCallback(async (parentId: string): Promise<{ hasMore: boolean }> => {
+    const action = await dispatch(fetchReplies({ parentId }))
+    if ((action as any)?.meta?.requestStatus === 'fulfilled') {
+      return { hasMore: !!(action as any)?.payload?.hasMore }
+    }
+    throw new Error((action as any)?.payload || '加载回复失败')
+  }, [dispatch])
+
+  //+ 评论点赞（失败 throw 触发 CommentSection 回滚）
+  const handleToggleCommentLike = useCallback(async (commentId: string) => {
+    const action = await dispatch(toggleCommentLike(commentId))
+    if ((action as any)?.meta?.requestStatus !== 'fulfilled') {
+      throw new Error((action as any)?.payload || '操作失败')
+    }
+  }, [dispatch])
+
+  //+ 删除评论（失败 throw 触发 CommentSection 提示）
+  const handleDeleteComment = useCallback(async (commentId: string) => {
+    const action = await dispatch(deleteComment(commentId))
+    if ((action as any)?.meta?.requestStatus !== 'fulfilled') {
+      throw new Error((action as any)?.payload || '删除失败')
+    }
+  }, [dispatch])
 
   //+ 头部 more 按钮点击：弹出 ActionSheet 选择删除
   const handleMoreClick = useCallback(() => {
@@ -159,6 +203,12 @@ const GuideDetail = () => {
       success: (res) => {
         if (res.tapIndex === 0) {
           setDeleteVisible(true)
+        }
+      },
+      //+ 用户点击取消时 Taro 会触发 fail，静默处理避免 Uncaught (in promise)
+      fail: (err) => {
+        if (!/cancel/i.test(err.errMsg || '')) {
+          console.warn('[GuideDetail] showActionSheet fail:', err)
         }
       }
     })
@@ -272,12 +322,18 @@ const GuideDetail = () => {
           </div>
         </div>
 
-        {/* 评论列表（两级评论展示 + 删除弹层 + 点击回复触发 onRequestReply） */}
+        {/* 评论列表（两级评论展示 + 删除弹层 + 分页加载更多 + 点击回复触发 onRequestReply） */}
         <CommentSection
           contentId={id}
           contentType='guide'
+          initData={commentList}
+          hasMoreComments={commentHasMore}
+          loadingMore={commentLoadingMore}
+          onLoadMoreComments={handleLoadMoreComments}
+          onLoadMoreReplies={handleLoadMoreReplies}
           onRequestReply={handleRequestReply}
-          externalNewComment={newComment}
+          onToggleCommentLike={handleToggleCommentLike}
+          onDeleteComment={handleDeleteComment}
         />
 
         {/* 底部互动栏：点赞/收藏/转发 + Popup 输入一级评论或回复模式下"回复 @XXX" */}

@@ -200,8 +200,8 @@ const noteSlice = createSlice({
         state.notes = action.payload.list
         state.total = action.payload.total
         state.page = action.payload.page
-        state.totalPage = action.payload.total_page
-        state.hasMore = action.payload.page < action.payload.total_page
+        state.totalPage = action.payload.total_page || 0
+        state.hasMore = action.payload.page < (action.payload.total_page || 0)
       })
       .addCase(fetchNotes.rejected, (state, action) => {
         state.loading = false
