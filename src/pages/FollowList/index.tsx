@@ -12,6 +12,7 @@ import { fetchFollowList } from '@/store/modules/profile'
 import { toggleProfileFollowAPI } from '@/apis/profile'
 import type { FollowItem, UserPublic, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 //+ 将 FollowItem 转换为 UserPublic（供组件渲染使用）
@@ -31,6 +32,7 @@ const toUserPublic = (item: FollowItem): UserPublic => ({
 })
 
 const FollowList = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
   //+ 滚动容器 ref：容器级 onScroll 触底加载（与 Home/Activity 一致，useReachBottom 在容器滚动布局下不生效）
   const scrollRef = useRef<HTMLDivElement>(null)

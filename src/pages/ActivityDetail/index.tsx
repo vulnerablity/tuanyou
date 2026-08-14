@@ -3,7 +3,7 @@
 //+ HeaderNavBar + 封面图 + 标签标题 + 信息面板 + 发起人 + 活动介绍 + 成员列表 + 底部操作栏
 //+ 报名/取消报名：文档8.1节要求取消确认弹窗，直接操作 + Toast 提示
 //+ 标签使用习惯：NutUI 组件优先（Button/Tag），其余用原生 HTML 标签（div/img/span）
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Button, Tag as NutuiTag, Dialog } from '@nutui/nutui-react'
 import Tag from '@/components/Tag'
@@ -18,11 +18,13 @@ import {
 import { toggleProfileFollow } from '@/store/modules/profile'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import Avatar from '@/components/Avatar'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 
 
 const ActivityDetail = () => {
+  useAuthGuard()
   const router = useRouter()
   const dispatch = useDispatch<AppDispatch>()
   const { currentActivity, detailLoading, signupLoading } = useSelector(
@@ -31,6 +33,21 @@ const ActivityDetail = () => {
 
   //+ 获取活动ID
   const activityId = router.params.id || '1'
+
+  //+ 请求锁 + AbortController + 操作冷却
+  //+ promise.abort() → RTK signal → API request abort；cooldown 防接口响应极快时串行狂点
+  const promiseRef = useRef<Map<string, { abort: () => void }>>(new Map())
+  const cooldownRef = useRef<Map<string, number>>(new Map())
+  const COOLDOWN_MS = 800
+
+  //+ 离开页面时 abort 所有未完成请求
+  useEffect(() => {
+    return () => {
+      promiseRef.current.forEach(p => p.abort())
+      promiseRef.current.clear()
+      cooldownRef.current.clear()
+    }
+  }, [])
 
   //+ 进入页面加载详情
   useEffect(() => {
@@ -82,44 +99,49 @@ const ActivityDetail = () => {
   }
 
   //+ 点击底部按钮：直接报名/取消报名（文档8.1节：取消确认弹窗，直接操作 + Toast）
+  //+ 性能优化：请求锁(signupLoading) + AbortController(promise.abort) + 操作冷却(cooldown)
+  //+ 报名关闭乐观更新：等服务器确认后再更新 UI（高权重操作）
   const handleButtonClick = async () => {
     if (!currentActivity) return
     const config = getButtonConfig()
     if (config.disabled) return
 
-    //+ 未登录引导登录（文档第七节）
-    // const userInfo = Taro.getStorageSync('userInfo')
-    // if (!userInfo) {
-    //   Taro.showModal({
-    //     title: '提示',
-    //     content: '请先登录后再报名',
-    //     confirmText: '去登录',
-    //     success: (res) => {
-    //       if (res.confirm) {
-    //         Taro.navigateTo({ url: '/pages/Login/index' })
-    //       }
-    //     }
-    //   })
-    //   return
-    // }
+    const resKey = `signup:${activityId}`
+    //+ 操作冷却
+    const cd = cooldownRef.current.get(resKey)
+    if (cd && Date.now() < cd) return
+    //+ Abort 上一个未完成请求
+    const prev = promiseRef.current.get(resKey)
+    if (prev) prev.abort()
 
-    //+ 记录操作前的 joined 状态，用于 Toast 提示文案
     const wasJoined = currentActivity.joined
-
-    //+ 直接调用接口（无确认弹窗）
-    const res = await dispatch(fetchToggleSignup(activityId))
-    if (res.meta.requestStatus === 'fulfilled') {
-      Taro.showToast({
-        title: wasJoined ? '已取消报名' : '报名成功',
-        icon: 'success'
-      })
-      //+ 报名成功后重新拉取详情，更新 members 列表等全部字段（文档3.4节推荐方式）
-      dispatch(fetchActivityDetail(activityId))
-    } else {
-      //+ 错误处理（文档第五节错误码映射）
-      const payload = res.payload as string | undefined
-      const errorMsg = payload || '操作失败，请重试'
-      Taro.showToast({ title: errorMsg, icon: 'none' })
+    const promise = dispatch(fetchToggleSignup(activityId))
+    promiseRef.current.set(resKey, promise)
+    let wasAborted = false
+    try {
+      const res = await promise
+      wasAborted = res.payload === 'aborted'
+      if (res.meta.requestStatus === 'fulfilled') {
+        Taro.showToast({
+          title: wasJoined ? '已取消报名' : '报名成功',
+          icon: 'success'
+        })
+        //+ 报名成功后重新拉取详情，更新 members 列表等全部字段（文档3.4节推荐方式）
+        dispatch(fetchActivityDetail(activityId))
+      } else if (!wasAborted) {
+        const payload = res.payload as string | undefined
+        const errorMsg = payload || '操作失败，请重试'
+        Taro.showToast({ title: errorMsg, icon: 'none' })
+      }
+    } finally {
+      if (promiseRef.current.get(resKey) === promise) {
+        promiseRef.current.delete(resKey)
+      }
+      if (!wasAborted) {
+        const expires = Date.now() + COOLDOWN_MS
+        cooldownRef.current.set(resKey, expires)
+        setTimeout(() => { if (cooldownRef.current.get(resKey) === expires) cooldownRef.current.delete(resKey) }, COOLDOWN_MS + 50)
+      }
     }
   }
 
@@ -135,25 +157,47 @@ const ActivityDetail = () => {
   const handleFollow = async () => {
     const leaderId = currentActivity?.leader?.id
     if (!leaderId || followLoading) return
+    const resKey = `follow:${leaderId}`
+    //+ 操作冷却
+    const cd = cooldownRef.current.get(resKey)
+    if (cd && Date.now() < cd) return
+    //+ Abort 上一个未完成请求
+    const prevPromise = promiseRef.current.get(resKey)
+    if (prevPromise) prevPromise.abort()
+
     setFollowLoading(true)
     const prev = leaderFollowed
     setLeaderFollowed(!prev) // 乐观更新
+    const promise = dispatch(toggleProfileFollow(leaderId))
+    promiseRef.current.set(resKey, promise)
+    let wasAborted = false
     try {
-      const action = await dispatch(toggleProfileFollow(leaderId))
+      const action = await promise
+      wasAborted = (action as any)?.payload === 'aborted'
       const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
       if (ok) {
         const finalIsFollowed = (action as any)?.payload?.isFollowed ?? !prev
         setLeaderFollowed(finalIsFollowed)
         Taro.showToast({ title: finalIsFollowed ? '关注成功' : '已取消关注', icon: 'success' })
-      } else {
+      } else if (!wasAborted) {
         setLeaderFollowed(prev) // 回滚
         Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
       }
     } catch (err) {
-      setLeaderFollowed(prev) // 回滚
-      Taro.showToast({ title: '操作失败', icon: 'none' })
+      if (!wasAborted) {
+        setLeaderFollowed(prev) // 回滚
+        Taro.showToast({ title: '操作失败', icon: 'none' })
+      }
     } finally {
+      if (promiseRef.current.get(resKey) === promise) {
+        promiseRef.current.delete(resKey)
+      }
       setFollowLoading(false)
+      if (!wasAborted) {
+        const expires = Date.now() + COOLDOWN_MS
+        cooldownRef.current.set(resKey, expires)
+        setTimeout(() => { if (cooldownRef.current.get(resKey) === expires) cooldownRef.current.delete(resKey) }, COOLDOWN_MS + 50)
+      }
     }
   }
 
@@ -329,7 +373,7 @@ const ActivityDetail = () => {
         <Button
           className={`action-btn ${buttonConfig.btnClass}`}
           type='default'
-          disabled={buttonConfig.disabled}
+          disabled={buttonConfig.disabled || signupLoading}
           loading={signupLoading}
           onClick={handleButtonClick}
         >

@@ -31,13 +31,13 @@ export function createNoteAPI(params: {
 }
 
 //+ 点赞/取消点赞
-export function toggleNoteLikeAPI(id: string) {
-  return post(`/notes/${id}/like`)
+export function toggleNoteLikeAPI(id: string, signal?: AbortSignal | null) {
+  return post(`/notes/${id}/like`, undefined, undefined, signal)
 }
 
 //+ 收藏/取消收藏
-export function toggleNoteFavoriteAPI(id: string) {
-  return post(`/notes/${id}/favorite`)
+export function toggleNoteFavoriteAPI(id: string, signal?: AbortSignal | null) {
+  return post(`/notes/${id}/favorite`, undefined, undefined, signal)
 }
 
 //+ 获取笔记评论列表

@@ -9,6 +9,7 @@ import Avatar from '@/components/Avatar'
 import { getUserInfo } from '@/store/modules/user'
 import { fetchProfileInfo } from '@/store/modules/profile'
 import type { RootState, AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 //+ 静态兜底数据（store 无数据时使用）
@@ -29,6 +30,7 @@ const menuItems = [
 ]
 
 const Profile = () => {
+  useAuthGuard()
   const dispatch = useDispatch<AppDispatch>()
   //+ profile.info（GET /personal）为主；user.userInfo（登录态）兜底
   const { userInfo, isLoggedIn } = useSelector((state: RootState) => state.user)

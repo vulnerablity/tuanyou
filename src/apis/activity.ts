@@ -43,8 +43,8 @@ export function createActivityAPI(params: {
 }
 
 //+ 报名/取消报名，返回 { isJoined, currentPeople }
-export function toggleActivitySignupAPI(id: string) {
-  return post(`/activities/${id}/signup`)
+export function toggleActivitySignupAPI(id: string, signal?: AbortSignal | null) {
+  return post(`/activities/${id}/signup`, undefined, undefined, signal)
 }
 
 //+ 删除活动（领队）

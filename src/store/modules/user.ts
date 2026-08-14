@@ -21,6 +21,8 @@ export interface UserState {
   isLoggedIn: boolean
   loading: boolean
   error: string | null
+  //+ 关注按钮 loading：按被关注用户 ID 存储；页面组件用此判断按钮置灰
+  followLoadingMap: Record<string, boolean>
 }
 
 //+ 初始状态
@@ -28,7 +30,8 @@ const initialState: UserState = {
   userInfo: null,
   isLoggedIn: false,
   loading: false,
-  error: null
+  error: null,
+  followLoadingMap: {}
   
 }
 
@@ -147,17 +150,19 @@ export const fetchLogout = createAsyncThunk(
 )
 
 //+ Q8：关注/取消关注（详情页作者关注按钮）
+//+ Pending 置 loading 防重复点击，Rejected 清理，Fulfilled 返回 isFollowed 给页面手动 patch（关注状态分散在各目标详情页/列表中）
 export const toggleFollow = createAsyncThunk(
   'user/toggleFollow',
-  async (userId: string, { rejectWithValue }) => {
+  async (userId: string, { rejectWithValue, signal }) => {
     try {
-      const res = await toggleFollowAPI(userId)
+      const res = await toggleFollowAPI(userId, signal)
       if (res.code === 0 || res.code === 200) {
         return { userId, ...(res.data || {}) }
       } else {
         return rejectWithValue(res.message || '操作失败')
       }
     } catch (error: any) {
+      if (error?.name === 'AbortError') return rejectWithValue('aborted')
       return rejectWithValue(error?.message || '网络错误')
     }
   }
@@ -262,6 +267,23 @@ const userSlice = createSlice({
         state.userInfo = null
         state.isLoggedIn = false
         clearToken()
+      })
+      //+ 关注/取消关注：按 userId 粒度的 loading 控制（防狂点，供页面层按钮置灰读取）
+      .addCase(toggleFollow.pending, (state, action) => {
+        const userId = action.meta.arg
+        state.followLoadingMap = { ...state.followLoadingMap, [userId]: true }
+      })
+      .addCase(toggleFollow.fulfilled, (state, action) => {
+        const userId = action.payload.userId
+        const m = { ...state.followLoadingMap }
+        delete m[userId]
+        state.followLoadingMap = m
+      })
+      .addCase(toggleFollow.rejected, (state, action) => {
+        const userId = action.meta.arg
+        const m = { ...state.followLoadingMap }
+        delete m[userId]
+        state.followLoadingMap = m
       })
   }
 })

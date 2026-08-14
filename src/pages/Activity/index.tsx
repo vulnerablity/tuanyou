@@ -7,10 +7,11 @@ import { useDispatch, useSelector } from 'react-redux'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { Loading, Empty } from '@nutui/nutui-react'
 import type { RootState, AppDispatch } from '@/store'
-import { fetchActivities, setCategory, resetActivityList } from '@/store/modules/activity'
+import { fetchActivities, setCategory } from '@/store/modules/activity'
 import SearchBar from '@/components/SearchBar'
 import ActivityCard from '@/components/ActivityCard'
 import type { ActivityListItem } from '@/types'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 //+ 分类列表（与后端枚举一致，'全部' 不传 category 参数）
@@ -31,6 +32,7 @@ const CATEGORY_ICON: Record<string, string> = {
 const PAGE_SIZE = 10
 
 const Activity = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch<AppDispatch>()
   //+ 从 store 读取列表状态
   const {

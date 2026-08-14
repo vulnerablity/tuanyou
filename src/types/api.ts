@@ -101,27 +101,28 @@ export interface CommentDTO {
 export interface CommentListResult extends PageResult<CommentDTO> {}
 
 //+ 发表评论请求参数
+//+ 文档要求 targetId 为 integer，replyToId、replyToMemberId、parentId 均使用 number
 export interface CreateCommentParams {
   targetType: number
-  targetId: number | string
+  targetId: number
   content: string
   //+ 被回复的一级评论 ID；空=一级评论
-  replyToId?: number | string
+  replyToId?: number
   //+ 被回复的用户 ID；回复二级评论时必传
-  replyToMemberId?: number | string
+  replyToMemberId?: number
 }
 
 //+ 评论列表查询参数
 export interface CommentQueryParams {
   targetType: number
-  targetId: number | string
+  targetId: number
   page: number
   size: number
 }
 
 //+ 二级评论列表查询参数
 export interface CommentRepliesQueryParams {
-  parentId: number | string
+  parentId: number
   page: number
   size: number
 }

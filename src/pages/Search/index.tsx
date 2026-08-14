@@ -6,6 +6,7 @@ import { SearchBar as NutSearchBar, Tabs, Empty } from '@nutui/nutui-react'
 import { ArrowLeft } from '@nutui/icons-react'
 import { PostWaterfall } from '@/components/PostWaterfall'
 import ActivityCard from '@/components/ActivityCard'
+import { useAuthGuard } from '@/components/AuthRoute'
 import type { FeedItem, ActivityListItem } from '@/types'
 import {
   getHotKeywordsAPI,
@@ -18,6 +19,7 @@ import './index.less'
 const PAGE_SIZE = 10
 
 const Search = () => {
+  useAuthGuard()
   //+ 搜索关键词
   const [keyword, setKeyword] = useState('')
   //+ 是否已执行搜索（true=显示结果，false=显示热门搜索）
@@ -61,7 +63,7 @@ const Search = () => {
         const { list, page: respPage, total_page } = res.data
         setContentList(append ? [...contentList, ...list] : list)
         setContentPage(respPage)
-        setContentHasMore(respPage < total_page)
+        setContentHasMore(respPage < (total_page ?? respPage))
       }
     } catch (_err) {
       if (!append) {
@@ -81,7 +83,7 @@ const Search = () => {
         const { list, page: respPage, total_page } = res.data
         setActivityList(append ? [...activityList, ...list] : list)
         setActivityPage(respPage)
-        setActivityHasMore(respPage < total_page)
+        setActivityHasMore(respPage < (total_page ?? respPage))
       }
     } catch (_err) {
       if (!append) {

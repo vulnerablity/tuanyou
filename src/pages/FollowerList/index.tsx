@@ -11,6 +11,7 @@ import { fetchFansList } from '@/store/modules/profile'
 import { toggleProfileFollowAPI } from '@/apis/profile'
 import type { FanItem, UserPublic, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 //+ 复用 FollowList 的样式
 import '../FollowList/index.less'
 
@@ -30,6 +31,7 @@ const toUserPublic = (item: FanItem): UserPublic => ({
 })
 
 const FollowerList = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
   //+ 滚动容器 ref：容器级 onScroll 触底加载（与 Home/Activity 一致，useReachBottom 在容器滚动布局下不生效）
   const scrollRef = useRef<HTMLDivElement>(null)

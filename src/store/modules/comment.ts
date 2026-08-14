@@ -193,16 +193,18 @@ export const createComment = createAsyncThunk(
 )
 
 //+ 点赞 / 取消点赞评论
+//+ Pending 乐观翻转，Rejected 回滚，Fulfilled 用后端真实值校准
 export const toggleCommentLike = createAsyncThunk(
   'comment/toggleCommentLike',
-  async (id: string, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue, signal }) => {
     try {
-      const res = await toggleCommentLikeAPI(id)
+      const res = await toggleCommentLikeAPI(id, signal)
       if (res.code === 0 || res.code === 200) {
         return { id, ...(res.data || {}) }
       }
       return rejectWithValue(res.message || '操作失败')
     } catch (error: any) {
+      if (error?.name === 'AbortError') return rejectWithValue('aborted')
       return rejectWithValue(error?.message || '网络错误')
     }
   }
@@ -336,7 +338,32 @@ const commentSlice = createSlice({
         state.sending = false
         state.error = action.payload as string
       })
-      //+ 点赞 / 取消点赞
+      //+ 评论点赞：pending 乐观翻转，rejected 回滚，fulfilled 校准（同时支持一级/二级评论树）
+      .addCase(toggleCommentLike.pending, (state, action) => {
+        const id = action.meta.arg
+        //+ 遍历树找目标，翻转 isLiked 与 likeCount
+        const mutList = [...state.list]
+        for (let i = 0; i < mutList.length; i++) {
+          const c = mutList[i]
+          if (c.id === id) {
+            const isLiked = !c.isLiked
+            mutList[i] = { ...c, isLiked, likeCount: (c.likeCount || 0) + (isLiked ? 1 : -1) }
+            break
+          }
+          if (c.replies?.length) {
+            const ridx = c.replies.findIndex(r => r.id === id)
+            if (ridx >= 0) {
+              const r = c.replies[ridx]
+              const isLiked = !r.isLiked
+              const newReplies = c.replies.slice()
+              newReplies[ridx] = { ...r, isLiked, likeCount: (r.likeCount || 0) + (isLiked ? 1 : -1) }
+              mutList[i] = { ...c, replies: newReplies }
+              break
+            }
+          }
+        }
+        state.list = mutList
+      })
       .addCase(toggleCommentLike.fulfilled, (state, action: PayloadAction<{ id: string; isLiked?: boolean; likeCount?: number }>) => {
         const { id, isLiked, likeCount } = action.payload
         const patch: Partial<Comment> = {}
@@ -345,6 +372,32 @@ const commentSlice = createSlice({
         if (Object.keys(patch).length) {
           state.list = updateCommentInTree(state.list, id, patch)
         }
+      })
+      .addCase(toggleCommentLike.rejected, (state, action) => {
+        if (action.payload === 'aborted') return
+        //+ 回滚：再翻转一次
+        const id = action.meta.arg
+        const mutList = [...state.list]
+        for (let i = 0; i < mutList.length; i++) {
+          const c = mutList[i]
+          if (c.id === id) {
+            const isLiked = !c.isLiked
+            mutList[i] = { ...c, isLiked, likeCount: (c.likeCount || 0) + (isLiked ? 1 : -1) }
+            break
+          }
+          if (c.replies?.length) {
+            const ridx = c.replies.findIndex(r => r.id === id)
+            if (ridx >= 0) {
+              const r = c.replies[ridx]
+              const isLiked = !r.isLiked
+              const newReplies = c.replies.slice()
+              newReplies[ridx] = { ...r, isLiked, likeCount: (r.likeCount || 0) + (isLiked ? 1 : -1) }
+              mutList[i] = { ...c, replies: newReplies }
+              break
+            }
+          }
+        }
+        state.list = mutList
       })
       //+ 删除评论
       .addCase(deleteComment.fulfilled, (state, action: PayloadAction<{ id: string }>) => {

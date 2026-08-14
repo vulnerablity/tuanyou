@@ -11,6 +11,7 @@ import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { RootState, AppDispatch } from '@/store'
 import { fetchFeed, resetFeed, softSyncFeed, updateFeedItem, selectFeed } from '@/store/modules/home'
 import type { FeedItem } from '@/types'
+import { useAuthGuard } from '@/components/AuthRoute'
 //+ 说明：点赞/收藏 API 由 PostWaterfall 组件内部调用（含乐观 UI），
 //+ 此处仅做 store 同步，不重复 dispatch thunk，避免双重请求
 
@@ -21,6 +22,7 @@ const CATEGORIES = ['全部', '徒步', '露营', '骑行', '登山', '跑步', 
 const SORTS = ['推荐', '最新', '最热']
 
 const Home = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
 
   //+ 从home store获取Feed流状态

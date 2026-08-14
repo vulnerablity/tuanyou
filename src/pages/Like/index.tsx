@@ -14,9 +14,11 @@ import { fetchLikedNotes, fetchLikedStrategys } from '@/store/modules/profile'
 import { toFeedList } from '@/utils/postAdapter'
 import type { ProfilePostItem, FeedItem, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 const Like = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
   const [activeTab, setActiveTab] = useState(0)
   //+ 滚动容器 ref：容器级 onScroll 触底加载（与 Home/Activity 一致，useReachBottom 在容器滚动布局下不生效）

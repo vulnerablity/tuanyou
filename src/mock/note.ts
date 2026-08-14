@@ -676,10 +676,15 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
 
   //+ 发布笔记
   'POST /api/v1/notes': (data) => {
+    const authorUser = mockUsers[0]
     const newPost = {
       id: String(postId++),
       type: 'note' as const,
-      author: mockUsers[0],
+      author: {
+        id: authorUser.id,
+        nickname: authorUser.nickname,
+        avatar: authorUser.avatar
+      },
       title: data?.title || '新笔记',
       coverImg: data?.images?.[0] || '',
       images: data?.images || [],
@@ -696,9 +701,10 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
       tags: data?.tags || [],
       status: 1,
       publishTime: randomDate(0),
-      routeInfo: undefined
+      routeInfo: null as any,
+      isOwner: true
     }
-    mockPosts.unshift(newPost)
+    mockPosts.unshift(newPost as any)
     return successResponse(newPost)
   },
 

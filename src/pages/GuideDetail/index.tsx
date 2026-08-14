@@ -9,7 +9,7 @@ import Avatar from '@/components/Avatar'
 import Button from '@/components/Button'
 import { useDispatch, useSelector } from 'react-redux'
 import type { RootState, AppDispatch } from '@/store'
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import Taro from '@tarojs/taro'
 import { Dialog } from '@nutui/nutui-react'
 import { fetchGuideDetail, toggleLike as toggleGuideLike, toggleFavorite as toggleGuideFavorite, patchGuideDetail, deleteGuide } from '@/store/modules/guide'
@@ -21,9 +21,11 @@ import {
   resetComments, findCommentById
 } from '@/store/modules/comment'
 import { COMMENT_TARGET_TYPE } from '@/types'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 const GuideDetail = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
 
   //+ 详情数据（仅攻略）
@@ -34,6 +36,13 @@ const GuideDetail = () => {
   //+ 路由参数：id（攻略ID）
   const router = Taro.getCurrentInstance().router
   const id = router?.params?.id || ''
+
+  //+ 请求锁 + AbortController：key = `${op}:${id}`，值 = RTK dispatch promise
+  //+ promise.abort() 会触发 RTK 内部 signal → 传入 API → request 层 abort 真实请求
+  const promiseRef = useRef<Map<string, { abort: () => void }>>(new Map())
+  //+ 操作冷却：完成后计时，防止接口响应极快时用户连续点击产生串行无效请求
+  const cooldownRef = useRef<Map<string, number>>(new Map())
+  const COOLDOWN_MS = 800
 
   //+ 协调状态：CommentSection 点"回复"时设置 replyTarget → 传入 CommentInput 打开回复模式弹层
   const [replyTarget, setReplyTarget] = useState<CommentInputReplyTarget | null>(null)
@@ -46,6 +55,15 @@ const GuideDetail = () => {
   //+ 删除确认弹窗控制
   const [deleteVisible, setDeleteVisible] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  //+ 离开页面时 abort 所有未完成请求
+  useEffect(() => {
+    return () => {
+      promiseRef.current.forEach(p => p.abort())
+      promiseRef.current.clear()
+      cooldownRef.current.clear()
+    }
+  }, [])
 
   useEffect(() => {
     if (id) {
@@ -63,45 +81,100 @@ const GuideDetail = () => {
 
   //+ 点赞（guide 模块 thunk → 单次 API；fulfilled 后 store 自动同步详情）
   //+ 同时同步 home store 中对应卡片的点赞状态，返回首页时卡片图标和数字一致
+  //+ 性能优化：按资源ID请求锁 + AbortController；pending 阶段 store 已乐观 UI 翻转
   const handleToggleLike = useCallback(async (nextIsLiked: boolean) => {
     if (!guideDetail?.id) return
+    const resKey = `like:${guideDetail.id}`
+    const cd = cooldownRef.current.get(resKey)
+    if (cd && Date.now() < cd) return
+    const prev = promiseRef.current.get(resKey)
+    if (prev) prev.abort()
+
+    const promise = dispatch(toggleGuideLike(guideDetail.id))
+    promiseRef.current.set(resKey, promise)
+    let wasAborted = false
     try {
-      const action = await dispatch(toggleGuideLike(guideDetail.id))
-      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
-      if (ok) {
+      const action = await promise
+      wasAborted = (action as any)?.payload === 'aborted'
+      const status = (action as any)?.meta?.requestStatus
+      if (status === 'fulfilled') {
         const payload = (action as any)?.payload || {}
         const finalLiked = typeof payload.isLiked === 'boolean' ? payload.isLiked : nextIsLiked
         const finalCount = typeof payload.likeCount === 'number' ? payload.likeCount : (guideDetail.likeCount || 0) + (finalLiked ? 1 : -1)
         dispatch(updateFeedItem({ id: guideDetail.id, patch: { isLiked: finalLiked, likeCount: finalCount } }))
+        Taro.showToast({ title: finalLiked ? '点赞成功' : '已取消点赞', icon: 'success' })
+      } else if (!wasAborted) {
+        Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
       }
-      Taro.showToast({ title: nextIsLiked ? '点赞成功' : '已取消点赞', icon: 'success' })
     } catch (err) {
       console.warn('[GuideDetail] 点赞失败:', err)
+    } finally {
+      if (promiseRef.current.get(resKey) === promise) {
+        promiseRef.current.delete(resKey)
+      }
+      if (!wasAborted) {
+        const expires = Date.now() + COOLDOWN_MS
+        cooldownRef.current.set(resKey, expires)
+        setTimeout(() => { if (cooldownRef.current.get(resKey) === expires) cooldownRef.current.delete(resKey) }, COOLDOWN_MS + 50)
+      }
     }
   }, [guideDetail, dispatch])
 
   //+ 收藏（同时同步 home store，保证返回首页后卡片状态一致）
+  //+ 性能优化：按资源ID请求锁 + AbortController；pending 阶段已乐观 UI 翻转
   const handleToggleFavorite = useCallback(async (nextIsFavorited: boolean) => {
     if (!guideDetail?.id) return
+    const resKey = `fav:${guideDetail.id}`
+    const cd = cooldownRef.current.get(resKey)
+    if (cd && Date.now() < cd) return
+    const prev = promiseRef.current.get(resKey)
+    if (prev) prev.abort()
+
+    const promise = dispatch(toggleGuideFavorite(guideDetail.id))
+    promiseRef.current.set(resKey, promise)
+    let wasAborted = false
     try {
-      const action = await dispatch(toggleGuideFavorite(guideDetail.id))
-      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
-      if (ok) {
+      const action = await promise
+      wasAborted = (action as any)?.payload === 'aborted'
+      const status = (action as any)?.meta?.requestStatus
+      if (status === 'fulfilled') {
         const payload = (action as any)?.payload || {}
         const finalFav = typeof payload.isFavorited === 'boolean' ? payload.isFavorited : nextIsFavorited
         dispatch(updateFeedItem({ id: guideDetail.id, patch: { isFavorited: finalFav } }))
+        Taro.showToast({ title: finalFav ? '收藏成功' : '已取消收藏', icon: 'success' })
+      } else if (!wasAborted) {
+        Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
       }
-      Taro.showToast({ title: nextIsFavorited ? '收藏成功' : '已取消收藏', icon: 'success' })
     } catch (err) {
       console.warn('[GuideDetail] 收藏失败:', err)
+    } finally {
+      if (promiseRef.current.get(resKey) === promise) {
+        promiseRef.current.delete(resKey)
+      }
+      if (!wasAborted) {
+        const expires = Date.now() + COOLDOWN_MS
+        cooldownRef.current.set(resKey, expires)
+        setTimeout(() => { if (cooldownRef.current.get(resKey) === expires) cooldownRef.current.delete(resKey) }, COOLDOWN_MS + 50)
+      }
     }
   }, [guideDetail, dispatch])
 
   //+ 关注/取消关注（user 模块 thunk，成功后同步到攻略详情的 isFollowed）
+  //+ 性能优化：按被关注 userId 请求锁 + AbortController
   const handleToggleFollow = useCallback(async (authorUserId: string, nextIsFollowed: boolean) => {
     if (!authorUserId) return
+    const resKey = `follow:${authorUserId}`
+    const cd = cooldownRef.current.get(resKey)
+    if (cd && Date.now() < cd) return
+    const prev = promiseRef.current.get(resKey)
+    if (prev) prev.abort()
+
+    const promise = dispatch(toggleFollow(authorUserId))
+    promiseRef.current.set(resKey, promise)
+    let wasAborted = false
     try {
-      const action = await dispatch(toggleFollow(authorUserId))
+      const action = await promise
+      wasAborted = (action as any)?.payload === 'aborted'
       const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
       if (ok) {
         const payload = (action as any)?.payload || {}
@@ -110,13 +183,29 @@ const GuideDetail = () => {
           : nextIsFollowed
         dispatch(patchGuideDetail({ isFollowed: finalIsFollowed }))
         Taro.showToast({ title: finalIsFollowed ? '关注成功' : '已取消关注', icon: 'success' })
-      } else {
+      } else if (!wasAborted) {
         Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
       }
     } catch (err) {
       console.warn('[GuideDetail] 关注失败:', err)
+    } finally {
+      if (promiseRef.current.get(resKey) === promise) {
+        promiseRef.current.delete(resKey)
+      }
+      if (!wasAborted) {
+        const expires = Date.now() + COOLDOWN_MS
+        cooldownRef.current.set(resKey, expires)
+        setTimeout(() => { if (cooldownRef.current.get(resKey) === expires) cooldownRef.current.delete(resKey) }, COOLDOWN_MS + 50)
+      }
     }
   }, [dispatch])
+
+  //+ 关注按钮 loading：请求中置灰；user.followLoadingMap 也作为兜底（组件外触发时也能感知）
+  const followLoadingMap = useSelector((state: RootState) => state.user.followLoadingMap)
+  const followLoading = useMemo(
+    () => (!!authorId && promiseRef.current.has(`follow:${authorId}`)) || !!followLoadingMap[authorId],
+    [authorId, followLoadingMap]
+  )
 
   //+ 点击关注按钮（本地回调）
   const handleFollowClick = () => {
@@ -141,19 +230,19 @@ const GuideDetail = () => {
   const handleSendComment = useCallback(async (payload: CommentInputSendPayload) => {
     if (!id) return
     //+ API 入参：replyToId 为一级评论 ID（即 parentCommentId）；回复二级评论时需传 replyToMemberId
-    let apiReplyToId: string | undefined
-    let replyToMemberId: string | undefined
+    let apiReplyToId: number | undefined
+    let replyToMemberId: number | undefined
     if (payload.parentCommentId) {
-      apiReplyToId = payload.parentCommentId
+      apiReplyToId = Number(payload.parentCommentId) || undefined
       //+ 回复二级评论时（replyToId 与 parentCommentId 不同）必传被回复用户 ID
       if (payload.replyToId && payload.replyToId !== payload.parentCommentId) {
         const replied = findCommentById(commentList, payload.replyToId)
-        replyToMemberId = replied?.member.id
+        replyToMemberId = replied?.member.id ? Number(replied.member.id) || undefined : undefined
       }
     }
     const action = await dispatch(createComment({
       targetType: COMMENT_TARGET_TYPE.GUIDE,
-      targetId: id,
+      targetId: Number(id) || 0,
       content: payload.content,
       replyToId: apiReplyToId,
       replyToMemberId
@@ -181,10 +270,33 @@ const GuideDetail = () => {
   }, [dispatch])
 
   //+ 评论点赞（失败 throw 触发 CommentSection 回滚）
+  //+ 性能优化：操作冷却 + AbortController 丢弃过期请求
   const handleToggleCommentLike = useCallback(async (commentId: string) => {
-    const action = await dispatch(toggleCommentLike(commentId))
-    if ((action as any)?.meta?.requestStatus !== 'fulfilled') {
-      throw new Error((action as any)?.payload || '操作失败')
+    const resKey = `commentLike:${commentId}`
+    const cd = cooldownRef.current.get(resKey)
+    if (cd && Date.now() < cd) return
+    const prev = promiseRef.current.get(resKey)
+    if (prev) prev.abort()
+
+    const promise = dispatch(toggleCommentLike(commentId))
+    promiseRef.current.set(resKey, promise)
+    let wasAborted = false
+    try {
+      const action = await promise
+      wasAborted = (action as any)?.payload === 'aborted'
+      if ((action as any)?.meta?.requestStatus !== 'fulfilled') {
+        if (wasAborted) return
+        throw new Error((action as any)?.payload || '操作失败')
+      }
+    } finally {
+      if (promiseRef.current.get(resKey) === promise) {
+        promiseRef.current.delete(resKey)
+      }
+      if (!wasAborted) {
+        const expires = Date.now() + COOLDOWN_MS
+        cooldownRef.current.set(resKey, expires)
+        setTimeout(() => { if (cooldownRef.current.get(resKey) === expires) cooldownRef.current.delete(resKey) }, COOLDOWN_MS + 50)
+      }
     }
   }, [dispatch])
 
@@ -280,6 +392,8 @@ const GuideDetail = () => {
                 content={isFollowed ? '已关注' : '+ 关注'}
                 onClick={handleFollowClick}
                 isFollowed={isFollowed}
+                loading={followLoading}
+                disabled={followLoading}
               />
             )}
           </div>

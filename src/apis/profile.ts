@@ -80,6 +80,6 @@ export function getJoinActivityAPI(params: PageParams) {
 //+ 关注/取关（切换式）
 //+ 文档：POST /personal/follow/{followeeId}
 //+ 调用一次翻转一次，返回 { isFollowed: boolean }，前端无需判断当前状态
-export function toggleProfileFollowAPI(followeeId: string) {
-  return post<{ isFollowed: boolean }>(`/personal/follow/${followeeId}`)
+export function toggleProfileFollowAPI(followeeId: string, signal?: AbortSignal | null) {
+  return post<{ isFollowed: boolean }>(`/personal/follow/${followeeId}`, undefined, undefined, signal)
 }

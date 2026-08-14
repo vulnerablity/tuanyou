@@ -125,7 +125,7 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
 
   //+ 用户登录（密码登录 + 验证码登录）
   'POST /api/v1/auth/login': (data) => {
-    const { phone, password, code, type } = data || {}
+    const { phone, password: _password, code, type } = data || {}
     //+ 从会员+领队中查找
     const user = [...mockUsers, ...mockLeaders].find(u => u.phone === phone)
 
@@ -313,7 +313,7 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
     return successResponse({
       memberId: id,
       isFollowed: store[id],
-      followCount: (parseInt(user.followCount || 0) + (store[id] ? 1 : -1))
+      followCount: (Number(user.followCount || 0) + (store[id] ? 1 : -1))
     })
   }
 }

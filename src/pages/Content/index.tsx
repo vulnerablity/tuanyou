@@ -15,9 +15,11 @@ import { fetchProfileNotes, fetchProfileStrategys } from '@/store/modules/profil
 import { toFeedList } from '@/utils/postAdapter'
 import type { ProfilePostItem, FeedItem, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 const Content = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
   //+ Tab激活态 0=笔记 1=攻略
   const [activeTab, setActiveTab] = useState<number>(0)

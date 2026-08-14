@@ -14,6 +14,10 @@ interface RequestConfig {
   data?: any
   header?: any
   timeout?: number
+  //+ AbortController.signal：用于主动丢弃过期请求（性能优化）
+  //+ 真实请求：调用 requestTask.abort() 释放连接
+  //+ Mock 模式：监听 signal.aborted 提前 reject AbortError
+  signal?: AbortSignal | null
 }
 
 //+ 响应数据接口
@@ -35,10 +39,15 @@ const defaultHeader = {
 const isMock = process.env.TARO_APP_USE_MOCK === 'true'
 
 //+ Mock请求处理函数
-function mockRequest<T = any>(url: string, method: Method, data?: any): Promise<ResponseData<T>> {
-  return new Promise((resolve) => {
+function mockRequest<T = any>(url: string, method: Method, data?: any, signal?: AbortSignal | null): Promise<ResponseData<T>> {
+  return new Promise((resolve, reject) => {
+    //+ AbortController：若 signal 已中止，立即 reject
+    if (signal?.aborted) {
+      const err: any = new DOMException('Aborted', 'AbortError')
+      return reject(err)
+    }
     //+ 模拟网络延迟
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       //+ 使用 method+url 作为键查找匹配的Mock路由
       const key = `${method} ${url}`
       console.log('[Mock] 路由查找:', key)
@@ -70,6 +79,18 @@ function mockRequest<T = any>(url: string, method: Method, data?: any): Promise<
         })
       }
     }, 300 + Math.random() * 500)
+
+    //+ 注册 AbortController 监听：aborted 时清 timer 并抛 AbortError
+    if (signal) {
+      const onAbort = () => {
+        clearTimeout(timer)
+        const err: any = new DOMException('Aborted', 'AbortError')
+        reject(err)
+      }
+      signal.addEventListener('abort', onAbort, { once: true })
+      //+ 防止回调引用泄漏：timer fire 后移除 abort 监听
+      setTimeout(() => signal.removeEventListener('abort', onAbort), 3500)
+    }
   })
 }
 
@@ -146,8 +167,14 @@ function responseInterceptor<T = any>(res: any): Promise<ResponseData<T>> {
 //+ 发起请求
 //+ 策略：先走真实后端，失败自动降级到 Mock（除非全局开启 Mock）
 export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>> {
-  const { url, method = 'GET', data, header, timeout = 30000 } = config
+  const { url, method = 'GET', data, header, timeout = 30000, signal } = config
   
+  //+ 已中止直接拒绝（避免进入真实请求 / mockRequest）
+  if (signal?.aborted) {
+    const err: any = new DOMException('Aborted', 'AbortError')
+    return Promise.reject(err)
+  }
+
   const baseURL = process.env.TARO_APP_API_BASE || ''
   const fullUrl = url.startsWith('http') ? url : `${baseURL}${url}`
   
@@ -160,7 +187,7 @@ export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>
   //+ 如果全局开启 Mock（TARO_APP_USE_MOCK=true），直接返回 Mock 数据
   if (isMock) {
     console.log('[Request] 全局 Mock 模式:', method, relativeUrl, data)
-    return mockRequest(relativeUrl, method, data)
+    return mockRequest(relativeUrl, method, data, signal)
   }
   
   //+ 否则先尝试真实请求
@@ -172,9 +199,37 @@ export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>
     timeout
   })
 
-  return Taro.request(requestConfig)
-    .then(responseInterceptor)
+  //+ 真实请求：Taro.request 返回 RequestTask，通过 requestTask.abort() 取消
+  let requestTask: any = null
+  //+ abort 监听绑定（Promise 构造外先绑定）
+  const realRequest = new Promise<ResponseData<T>>((resolve, reject) => {
+    //+ signal 已 abort（极短竞态）
+    if (signal?.aborted) {
+      const err: any = new DOMException('Aborted', 'AbortError')
+      return reject(err)
+    }
+    requestTask = Taro.request(requestConfig as any)
+      .then(responseInterceptor)
+      .then(resolve, reject)
+
+    if (signal) {
+      const onAbort = () => {
+        if (requestTask && typeof requestTask.abort === 'function') {
+          try { requestTask.abort() } catch (_) { /* ignore */ }
+        }
+        const err: any = new DOMException('Aborted', 'AbortError')
+        reject(err)
+      }
+      signal.addEventListener('abort', onAbort, { once: true })
+      //+ 清理监听（超时兜底）
+      setTimeout(() => signal.removeEventListener('abort', onAbort), (timeout || 30000) + 1000)
+    }
+  })
+
+  return realRequest
     .catch((error) => {
+      //+ AbortError：直接抛出，不降级 Mock
+      if (error?.name === 'AbortError') return Promise.reject(error)
       //+ 业务错误（HTTP 200 但 code != 0/200）：responseInterceptor reject 的是响应数据对象 {code, message, data}
       //+ 此类错误不应降级 Mock，直接抛出给业务层处理（如报名满员、不在报名时间等）
       if (error && typeof error.code === 'number') {
@@ -182,28 +237,28 @@ export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>
       }
       //+ 网络/HTTP 错误（非 200 状态码、超时、连接失败等）：降级到 Mock
       console.warn('[Request] 真实接口失败，降级使用 Mock:', method, relativeUrl, error?.message || error)
-      return mockRequest<T>(relativeUrl, method, data)
+      return mockRequest<T>(relativeUrl, method, data, signal)
     })
 }
 
 //+ GET请求
-export function get<T = any>(url: string, data?: any, header?: any): Promise<ResponseData<T>> {
-  return request({ url, method: 'GET', data, header })
+export function get<T = any>(url: string, data?: any, header?: any, signal?: AbortSignal | null): Promise<ResponseData<T>> {
+  return request({ url, method: 'GET', data, header, signal })
 }
 
 //+ POST请求
-export function post<T = any>(url: string, data?: any, header?: any): Promise<ResponseData<T>> {
-  return request({ url, method: 'POST', data, header })
+export function post<T = any>(url: string, data?: any, header?: any, signal?: AbortSignal | null): Promise<ResponseData<T>> {
+  return request({ url, method: 'POST', data, header, signal })
 }
 
 //+ PUT请求
-export function put<T = any>(url: string, data?: any, header?: any): Promise<ResponseData<T>> {
-  return request({ url, method: 'PUT', data, header })
+export function put<T = any>(url: string, data?: any, header?: any, signal?: AbortSignal | null): Promise<ResponseData<T>> {
+  return request({ url, method: 'PUT', data, header, signal })
 }
 
 //+ DELETE请求
-export function del<T = any>(url: string, data?: any, header?: any): Promise<ResponseData<T>> {
-  return request({ url, method: 'DELETE', data, header })
+export function del<T = any>(url: string, data?: any, header?: any, signal?: AbortSignal | null): Promise<ResponseData<T>> {
+  return request({ url, method: 'DELETE', data, header, signal })
 }
 
 // ========== 文件上传封装 ==========
@@ -250,7 +305,7 @@ function buildAuthHeader(extraHeader?: any): Record<string, string> {
 async function parseUploadResponse<T = any>(
   statusCode: number,
   rawData: string,
-  relativeUrl: string
+  _relativeUrl: string
 ): Promise<ResponseData<T>> {
   if (statusCode === 401) {
     Taro.showToast({ title: '登录已过期，请重新登录', icon: 'none' })

@@ -72,7 +72,7 @@ function App({ children }: PropsWithChildren<any>) {
     setShowTabBar(shouldShow)
   }, [])
 
-  // 首次挂载 和 每次 children 变化时 都触发判断
+  // 首次挂载 和 每次 children 变化时都触发判断
   useEffect(() => {
     updateTabBarVisibility()
   }, [children, updateTabBarVisibility])
@@ -97,6 +97,5 @@ function App({ children }: PropsWithChildren<any>) {
 }
 
   
-
 
 export default App
