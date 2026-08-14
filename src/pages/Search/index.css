@@ -81,6 +81,12 @@
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+.g-search-btn.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 .g-search-body {
   flex: 1;

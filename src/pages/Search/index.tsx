@@ -3,7 +3,7 @@
 //+ usePullDownRefresh 下拉刷新 + 容器级 onScroll 距底 50px 自动上拉加载更多
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Taro, { usePullDownRefresh } from '@tarojs/taro'
-import { SearchBar as NutSearchBar, Tabs, Empty } from '@nutui/nutui-react'
+import { SearchBar as NutSearchBar, Tabs, Empty, Toast } from '@nutui/nutui-react'
 import { ArrowLeft } from '@nutui/icons-react'
 import { PostWaterfall } from '@/components/PostWaterfall'
 import ActivityCard from '@/components/ActivityCard'
@@ -13,11 +13,11 @@ import {
   searchContentAPI,
   searchActivitiesAPI
 } from '@/apis/search'
-import { routerNavigateBack } from '@/router'
+import { routerNavigateBack, routerReLaunch } from '@/router'
 import './index.less'
 
 const PAGE_SIZE = 10
-
+const SEARCH_MAX_LENGTH = 50
 const Search = () => {
   //+ 滚动容器 ref：.g-search-body 是统一的滚动容器（flex:1 + overflow-y:auto），外层 100vh 布局下 onScroll 能正确生效
   //+ 用于：下拉刷新后回到顶部 + 距底 50px 自动触发上拉加载更多
@@ -25,6 +25,10 @@ const Search = () => {
 
   //+ 搜索关键词
   const [keyword, setKeyword] = useState('')
+  //+ 统一字数截断：所有修改 keyword 的入口都走这个，确保 <= 50 字
+  const setKeywordSafe = useCallback((v: string) => {
+    setKeyword(v.length > SEARCH_MAX_LENGTH ? v.slice(0, SEARCH_MAX_LENGTH) : v)
+  }, [])
   //+ 是否已执行搜索（true=显示结果，false=显示热门搜索）
   const [searched, setSearched] = useState(false)
   //+ 当前Tab
@@ -99,7 +103,7 @@ const Search = () => {
 
   //+ 重置：切回热门搜索页 + 清空所有搜索结果/分页状态
   const resetToHotSearch = useCallback(() => {
-    setKeyword('')
+    setKeywordSafe('')
     setSearched(false)
     setContentList([])
     setActivityList([])
@@ -113,11 +117,12 @@ const Search = () => {
   const handleSearch = useCallback((kw?: string) => {
     const targetKw = (kw ?? keyword ?? '').trim()
     if (!targetKw) {
-      //+ 空关键词：切回【热门搜索】页
-      resetToHotSearch()
+      //+ 空关键词：提示 + 切回【热门搜索】页（如果在结果页的话）
+      Toast.show({ content: '请输入搜索内容', duration: 1.5 })
+      if (searched) resetToHotSearch()
       return
     }
-    setKeyword(targetKw)
+    setKeywordSafe(targetKw)
     setSearched(true)
     //+ 首次搜索：重置两个Tab的数据，然后搜索当前Tab
     setContentPage(1)
@@ -129,7 +134,7 @@ const Search = () => {
     //+ 两个都搜索，切换Tab时无需再加载
     searchContent(targetKw, 1, false)
     searchActivities(targetKw, 1, false)
-  }, [keyword, resetToHotSearch, searchContent, searchActivities])
+  }, [keyword, resetToHotSearch, searchContent, searchActivities, searched])
 
   //+ 在结果页时：如果把搜索框内容全部删掉，直接切回热门搜索页
   useEffect(() => {
@@ -143,9 +148,14 @@ const Search = () => {
     handleSearch(kw)
   }
 
-  //+ 返回
+  //+ 返回：优先 navigateBack 回上一页；若栈里没有上一页（直接打开 URL 或刷新过），则 reLaunch 回社区首页
   const handleBack = () => {
-    routerNavigateBack()
+    const pages = Taro.getCurrentPages()
+    if (pages && pages.length > 1) {
+      routerNavigateBack()
+    } else {
+      routerReLaunch('HOME')
+    }
   }
 
   //+ 加载更多（内容）
@@ -223,11 +233,18 @@ const Search = () => {
             className="g-search-bar"
             shape="round"
             placeholder="搜索笔记、攻略、活动"
+            maxLength={SEARCH_MAX_LENGTH}
             value={keyword}
-            onChange={(v) => setKeyword(v)}
+            onChange={(v) => setKeywordSafe(v)}
           />
         </div>
-        <div className="g-search-btn" onClick={() => handleSearch()}>
+        <div
+          className={`g-search-btn ${contentLoading || activityLoading ? 'is-disabled' : ''}`}
+          onClick={() => {
+            if (contentLoading || activityLoading) return
+            handleSearch()
+          }}
+        >
           搜索
         </div>
       </div>
