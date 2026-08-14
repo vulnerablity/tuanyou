@@ -503,7 +503,7 @@ const PublishGuide = () => {
         {/* 标签 */}
         <div className="field-section column">
           <div className="section-label">
-            添加标签（{MIN_TAGS}/{MAX_TAGS}）
+            添加标签（{form.tags.length}/{MAX_TAGS}）
           </div>
           <div className="tag-list">
             {tagLoading && tagOptions.length === 0 ? (
