@@ -332,7 +332,9 @@ export function PostWaterfall({
   const renderColumn = (items: FeedItem[]) => {
     return items.map(item => (
       <FeedCard
-        key={item.id}
+        //+ 用 `${type}-${id}` 作 key：搜索结果/首页瀑布流中可能同时出现笔记和攻略，
+        //+ 两者来自不同表、id 各自独立自增，纯 id 会重复导致 React key 警告
+        key={`${item.type}-${item.id}`}
         item={item}
         onToggleLike={onToggleLike}
         actionType={actionType}
