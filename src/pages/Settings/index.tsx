@@ -9,6 +9,7 @@ import { ArrowRight } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import { fetchLogout } from '@/store/modules/user'
 import type { AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 //+ 开关项配置
@@ -33,6 +34,7 @@ const bottomButtons = [
 ]
 
 const Settings = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch<AppDispatch>()
   //+ 开关状态
   const [switchState, setSwitchState] = useState<Record<string, boolean>>(
@@ -93,7 +95,7 @@ const Settings = () => {
       <div className="settings-content">
         {/* 开关模块 */}
         <div className="section">
-          {switchItems.map((item, index) => (
+          {switchItems.map((item) => (
             <div key={item.key} className="section-item">
               <span className={`item-icon iconfont ${item.icon} item-label`}>{item.label}</span>
               <Switch
@@ -107,7 +109,7 @@ const Settings = () => {
 
         {/* 跳转入口模块 */}
         <div className="section">
-          {navigateItems.map((item, index) => (
+          {navigateItems.map((item) => (
             <div
               key={item.key}
               className="section-item clickable"

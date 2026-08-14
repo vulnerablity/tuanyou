@@ -117,14 +117,15 @@ export const fetchActivityDetail = createAsyncThunk(
 //+ 后端返回 { isJoined, currentPeople }，前端据此更新本地状态
 export const fetchToggleSignup = createAsyncThunk(
   'activity/fetchToggleSignup',
-  async (id: string, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue, signal }) => {
     try {
-      const res = await toggleActivitySignupAPI(id)
+      const res = await toggleActivitySignupAPI(id, signal)
       if (res.code === 0 || res.code === 200) {
         return res.data as { isJoined: boolean; currentPeople: number }
       }
       return rejectWithValue(res.message || '操作失败')
     } catch (error: any) {
+      if (error?.name === 'AbortError') return rejectWithValue('aborted')
       return rejectWithValue(error.message || '操作失败')
     }
   }
@@ -198,7 +199,7 @@ const activitySlice = createSlice({
         state.loading = false
         state.loadingMore = false
         state.page = page
-        state.totalPage = total_page
+        state.totalPage = total_page ??1
         //+ 加载更多追加，否则替换
         if (loadMore) {
           state.activityList = [...state.activityList, ...list]
@@ -224,14 +225,15 @@ const activitySlice = createSlice({
         state.detailLoading = false
         state.error = action.payload as string
       })
-      //+ 报名/取消报名
+      //+ 报名/取消报名：关闭乐观更新（报名是高权重操作，等服务器确认后再更新 UI）
+      //+ 仅用 signupLoading 做请求锁 + 组件层 cooldown 防狂点
       .addCase(fetchToggleSignup.pending, (state) => {
         state.signupLoading = true
       })
       .addCase(fetchToggleSignup.fulfilled, (state, action) => {
         state.signupLoading = false
         const { isJoined, currentPeople } = action.payload
-        //+ 更新详情页活动状态
+        //+ 以返回值更新详情页
         if (state.currentActivity) {
           state.currentActivity.joined = isJoined
           state.currentActivity.currentPeople = currentPeople
@@ -243,10 +245,16 @@ const activitySlice = createSlice({
           listItem.currentPeople = currentPeople
         }
       })
-      .addCase(fetchToggleSignup.rejected, (state) => {
+      .addCase(fetchToggleSignup.rejected, (state, action) => {
         state.signupLoading = false
+        if (action.payload === 'aborted') return
+        state.error = action.payload as string
       })
       //+ 删除活动
+      .addCase(deleteActivity.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
       .addCase(deleteActivity.fulfilled, (state, action) => {
         const deletedId = action.payload.id
         //+ 从列表中移除
@@ -255,6 +263,10 @@ const activitySlice = createSlice({
         if (state.currentActivity && state.currentActivity.id === deletedId) {
           state.currentActivity = null
         }
+      })
+      .addCase(deleteActivity.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
       })
   },
 })

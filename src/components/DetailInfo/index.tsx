@@ -13,7 +13,8 @@ export interface DetailInfoActionProps {
   authorId?: string
   /** 点击关注 */
   onToggleFollow?: (authorId: string, nextIsFollowed: boolean) => void
-
+  /** 关注请求中（防止重复点击 + 视觉 loading） */
+  followLoading?: boolean
 }
 
 export interface DetailInfoProps {
@@ -37,6 +38,7 @@ const DetailInfo: React.FC<DetailInfoProps> = ({ detail, actions }) => {
     isSelf = false,
     authorId,
     onToggleFollow,
+    followLoading = false,
     
   } = actions || {}
 
@@ -77,6 +79,8 @@ const DetailInfo: React.FC<DetailInfoProps> = ({ detail, actions }) => {
             content={isFollowed ? '已关注' : '+ 关注'}
             onClick={handleFollowClick}
             isFollowed={isFollowed}
+            loading={followLoading}
+            disabled={followLoading}
           />
         )}
       </div>

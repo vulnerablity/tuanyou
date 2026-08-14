@@ -87,34 +87,39 @@ export const fetchNotes = createAsyncThunk(
 )
 
 //+ 笔记点赞/取消点赞（攻略请使用 guide 模块的 toggleLike）
+//+ Pending 阶段做乐观更新（立即翻转 UI），Rejected 回滚，Fulfilled 用后端真实值校准
 export const toggleLike = createAsyncThunk(
   'note/toggleLike',
-  async (id: string, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue, signal }) => {
     try {
-      const res = await toggleNoteLikeAPI(id)
+      const res = await toggleNoteLikeAPI(id, signal)
       if (res.code === 0 || res.code === 200) {
         return { id, ...(res.data || {}) }
       } else {
         return rejectWithValue(res.message || '操作失败')
       }
     } catch (error: any) {
+      //+ AbortController 主动取消不计入业务错误
+      if (error?.name === 'AbortError') return rejectWithValue('aborted')
       return rejectWithValue(error.message || '网络错误')
     }
   }
 )
 
 //+ 笔记收藏/取消收藏（攻略请使用 guide 模块的 toggleFavorite）
+//+ Pending 阶段做乐观更新，Rejected 回滚，Fulfilled 用后端真实值校准
 export const toggleFavorite = createAsyncThunk(
   'note/toggleFavorite',
-  async (id: string, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue, signal }) => {
     try {
-      const res = await toggleNoteFavoriteAPI(id)
+      const res = await toggleNoteFavoriteAPI(id, signal)
       if (res.code === 0 || res.code === 200) {
         return { id, ...(res.data || {}) }
       } else {
         return rejectWithValue(res.message || '操作失败')
       }
     } catch (error: any) {
+      if (error?.name === 'AbortError') return rejectWithValue('aborted')
       return rejectWithValue(error.message || '网络错误')
     }
   }
@@ -200,35 +205,81 @@ const noteSlice = createSlice({
         state.notes = action.payload.list
         state.total = action.payload.total
         state.page = action.payload.page
-        state.totalPage = action.payload.total_page
-        state.hasMore = action.payload.page < action.payload.total_page
+        state.totalPage = action.payload.total_page || 0
+        state.hasMore = action.payload.page < (action.payload.total_page || 0)
       })
       .addCase(fetchNotes.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
       })
+      //+ 点赞：pending 阶段立即乐观翻转 UI，rejected 回滚，fulfilled 用后端值校准
+      .addCase(toggleLike.pending, (state, action) => {
+        const id = action.meta.arg
+        // 1. 乐观更新列表项
+        const note = state.notes.find(n => n.id === id)
+        if (note) {
+          note.isLiked = !note.isLiked
+          note.likeCount = note.likeCount + (note.isLiked ? 1 : -1)
+        }
+        // 2. 乐观更新详情
+        if (state.noteDetail && state.noteDetail.id === id) {
+          state.noteDetail.isLiked = !state.noteDetail.isLiked
+          state.noteDetail.likeCount = state.noteDetail.likeCount + (state.noteDetail.isLiked ? 1 : -1)
+        }
+      })
       .addCase(toggleLike.fulfilled, (state, action: PayloadAction<{ id: string; isLiked?: boolean; likeCount?: number }>) => {
-        // 1. 更新列表中的项
-        const note = state.notes.find(n => n.id === action.payload.id)
+        const id = action.payload.id
+        // 1. 用后端真实值校准列表（防止乐观值偏差）
+        const note = state.notes.find(n => n.id === id)
         if (note) {
           if (typeof action.payload.isLiked === 'boolean') note.isLiked = action.payload.isLiked
           if (typeof action.payload.likeCount === 'number') note.likeCount = action.payload.likeCount
         }
-        // 2. 更新详情
-        if (state.noteDetail && state.noteDetail.id === action.payload.id) {
+        // 2. 用后端真实值校准详情
+        if (state.noteDetail && state.noteDetail.id === id) {
           if (typeof action.payload.isLiked === 'boolean') state.noteDetail.isLiked = action.payload.isLiked
           if (typeof action.payload.likeCount === 'number') state.noteDetail.likeCount = action.payload.likeCount
         }
       })
+      .addCase(toggleLike.rejected, (state, action) => {
+        if (action.payload === 'aborted') return //+ AbortController 主动丢弃，不做回滚
+        const id = action.meta.arg
+        // 回滚：再翻转一次
+        const note = state.notes.find(n => n.id === id)
+        if (note) {
+          note.isLiked = !note.isLiked
+          note.likeCount = note.likeCount + (note.isLiked ? 1 : -1)
+        }
+        if (state.noteDetail && state.noteDetail.id === id) {
+          state.noteDetail.isLiked = !state.noteDetail.isLiked
+          state.noteDetail.likeCount = state.noteDetail.likeCount + (state.noteDetail.isLiked ? 1 : -1)
+        }
+      })
+      //+ 收藏：pending 乐观翻转，rejected 回滚，fulfilled 校准
+      .addCase(toggleFavorite.pending, (state, action) => {
+        const id = action.meta.arg
+        const note = state.notes.find(n => n.id === id)
+        if (note) note.isFavorited = !note.isFavorited
+        if (state.noteDetail && state.noteDetail.id === id) {
+          state.noteDetail.isFavorited = !state.noteDetail.isFavorited
+        }
+      })
       .addCase(toggleFavorite.fulfilled, (state, action: PayloadAction<{ id: string; isFavorited?: boolean }>) => {
-        // 1. 更新列表中的项
         const note = state.notes.find(n => n.id === action.payload.id)
         if (note && typeof action.payload.isFavorited === 'boolean') {
           note.isFavorited = action.payload.isFavorited
         }
-        // 2. 更新详情
         if (state.noteDetail && state.noteDetail.id === action.payload.id && typeof action.payload.isFavorited === 'boolean') {
           state.noteDetail.isFavorited = action.payload.isFavorited
+        }
+      })
+      .addCase(toggleFavorite.rejected, (state, action) => {
+        if (action.payload === 'aborted') return
+        const id = action.meta.arg
+        const note = state.notes.find(n => n.id === id)
+        if (note) note.isFavorited = !note.isFavorited
+        if (state.noteDetail && state.noteDetail.id === id) {
+          state.noteDetail.isFavorited = !state.noteDetail.isFavorited
         }
       })
       .addCase(fetchNoteDetail.pending, (state) => {

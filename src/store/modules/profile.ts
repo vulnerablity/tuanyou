@@ -130,16 +130,18 @@ export const fetchUpdateProfile = createAsyncThunk(
 //+ 关注/取关（切换式，POST /personal/follow/{followeeId}）
 //+ 统一入口：笔记详情、活动详情、攻略详情、关注/粉丝列表均可调用
 //+ 返回 { userId, isFollowed }，调用方据此同步本地状态
+//+ signal 透传：支持 AbortController 丢弃过期请求
 export const toggleProfileFollow = createAsyncThunk(
   'profile/toggleFollow',
-  async (followeeId: string, { rejectWithValue }) => {
+  async (followeeId: string, { rejectWithValue, signal }) => {
     try {
-      const res = await toggleProfileFollowAPI(followeeId)
+      const res = await toggleProfileFollowAPI(followeeId, signal)
       if (res.code === 0 || res.code === 200) {
         return { userId: followeeId, isFollowed: !!res.data?.isFollowed }
       }
       return rejectWithValue(res.message || '操作失败')
     } catch (error: any) {
+      if (error?.name === 'AbortError') return rejectWithValue('aborted')
       return rejectWithValue(error?.message || '网络错误')
     }
   }
@@ -227,8 +229,8 @@ function applyListState<T>(
   state.list = page === 1 ? payload.list : [...state.list, ...payload.list]
   state.page = payload.page
   state.total = payload.total
-  state.totalPage = payload.total_page
-  state.hasMore = payload.page < payload.total_page
+  state.totalPage = payload.total_page ?? payload.page
+  state.hasMore = payload.page < (payload.total_page ?? payload.page)
 }
 
 //+ 个人中心Slice

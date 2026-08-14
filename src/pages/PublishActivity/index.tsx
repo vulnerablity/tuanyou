@@ -18,6 +18,7 @@ import {
 } from '@/store/modules/upload'
 import { CATEGORY_MAP } from '@/types'
 import type { RootState, AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 //+ 活动类型选项：复用 types/api.ts 的 CATEGORY_MAP 值，避免双份硬编码导致漂移
@@ -76,6 +77,7 @@ const formatPickerDate = (values: (string | number)[]): string => {
 }
 
 const PublishActivity = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
   //+ 从 upload store 读取封面图上传状态与结果
   const { imageStatus, lastImageUrl, error: uploadError } = useSelector(

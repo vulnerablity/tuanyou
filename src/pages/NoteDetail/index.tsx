@@ -8,44 +8,70 @@ import CommentInput, { type CommentInputReplyTarget, type CommentInputSendPayloa
 import CommentSection from '@/components/CommentSection'
 import { useDispatch, useSelector } from 'react-redux'
 import type { RootState, AppDispatch } from '@/store'
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import Taro from '@tarojs/taro'
 import { Dialog } from '@nutui/nutui-react'
 import { fetchNoteDetail, toggleLike as toggleNoteLike, toggleFavorite as toggleNoteFavorite, patchNoteDetail, deleteNote } from '@/store/modules/note'
 import { toggleProfileFollow } from '@/store/modules/profile'
 import { updateFeedItem } from '@/store/modules/home'
-import type { Comment } from '@/types/entity'
+import {
+  fetchComments, loadMoreComments, createComment,
+  toggleCommentLike, deleteComment, fetchReplies,
+  resetComments, findCommentById
+} from '@/store/modules/comment'
+import { COMMENT_TARGET_TYPE } from '@/types'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 const NoteDetail = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
 
   //+ 详情数据（仅笔记）
   const noteDetail = useSelector((state: RootState) => state.note.noteDetail)
   //+ 当前用户ID（用于判断 isSelf，本人不显示关注按钮）
   const userId = useSelector((state: RootState) => state.user.userInfo?.id || '')
-  const userAvatar = useSelector((state: RootState) => state.user.userInfo?.avatar || '')
-  const userNickname = useSelector((state: RootState) => state.user.userInfo?.nickname || '我')
 
   //+ 路由参数：id（笔记ID）
   const router = Taro.getCurrentInstance().router
   const id = router?.params?.id || ''
 
+  //+ 请求锁 + AbortController：key = `${op}:${id}`，值 = RTK dispatch promise
+  //+ promise.abort() 会触发 RTK 内部 signal → 传入 API → request 层 abort 真实请求
+  //+ 作用1：狂点时拦截（has(key) 即请求中）；作用2：快速交替点击时 abort 上一个过期请求
+  const promiseRef = useRef<Map<string, { abort: () => void }>>(new Map())
+  //+ 操作冷却：完成后计时，防止接口响应极快时用户连续点击产生串行无效请求
+  const cooldownRef = useRef<Map<string, number>>(new Map())
+  const COOLDOWN_MS = 800
+
   //+ 协调状态：CommentSection 点"回复"时设置 replyTarget → 传入 CommentInput 打开回复模式弹层
   const [replyTarget, setReplyTarget] = useState<CommentInputReplyTarget | null>(null)
 
-  //+ 协调状态：CommentInput 发送成功后，构造新的 Comment 对象，通过 prop 塞给 CommentSection 自动追加
-  //+ 用 id+时间戳 保证每次变化不同（id 相同时 externalNewComment useEffect 内的 ref 会去重）
-  const [newComment, setNewComment] = useState<Comment | null>(null)
+  //+ 评论列表（来自 comment store，作为 CommentSection 的单一数据源）
+  const commentList = useSelector((state: RootState) => state.comment.list)
+  const commentHasMore = useSelector((state: RootState) => state.comment.hasMore)
+  const commentLoadingMore = useSelector((state: RootState) => state.comment.loadingMore)
 
   //+ 删除确认弹窗控制
   const [deleteVisible, setDeleteVisible] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
+  //+ 离开页面时 abort 所有未完成请求
+  useEffect(() => {
+    return () => {
+      promiseRef.current.forEach(p => p.abort())
+      promiseRef.current.clear()
+      cooldownRef.current.clear()
+    }
+  }, [])
+
   useEffect(() => {
 
     if (id) {
       dispatch(fetchNoteDetail({ id, type: 'note' }))
+      //+ 评论列表：切换目标时重置后拉取首页（targetType=1 笔记）
+      dispatch(resetComments())
+      dispatch(fetchComments({ targetType: COMMENT_TARGET_TYPE.NOTE, targetId: id }))
     }
   }, [dispatch, id])
 
@@ -55,45 +81,102 @@ const NoteDetail = () => {
 
   //+ Q8：点赞（note 模块 thunk → 单次 API；fulfilled 后 store 自动同步详情）
   //+ 问题1修复：同时同步 home store 中对应卡片的点赞状态，返回首页时卡片图标和数字一致
+  //+ 性能优化：按资源ID请求锁 + AbortController 丢弃过期请求；store pending 阶段已做乐观 UI 翻转
   const handleToggleLike = useCallback(async (nextIsLiked: boolean) => {
     if (!noteDetail?.id) return
+    const resKey = `like:${noteDetail.id}`
+    //+ 操作冷却：接口响应极快时防串行狂点
+    const cd = cooldownRef.current.get(resKey)
+    if (cd && Date.now() < cd) return
+    //+ Abort 上一个同资源请求（RTK promise.abort() → signal → API abort）
+    const prev = promiseRef.current.get(resKey)
+    if (prev) prev.abort()
+
+    const promise = dispatch(toggleNoteLike(noteDetail.id))
+    promiseRef.current.set(resKey, promise)
+    let wasAborted = false
     try {
-      const action = await dispatch(toggleNoteLike(noteDetail.id))
-      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
-      if (ok) {
+      const action = await promise
+      wasAborted = (action as any)?.payload === 'aborted'
+      const status = (action as any)?.meta?.requestStatus
+      if (status === 'fulfilled') {
         const payload = (action as any)?.payload || {}
         const finalLiked = typeof payload.isLiked === 'boolean' ? payload.isLiked : nextIsLiked
         const finalCount = typeof payload.likeCount === 'number' ? payload.likeCount : (noteDetail.likeCount || 0) + (finalLiked ? 1 : -1)
         dispatch(updateFeedItem({ id: noteDetail.id, patch: { isLiked: finalLiked, likeCount: finalCount } }))
+        Taro.showToast({ title: finalLiked ? '点赞成功' : '已取消点赞', icon: 'success' })
+      } else if (!wasAborted) {
+        Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
       }
-      Taro.showToast({ title: nextIsLiked ? '点赞成功' : '已取消点赞', icon: 'success' })
     } catch (err) {
       console.warn('[NoteDetail] 点赞失败:', err)
+    } finally {
+      if (promiseRef.current.get(resKey) === promise) {
+        promiseRef.current.delete(resKey)
+      }
+      if (!wasAborted) {
+        const expires = Date.now() + COOLDOWN_MS
+        cooldownRef.current.set(resKey, expires)
+        setTimeout(() => { if (cooldownRef.current.get(resKey) === expires) cooldownRef.current.delete(resKey) }, COOLDOWN_MS + 50)
+      }
     }
   }, [noteDetail, dispatch])
 
   //+ Q8：收藏（同时同步 home store，保证返回首页后卡片状态一致）
+  //+ 性能优化：按资源ID请求锁 + AbortController；pending 阶段已乐观 UI 翻转
   const handleToggleFavorite = useCallback(async (nextIsFavorited: boolean) => {
     if (!noteDetail?.id) return
+    const resKey = `fav:${noteDetail.id}`
+    const cd = cooldownRef.current.get(resKey)
+    if (cd && Date.now() < cd) return
+    const prev = promiseRef.current.get(resKey)
+    if (prev) prev.abort()
+
+    const promise = dispatch(toggleNoteFavorite(noteDetail.id))
+    promiseRef.current.set(resKey, promise)
+    let wasAborted = false
     try {
-      const action = await dispatch(toggleNoteFavorite(noteDetail.id))
-      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
-      if (ok) {
+      const action = await promise
+      wasAborted = (action as any)?.payload === 'aborted'
+      const status = (action as any)?.meta?.requestStatus
+      if (status === 'fulfilled') {
         const payload = (action as any)?.payload || {}
         const finalFav = typeof payload.isFavorited === 'boolean' ? payload.isFavorited : nextIsFavorited
         dispatch(updateFeedItem({ id: noteDetail.id, patch: { isFavorited: finalFav } }))
+        Taro.showToast({ title: finalFav ? '收藏成功' : '已取消收藏', icon: 'success' })
+      } else if (!wasAborted) {
+        Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
       }
-      Taro.showToast({ title: nextIsFavorited ? '收藏成功' : '已取消收藏', icon: 'success' })
     } catch (err) {
       console.warn('[NoteDetail] 收藏失败:', err)
+    } finally {
+      if (promiseRef.current.get(resKey) === promise) {
+        promiseRef.current.delete(resKey)
+      }
+      if (!wasAborted) {
+        const expires = Date.now() + COOLDOWN_MS
+        cooldownRef.current.set(resKey, expires)
+        setTimeout(() => { if (cooldownRef.current.get(resKey) === expires) cooldownRef.current.delete(resKey) }, COOLDOWN_MS + 50)
+      }
     }
   }, [noteDetail, dispatch])
 
   //+ Q8：关注/取消关注（统一走 profile/toggleProfileFollow，POST /personal/follow/{id}）
+  //+ 性能优化：按被关注 userId 请求锁 + AbortController；关注/报名高权重交互先禁用按钮（详情页传 CommentInput actions）
   const handleToggleFollow = useCallback(async (authorUserId: string, nextIsFollowed: boolean) => {
     if (!authorUserId) return
+    const resKey = `follow:${authorUserId}`
+    const cd = cooldownRef.current.get(resKey)
+    if (cd && Date.now() < cd) return
+    const prev = promiseRef.current.get(resKey)
+    if (prev) prev.abort()
+
+    const promise = dispatch(toggleProfileFollow(authorUserId))
+    promiseRef.current.set(resKey, promise)
+    let wasAborted = false
     try {
-      const action = await dispatch(toggleProfileFollow(authorUserId))
+      const action = await promise
+      wasAborted = (action as any)?.payload === 'aborted'
       const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
       if (ok) {
         const payload = (action as any)?.payload || {}
@@ -102,13 +185,25 @@ const NoteDetail = () => {
           : nextIsFollowed
         dispatch(patchNoteDetail({ isFollowed: finalIsFollowed }))
         Taro.showToast({ title: finalIsFollowed ? '关注成功' : '已取消关注', icon: 'success' })
-      } else {
+      } else if (!wasAborted) {
         Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
       }
     } catch (err) {
       console.warn('[NoteDetail] 关注失败:', err)
+    } finally {
+      if (promiseRef.current.get(resKey) === promise) {
+        promiseRef.current.delete(resKey)
+      }
+      if (!wasAborted) {
+        const expires = Date.now() + COOLDOWN_MS
+        cooldownRef.current.set(resKey, expires)
+        setTimeout(() => { if (cooldownRef.current.get(resKey) === expires) cooldownRef.current.delete(resKey) }, COOLDOWN_MS + 50)
+      }
     }
   }, [dispatch])
+
+  //+ 关注按钮 loading：请求中（promiseRef.has）即置灰禁用
+  const followLoading = useMemo(() => !!authorId && promiseRef.current.has(`follow:${authorId}`), [authorId])
 
   // ---------- 协调：评论系统回复 / 发送链路 ----------
 
@@ -122,30 +217,88 @@ const NoteDetail = () => {
     setReplyTarget(null)
   }, [])
 
-  //+ CommentInput 点击"发送"（一级或回复模式）→ 构造新的 Comment 对象塞给 CommentSection
-  //+ 后续对接后端：在此调用对应 thunk，成功后再 setNewComment
-  const handleSendComment = useCallback((payload: CommentInputSendPayload) => {
-    const tempId = `local-${Date.now()}`
-    const newOne: Comment = {
-      id: tempId,
-      member: {
-        id: userId || 'me',
-        nickname: userNickname,
-        avatar: userAvatar
-      },
-      content: payload.content,
-      likeCount: 0,
-      isLiked: false,
-      replyToId: payload.replyToId,
-      replyToName: payload.replyToName,
-      createdAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      canDelete: true,
-      replies: []
+  //+ CommentInput 点击"发送"（一级或回复模式）→ 调用 createComment thunk，成功后 store 自动追加并同步到列表
+  //+ 失败时 throw，触发 CommentInput 的"评论失败"提示并保留输入内容
+  const handleSendComment = useCallback(async (payload: CommentInputSendPayload) => {
+    if (!id) return
+    //+ API 入参：replyToId 为一级评论 ID（即 parentCommentId）；回复二级评论时需传 replyToMemberId
+    let apiReplyToId: number | undefined
+    let replyToMemberId: number | undefined
+    if (payload.parentCommentId) {
+      apiReplyToId = Number(payload.parentCommentId) || undefined
+      //+ 回复二级评论时（replyToId 与 parentCommentId 不同）必传被回复用户 ID
+      if (payload.replyToId && payload.replyToId !== payload.parentCommentId) {
+        const replied = findCommentById(commentList, payload.replyToId)
+        replyToMemberId = replied?.member.id ? Number(replied.member.id) || undefined : undefined
+      }
     }
-    setNewComment(newOne)
-    //+ 发送后切回一级模式
-    setReplyTarget(null)
-  }, [userId, userAvatar, userNickname])
+    const action = await dispatch(createComment({
+      targetType: COMMENT_TARGET_TYPE.NOTE,
+      targetId: Number(id) || 0,
+      content: payload.content,
+      replyToId: apiReplyToId,
+      replyToMemberId
+    }))
+    if ((action as any)?.meta?.requestStatus === 'fulfilled') {
+      //+ store 已追加新评论 → initData 同步展示；切回一级模式
+      setReplyTarget(null)
+    } else {
+      throw new Error((action as any)?.payload || '发表评论失败')
+    }
+  }, [dispatch, id, commentList])
+
+  //+ 加载更多一级评论（store 追加 → initData 同步）
+  const handleLoadMoreComments = useCallback(async () => {
+    await dispatch(loadMoreComments())
+  }, [dispatch])
+
+  //+ 加载更多二级评论（store 追加到对应一级评论 → initData 同步）
+  const handleLoadMoreReplies = useCallback(async (parentId: string): Promise<{ hasMore: boolean }> => {
+    const action = await dispatch(fetchReplies({ parentId }))
+    if ((action as any)?.meta?.requestStatus === 'fulfilled') {
+      return { hasMore: !!(action as any)?.payload?.hasMore }
+    }
+    throw new Error((action as any)?.payload || '加载回复失败')
+  }, [dispatch])
+
+  //+ 评论点赞（失败 throw 触发 CommentSection 回滚）
+  //+ 性能优化：操作冷却 + AbortController 丢弃过期请求
+  const handleToggleCommentLike = useCallback(async (commentId: string) => {
+    const resKey = `commentLike:${commentId}`
+    const cd = cooldownRef.current.get(resKey)
+    if (cd && Date.now() < cd) return
+    const prev = promiseRef.current.get(resKey)
+    if (prev) prev.abort()
+
+    const promise = dispatch(toggleCommentLike(commentId))
+    promiseRef.current.set(resKey, promise)
+    let wasAborted = false
+    try {
+      const action = await promise
+      wasAborted = (action as any)?.payload === 'aborted'
+      if ((action as any)?.meta?.requestStatus !== 'fulfilled') {
+        if (wasAborted) return
+        throw new Error((action as any)?.payload || '操作失败')
+      }
+    } finally {
+      if (promiseRef.current.get(resKey) === promise) {
+        promiseRef.current.delete(resKey)
+      }
+      if (!wasAborted) {
+        const expires = Date.now() + COOLDOWN_MS
+        cooldownRef.current.set(resKey, expires)
+        setTimeout(() => { if (cooldownRef.current.get(resKey) === expires) cooldownRef.current.delete(resKey) }, COOLDOWN_MS + 50)
+      }
+    }
+  }, [dispatch])
+
+  //+ 删除评论（失败 throw 触发 CommentSection 提示）
+  const handleDeleteComment = useCallback(async (commentId: string) => {
+    const action = await dispatch(deleteComment(commentId))
+    if ((action as any)?.meta?.requestStatus !== 'fulfilled') {
+      throw new Error((action as any)?.payload || '删除失败')
+    }
+  }, [dispatch])
 
   //+ 头部 more 按钮点击：弹出 ActionSheet 选择删除
   const handleMoreClick = useCallback(() => {
@@ -154,6 +307,12 @@ const NoteDetail = () => {
       success: (res) => {
         if (res.tapIndex === 0) {
           setDeleteVisible(true)
+        }
+      },
+      //+ 用户点击取消时 Taro 会触发 fail，静默处理避免 Uncaught (in promise)
+      fail: (err) => {
+        if (!/cancel/i.test(err.errMsg || '')) {
+          console.warn('[NoteDetail] showActionSheet fail:', err)
         }
       }
     })
@@ -213,16 +372,23 @@ const NoteDetail = () => {
           isSelf,
           authorId,
           onToggleFollow: handleToggleFollow,
+          followLoading,
         }}
       />
 
-      {/* 评论列表（两级评论展示 + 删除弹层 + 点击回复触发 onRequestReply） */}
-      {/* 攻略详情后续接入时，只需传 contentType='guide' 即可复用 */}
+      {/* 评论列表（两级评论展示 + 删除弹层 + 分页加载更多 + 点击回复触发 onRequestReply） */}
+      {/* 攻略详情接入时传 contentType='guide' 即可复用 */}
       <CommentSection
         contentId={id}
         contentType='note'
+        initData={commentList}
+        hasMoreComments={commentHasMore}
+        loadingMore={commentLoadingMore}
+        onLoadMoreComments={handleLoadMoreComments}
+        onLoadMoreReplies={handleLoadMoreReplies}
         onRequestReply={handleRequestReply}
-        externalNewComment={newComment}
+        onToggleCommentLike={handleToggleCommentLike}
+        onDeleteComment={handleDeleteComment}
       />
 
       {/* 底部互动栏：点赞/收藏/转发 + Popup 输入一级评论或回复模式下"回复 @XXX" */}
@@ -249,7 +415,7 @@ const NoteDetail = () => {
         content='删除后无法恢复，确定删除该笔记吗？'
         confirmText='删除'
         cancelText='取消'
-        confirmLoading={deleteLoading}
+        // confirmLoading={deleteLoading}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteVisible(false)}
       />

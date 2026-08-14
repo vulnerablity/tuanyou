@@ -1,9 +1,9 @@
-//+ 评论区组件（仅评论列表 + 删除弹层）
-//+ 支持：两级评论展示、评论点赞、展开/收起（默认2条）、长按删除
+//+ 评论区组件（评论列表 + 删除弹层 + 分页加载更多）
+//+ 支持：两级评论展示、评论点赞、展开/收起、长按删除、一级评论分页、二级评论加载更多
+//+ 数据源：store 作为单一数据源，通过 initData 同步展示；点赞/删除由组件乐观更新，失败回滚
 //+ 点击"回复"按钮 → 通过 onRequestReply 回调通知父组件，父组件再调用 CommentInput（Popup 弹层）完成输入+提交
-//+ 发送结果：父组件调用 CommentInput.onSendComment 成功后，构造 Comment 对象传入 externalNewComment，组件内部自动追加
 //+ 复用于笔记详情 (NoteDetail) 和攻略详情 (GuideDetail)，通过 props 传入内容类型与事件回调
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import Taro, { useDidHide } from '@tarojs/taro'
 import { View } from '@tarojs/components'
 import { Button } from '@nutui/nutui-react'
@@ -15,26 +15,31 @@ import './index.less'
 // ==================== 对外 Props ====================
 
 //+ 评论区对外参数，笔记/攻略详情通用
-//+ contentId / contentType：后续对接后端创建评论/加载评论列表时使用
+//+ contentId / contentType：标识当前内容（笔记/攻略），供日志/埋点使用
 export interface CommentSectionProps {
-  /** 内容ID，后续对接后端时用 */
+  /** 内容ID */
   contentId: string
   /** 内容类型：note / guide，攻略详情直接传 'guide' 即可复用 */
   contentType: 'note' | 'guide'
-  /** 初始数据，静态页时可传；不传则使用组件内置静态 Mock */
+  /** 评论列表（来自 store，组件同步展示；变化时整体替换） */
   initData?: Comment[]
+  /** 是否还有更多一级评论可加载（控制底部"加载更多评论"按钮显隐） */
+  hasMoreComments?: boolean
+  /** 是否正在加载更多一级评论（控制按钮 loading 文案） */
+  loadingMore?: boolean
+  /** 加载更多一级评论；失败时 throw 触发提示 */
+  onLoadMoreComments?: () => Promise<void> | void
+  /** 加载某一级评论下的更多二级评论；返回是否还有更多，失败时 throw */
+  onLoadMoreReplies?: (parentId: string) => Promise<{ hasMore: boolean }>
   /** 点击"回复"按钮时触发：父组件应收到后将 replyTarget 传入 CommentInput.replyTarget */
   onRequestReply?: (target: {
     parentCommentId: string | null
     replyToId: string | null
     replyToName: string | null
   }) => void
-  /** 父组件通过 CommentInput 发送成功后，把新构造的 Comment 通过该 prop 传入，组件内部会自动追加
-   *  一级评论：追加到列表头部；二级评论：追加到对应 parentCommentId 的 replies 尾部
-   */
-  externalNewComment?: Comment | null
-  /** 单条评论点赞回调 */
+  /** 单条评论点赞回调（失败 throw 触发回滚） */
   onToggleCommentLike?: (commentId: string, nextLiked: boolean) => PromiseLike<void> | void
+  /** 删除评论回调（失败 throw 触发回滚） */
   onDeleteComment?: (commentId: string) => PromiseLike<void> | void
 }
 
@@ -73,119 +78,6 @@ function formatCommentTime(raw: string | number): string {
   return year === currentYear ? `${month}-${day}` : `${year}-${month}-${day}`
 }
 
-// ==================== 本地静态 Mock 数据（文档要求）====================
-//+ 文档要求"局部静态数据填充"，此处封装成函数便于替换为后端拉取
-function getStaticMock(): Comment[] {
-  const _now = Date.now()
-  const minutes = (m: number) => new Date(_now - m * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19)
-  return [
-    {
-      id: 'c1',
-      member: { id: 'u1', nickname: '跑步酱', avatar: 'https://picsum.photos/seed/u1/80/80' },
-      content: '千岛湖环线太美了！请问租车方便吗？',
-      likeCount: 12,
-      isLiked: false,
-      replyToId: null,
-      replyToName: null,
-      createdAt: minutes(40),
-      canDelete: false,
-      replies: [
-        {
-          id: 'c1-1',
-          member: { id: 'u2', nickname: '山林旅人', avatar: 'https://picsum.photos/seed/u2/80/80' },
-          content: '千岛湖镇上租车很方便，提前在平台预订就好',
-          likeCount: 3,
-          isLiked: false,
-          replyToId: 'c1',
-          replyToName: null,
-          createdAt: minutes(38),
-          canDelete: true
-        },
-        {
-          id: 'c1-2',
-          member: { id: 'u3', nickname: '露营达人Lisa', avatar: 'https://picsum.photos/seed/u3/80/80' },
-          content: '推荐电动车，骑起来不累，环湖公路有专门慢行道',
-          likeCount: 1,
-          isLiked: false,
-          replyToId: 'c1',
-          replyToName: null,
-          createdAt: minutes(35),
-          canDelete: false
-        },
-        {
-          id: 'c1-3',
-          member: { id: 'u4', nickname: '骑行发烧友', avatar: 'https://picsum.photos/seed/u4/80/80' },
-          content: '请问电动车续航够吗？一天能骑完吗？',
-          likeCount: 0,
-          isLiked: false,
-          replyToId: 'c1',
-          replyToName: '露营达人Lisa',
-          createdAt: minutes(30),
-          canDelete: false
-        },
-        {
-          id: 'c1-4',
-          member: { id: 'u5', nickname: '跑步达人', avatar: 'https://picsum.photos/seed/u5/80/80' },
-          content: '如果体力可以的话，公路车更自由，一天骑80公里没问题',
-          likeCount: 2,
-          isLiked: false,
-          replyToId: 'c1',
-          replyToName: null,
-          createdAt: minutes(25),
-          canDelete: false
-        },
-        {
-          id: 'c1-5',
-          member: { id: 'u6', nickname: '自驾游侠', avatar: 'https://picsum.photos/seed/u6/80/80' },
-          content: '上周刚去，我租的是SUV，带着折叠自行车，开到哪里骑到哪里',
-          likeCount: 5,
-          isLiked: true,
-          replyToId: 'c1',
-          replyToName: null,
-          createdAt: minutes(10),
-          canDelete: false
-        }
-      ]
-    },
-    {
-      id: 'c2',
-      member: { id: 'u7', nickname: '攀岩玩家', avatar: 'https://picsum.photos/seed/u7/80/80' },
-      content: '图片拍得真好，是用什么相机拍的？',
-      likeCount: 2,
-      isLiked: false,
-      replyToId: null,
-      replyToName: null,
-      createdAt: minutes(5),
-      canDelete: true,
-      replies: [
-        {
-          id: 'c2-1',
-          member: { id: 'u8', nickname: '溯溪探索者', avatar: 'https://picsum.photos/seed/u8/80/80' },
-          content: '同问，色彩真的很通透',
-          likeCount: 0,
-          isLiked: false,
-          replyToId: 'c2',
-          replyToName: null,
-          createdAt: minutes(3),
-          canDelete: false
-        }
-      ]
-    },
-    {
-      id: 'c3',
-      member: { id: 'u9', nickname: '登山爱好者', avatar: 'https://picsum.photos/seed/u9/80/80' },
-      content: '求一下路线图和住宿推荐！打算这个周末去',
-      likeCount: 4,
-      isLiked: true,
-      replyToId: null,
-      replyToName: null,
-      createdAt: minutes(2),
-      canDelete: false,
-      replies: []
-    }
-  ]
-}
-
 // ==================== 主组件 ====================
 
 const DEFAULT_VISIBLE_REPLIES = 2
@@ -193,21 +85,30 @@ const DEFAULT_VISIBLE_REPLIES = 2
 const CommentSection = (props: CommentSectionProps) => {
   const {
     initData,
+    hasMoreComments,
+    loadingMore,
+    onLoadMoreComments,
+    onLoadMoreReplies,
     onRequestReply,
-    externalNewComment,
     onToggleCommentLike,
     onDeleteComment,
   } = props
 
   // ---------- 状态 ----------
-  //+ 评论列表：一级评论 + replies 数组（二级）
-  const [comments, setComments] = useState<Comment[]>(initData?.length ? initData : getStaticMock())
+  //+ 评论列表：从 store（initData）同步，store 为单一数据源
+  const [comments, setComments] = useState<Comment[]>(initData ?? [])
 
-  //+ 记录 externalNewComment 上次已消费的 id，避免 useEffect 重复追加
-  const lastAppendIdRef = useRef<string | null>(null)
+  //+ initData 变化时同步（fetch/loadMore/create/like/delete 后 store 更新 → 同步展示）
+  useEffect(() => {
+    setComments(initData ?? [])
+  }, [initData])
 
-  //+ 一级评论的"展开/收起"状态：key=parentId，true=展开全部
+  //+ 一级评论的"展开/收起"状态：key=parentId，true=展开全部已加载回复
   const [expandMap, setExpandMap] = useState<Record<string, boolean>>({})
+
+  //+ 二级评论加载更多状态：是否加载中 / 是否还有更多（按 parentId 隔离）
+  const [repliesLoadingMap, setRepliesLoadingMap] = useState<Record<string, boolean>>({})
+  const [repliesHasMoreMap, setRepliesHasMoreMap] = useState<Record<string, boolean>>({})
 
   //+ 删除确认弹层：长按评论后显示
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -217,51 +118,27 @@ const CommentSection = (props: CommentSectionProps) => {
   } | null>(null)
 
   // ---------- 派生 ----------
-  //+ 总评论数：一级 + 所有二级
+  //+ 已加载评论总数：一级 + 所有已加载二级（用于标题展示）
   const totalCount = useMemo(
     () => comments.reduce((sum, c) => sum + 1 + (c.replies?.length || 0), 0),
     [comments]
   )
 
-  // ---------- 副作用：接收父组件传入的新评论并追加 ----------
-  useEffect(() => {
-    if (!externalNewComment) return
-    if (externalNewComment.id === lastAppendIdRef.current) return //+ 防止重复消费同一个
-    lastAppendIdRef.current = externalNewComment.id
-
-    setComments(prev => {
-      if (!externalNewComment.replyToId) {
-        //+ 新的一级评论 → 放最前
-        return [externalNewComment, ...prev]
-      }
-      //+ 回复二级/一级 → 追加到对应父评论 replies 尾部
-      //+ parentCommentId 的判定：通过 comment.replyToId 对应项拿到一级 ID
-      //+ 策略：replyToId 对应评论若是一级 → parentId = replyToId；若是二级 → 找到其所在一级
-      let parentId: string | null = null
-      for (const p of prev) {
-        if (p.id === externalNewComment.replyToId) { parentId = p.id; break }
-        if (p.replies?.some(r => r.id === externalNewComment.replyToId)) { parentId = p.id; break }
-      }
-      if (!parentId) return [externalNewComment, ...prev] //+ 兜底作为一级
-      return prev.map(c => c.id === parentId ? { ...c, replies: [...(c.replies || []), externalNewComment] } : c)
-    })
-  }, [externalNewComment])
-
   // ---------- 工具：本地更新 ----------
-  //+ 更新某条评论（一级或二级），返回新数组（不可变）
-  const updateOne = useCallback((list: Comment[], id: string, patch: Partial<Comment> | ((c: Comment) => Comment)): Comment[] => {
+  //+ 更新某条评论（一级或二级），返回新数组（不可变，用于乐观更新/回滚）
+  const updateOne = useCallback((list: Comment[], id: string, patch: Partial<Comment>): Comment[] => {
     return list.map(c => {
       if (c.id === id) {
-        return typeof patch === 'function' ? patch(c) : { ...c, ...patch }
+        return { ...c, ...patch }
       }
       if (c.replies?.length) {
-        return { ...c, replies: c.replies.map(r => r.id === id ? (typeof patch === 'function' ? patch(r) : { ...r, ...patch }) : r) }
+        return { ...c, replies: c.replies.map(r => r.id === id ? { ...r, ...patch } : r) }
       }
       return c
     })
   }, [])
 
-  // ---------- 交互：单条评论点赞 ----------
+  // ---------- 交互：单条评论点赞（乐观更新 + 失败回滚）----------
   const handleToggleCommentLike = useCallback(async (c: Comment) => {
     const nextLiked = !c.isLiked
     const nextCount = c.likeCount + (nextLiked ? 1 : -1)
@@ -270,7 +147,7 @@ const CommentSection = (props: CommentSectionProps) => {
     try {
       await onToggleCommentLike?.(c.id, nextLiked)
     } catch (e) {
-      //+ 后端失败 → 回滚
+      //+ 后端失败 → 回滚（store 未更新，initData 不变，本地回滚生效）
       setComments(prev => updateOne(prev, c.id, { isLiked: !nextLiked, likeCount: c.likeCount }))
       Taro.showToast({ title: '点赞失败', icon: 'none' })
     }
@@ -300,7 +177,7 @@ const CommentSection = (props: CommentSectionProps) => {
       await onDeleteComment?.(id)
     } catch (e) {
       Taro.showToast({ title: '删除失败', icon: 'none' })
-      //+ 回滚：真实项目此处建议重新拉取列表，简单起见此处省略
+      //+ 回滚：store 未更新，真实项目此处建议重新拉取列表
     }
   }, [deleteTarget, onDeleteComment])
 
@@ -313,10 +190,36 @@ const CommentSection = (props: CommentSectionProps) => {
     })
   }, [onRequestReply])
 
-  // ---------- 交互：展开/收起二级评论 ----------
+  // ---------- 交互：展开/收起二级评论（仅切换已加载回复的显隐）----------
   const toggleExpand = useCallback((parentId: string) => {
     setExpandMap(prev => ({ ...prev, [parentId]: !prev[parentId] }))
   }, [])
+
+  // ---------- 交互：加载更多二级评论（调用父组件 → store 追加 → initData 同步）----------
+  const handleLoadMoreReplies = useCallback(async (parentId: string) => {
+    if (!onLoadMoreReplies) return
+    setRepliesLoadingMap(prev => ({ ...prev, [parentId]: true }))
+    try {
+      const { hasMore } = await onLoadMoreReplies(parentId)
+      setRepliesHasMoreMap(prev => ({ ...prev, [parentId]: hasMore }))
+      //+ 展开显示全部已加载回复
+      setExpandMap(prev => ({ ...prev, [parentId]: true }))
+    } catch (e) {
+      Taro.showToast({ title: '加载回复失败', icon: 'none' })
+    } finally {
+      setRepliesLoadingMap(prev => ({ ...prev, [parentId]: false }))
+    }
+  }, [onLoadMoreReplies])
+
+  // ---------- 交互：加载更多一级评论（调用父组件 → store 追加 → initData 同步）----------
+  const handleLoadMoreComments = useCallback(async () => {
+    if (!onLoadMoreComments || loadingMore) return
+    try {
+      await onLoadMoreComments()
+    } catch (e) {
+      Taro.showToast({ title: '加载失败', icon: 'none' })
+    }
+  }, [onLoadMoreComments, loadingMore])
 
   // ---------- 离开页面 → 关闭弹层（防止路由栈残留）----------
   useDidHide(() => {
@@ -372,15 +275,24 @@ const CommentSection = (props: CommentSectionProps) => {
     )
   }
 
-  // ---------- 渲染：一级评论 + 二级 + 展开收起 ----------
+  // ---------- 渲染：一级评论 + 二级 + 展开/收起/加载更多 ----------
   const renderLevel1 = (parent: Comment) => {
     const allReplies = parent.replies || []
+    const replyCount = parent.replyCount ?? allReplies.length
     const expanded = !!expandMap[parent.id]
-    const visibleReplies = expanded
-      ? allReplies
-      : allReplies.slice(0, DEFAULT_VISIBLE_REPLIES)
-    const hasMore = allReplies.length > DEFAULT_VISIBLE_REPLIES
-    const hasEverExpanded = expandMap[parent.id] === true //+ 首次展开后才显示"收起"
+    //+ 是否还有更多二级评论未加载：未配置回调时退化为 false（仅展开/收起已加载）
+    const hasMoreReplies = onLoadMoreReplies
+      ? (repliesHasMoreMap[parent.id] ?? (replyCount > allReplies.length))
+      : false
+    const repliesLoading = repliesLoadingMap[parent.id]
+
+    //+ 可见回复：已展开或有更多待加载时显示全部已加载；否则只显示前2条
+    const showAll = expanded || hasMoreReplies
+    const visibleReplies = showAll ? allReplies : allReplies.slice(0, DEFAULT_VISIBLE_REPLIES)
+    //+ 是否显示展开行：回复总数 > 2
+    const showExpandRow = replyCount > DEFAULT_VISIBLE_REPLIES
+    //+ 待加载的回复数（用于按钮文案）
+    const pendingCount = Math.max(0, replyCount - allReplies.length)
 
     return (
       <div key={parent.id} className='comment-level1-wrap'>
@@ -393,15 +305,14 @@ const CommentSection = (props: CommentSectionProps) => {
           </div>
         )}
 
-        {/* 展开/收起控制 */}
-        {hasMore && (
+        {/* 展开/收起/加载更多 控制 */}
+        {showExpandRow && (
           <div className='comment-expand-row'>
             <span className='comment-expand-line'></span>
-            {!hasEverExpanded ? (
-              <span className='comment-expand-btn' onClick={() => toggleExpand(parent.id)}>
-                展示更多
-                  <ArrowDown className='comment-expand-icon'/>
-                
+            {hasMoreReplies ? (
+              <span className='comment-expand-btn' onClick={() => handleLoadMoreReplies(parent.id)}>
+                {repliesLoading ? '加载中...' : `展开${pendingCount}条回复`}
+                {!repliesLoading && <ArrowDown className='comment-expand-icon'/>}
               </span>
             ) : expanded ? (
               <span className='comment-expand-btn' onClick={() => toggleExpand(parent.id)}>
@@ -409,7 +320,7 @@ const CommentSection = (props: CommentSectionProps) => {
               </span>
             ) : (
               <span className='comment-expand-btn' onClick={() => toggleExpand(parent.id)}>
-                展示更多<ArrowDown className='comment-expand-icon'/>
+                展开更多<ArrowDown className='comment-expand-icon'/>
               </span>
             )}
           </div>
@@ -429,6 +340,13 @@ const CommentSection = (props: CommentSectionProps) => {
           <div className='comment-empty'>暂无评论，说点什么吧~</div>
         )}
         {comments.map(renderLevel1)}
+
+        {/* 加载更多一级评论 */}
+        {hasMoreComments && onLoadMoreComments && (
+          <div className='comment-load-more' onClick={handleLoadMoreComments}>
+            {loadingMore ? '加载中...' : '加载更多评论'}
+          </div>
+        )}
       </div>
 
       {/* 删除确认弹层 */}

@@ -10,6 +10,7 @@ import { uploadImageAPI } from '@/apis/upload'
 import { fetchProfileInfo, fetchUpdateProfile } from '@/store/modules/profile'
 import type { ProfileInfo, ProfileUpdate } from '@/types'
 import type { AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 //+ 最大长度限制
@@ -25,6 +26,7 @@ interface EditFormState {
 }
 
 const EditProfile = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
 
   const [form, setForm] = useState<EditFormState>({

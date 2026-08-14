@@ -79,7 +79,7 @@ const Banner = () => {
     }
     const path = routeMap[item.type]
     if (path) {
-      Taro.navigateTo({ url: `${path}?id=${item.id}` })
+      Taro.navigateTo({ url: `${path}?id=${item.id}&type=${item.type}` })
     }
   }
 

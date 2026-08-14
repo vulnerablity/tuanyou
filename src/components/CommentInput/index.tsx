@@ -53,7 +53,6 @@ export interface CommentInputProps {
 }
 
 const CommentInput: React.FC<CommentInputProps> = ({
-  detail,
   actions,
   replyTarget,
   onCancelReply,
@@ -63,7 +62,6 @@ const CommentInput: React.FC<CommentInputProps> = ({
     isLiked = false,
     likeCount = 0,
     isFavorited = false,
-    favoriteCount,
     onToggleLike,
     onToggleFavorite,
   } = actions || {}

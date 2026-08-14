@@ -21,6 +21,7 @@ import {
 } from '@/store/modules/upload'
 import { CATEGORY_MAP } from '@/types'
 import type { RootState, AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 //+ 最大图片数量
@@ -60,6 +61,7 @@ const initialForm: FormState = {
 }
 
 const PublishNote = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
   //+ 从 tag store 获取标签列表（替代原硬编码 ALL_TAGS）
   const { tags: tagList, loading: tagLoading } = useSelector((state: RootState) => state.tag)

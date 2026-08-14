@@ -14,6 +14,7 @@ import { uploadImagesAPI, uploadVideoAPI } from '@/apis/upload'
 import { fetchTags } from '@/store/modules/tag'
 import { CATEGORY_MAP } from '@/types'
 import type { RootState, AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 //+ 最大图片数量（与笔记一致：1~5 张）
@@ -76,6 +77,7 @@ const initialForm: FormState = {
 }
 
 const PublishGuide = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
   //+ 从 tag store 获取标签列表
   const { tags: tagList, loading: tagLoading } = useSelector((state: RootState) => state.tag)

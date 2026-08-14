@@ -11,6 +11,7 @@ import { tagMockRoutes } from './tag'
 import { profileMockRoutes } from './profile'
 import { uploadMockRoutes } from './upload'
 import { searchMockRoutes } from './search'
+import { commentMockRoutes } from './comment'
 
 //+ 合并所有Mock路由
 export const mockRoutes: Record<string, (data?: any, url?: string) => any> = {
@@ -23,7 +24,8 @@ export const mockRoutes: Record<string, (data?: any, url?: string) => any> = {
   ...tagMockRoutes,
   ...profileMockRoutes,
   ...uploadMockRoutes,
-  ...searchMockRoutes
+  ...searchMockRoutes,
+  ...commentMockRoutes
 }
 // 上方：合并所有模块的Mock路由处理器（函数），用于统一注册Mock接口
 // 下方：重新导出各模块的Mock数据对象，供其他模块直接引用数据本身

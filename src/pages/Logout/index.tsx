@@ -1,5 +1,5 @@
 //+ 退出登录页面
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
 import { logout } from '@/store/modules/user'
 import { goToLogin } from '@/router'

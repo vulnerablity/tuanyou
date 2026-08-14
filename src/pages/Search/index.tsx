@@ -7,6 +7,7 @@ import { SearchBar as NutSearchBar, Tabs, Empty, Toast } from '@nutui/nutui-reac
 import { ArrowLeft } from '@nutui/icons-react'
 import { PostWaterfall } from '@/components/PostWaterfall'
 import ActivityCard from '@/components/ActivityCard'
+import { useAuthGuard } from '@/components/AuthRoute'
 import type { FeedItem, ActivityListItem } from '@/types'
 import {
   getHotKeywordsAPI,
@@ -19,6 +20,7 @@ import './index.less'
 const PAGE_SIZE = 10
 const SEARCH_MAX_LENGTH = 50
 const Search = () => {
+  useAuthGuard()
   //+ 滚动容器 ref：.g-search-body 是统一的滚动容器（flex:1 + overflow-y:auto），外层 100vh 布局下 onScroll 能正确生效
   //+ 用于：下拉刷新后回到顶部 + 距底 50px 自动触发上拉加载更多
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -70,7 +72,7 @@ const Search = () => {
         const { list = [], page: respPage = 1, total_page = 0 } = res.data || {}
         setContentList(append ? [...contentList, ...list] : list)
         setContentPage(respPage)
-        setContentHasMore(respPage < total_page)
+        setContentHasMore(respPage < (total_page ?? respPage))
       }
     } catch (_err) {
       if (!append) {
@@ -90,7 +92,7 @@ const Search = () => {
         const { list = [], page: respPage = 1, total_page = 0 } = res.data || {}
         setActivityList(append ? [...activityList, ...list] : list)
         setActivityPage(respPage)
-        setActivityHasMore(respPage < total_page)
+        setActivityHasMore(respPage < (total_page ?? respPage))
       }
     } catch (_err) {
       if (!append) {

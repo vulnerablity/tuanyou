@@ -91,34 +91,38 @@ export const fetchGuideDetail = createAsyncThunk(
 )
 
 //+ 攻略点赞/取消点赞
+//+ Pending 阶段做乐观更新（立即翻转 UI），Rejected 回滚，Fulfilled 用后端真实值校准
 export const toggleLike = createAsyncThunk(
   'guide/toggleLike',
-  async (id: string, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue, signal }) => {
     try {
-      const res = await toggleGuideLikeAPI(id)
+      const res = await toggleGuideLikeAPI(id, signal)
       if (res.code === 0 || res.code === 200) {
         return { id, ...(res.data || {}) }
       } else {
         return rejectWithValue(res.message || '操作失败')
       }
     } catch (error: any) {
+      if (error?.name === 'AbortError') return rejectWithValue('aborted')
       return rejectWithValue(error.message || '网络错误')
     }
   }
 )
 
 //+ 攻略收藏/取消收藏
+//+ Pending 阶段做乐观更新，Rejected 回滚，Fulfilled 用后端真实值校准
 export const toggleFavorite = createAsyncThunk(
   'guide/toggleFavorite',
-  async (id: string, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue, signal }) => {
     try {
-      const res = await toggleGuideFavoriteAPI(id)
+      const res = await toggleGuideFavoriteAPI(id, signal)
       if (res.code === 0 || res.code === 200) {
         return { id, ...(res.data || {}) }
       } else {
         return rejectWithValue(res.message || '操作失败')
       }
     } catch (error: any) {
+      if (error?.name === 'AbortError') return rejectWithValue('aborted')
       return rejectWithValue(error.message || '网络错误')
     }
   }
@@ -204,35 +208,76 @@ const guideSlice = createSlice({
         state.guides = action.payload.list
         state.total = action.payload.total
         state.page = action.payload.page
-        state.totalPage = action.payload.total_page
-        state.hasMore = action.payload.page < action.payload.total_page
+        state.totalPage = action.payload.total_page || 0
+        state.hasMore = action.payload.page < (action.payload.total_page || 0)
       })
       .addCase(fetchGuides.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
       })
+      //+ 点赞：pending 阶段立即乐观翻转 UI，rejected 回滚，fulfilled 用后端值校准
+      .addCase(toggleLike.pending, (state, action) => {
+        const id = action.meta.arg
+        const guide = state.guides.find(g => g.id === id)
+        if (guide) {
+          guide.isLiked = !guide.isLiked
+          guide.likeCount = guide.likeCount + (guide.isLiked ? 1 : -1)
+        }
+        if (state.guideDetail && state.guideDetail.id === id) {
+          state.guideDetail.isLiked = !state.guideDetail.isLiked
+          state.guideDetail.likeCount = state.guideDetail.likeCount + (state.guideDetail.isLiked ? 1 : -1)
+        }
+      })
       .addCase(toggleLike.fulfilled, (state, action: PayloadAction<{ id: string; isLiked?: boolean; likeCount?: number }>) => {
-        // 1. 更新列表中的项
-        const guide = state.guides.find(g => g.id === action.payload.id)
+        const id = action.payload.id
+        const guide = state.guides.find(g => g.id === id)
         if (guide) {
           if (typeof action.payload.isLiked === 'boolean') guide.isLiked = action.payload.isLiked
           if (typeof action.payload.likeCount === 'number') guide.likeCount = action.payload.likeCount
         }
-        // 2. 更新详情
-        if (state.guideDetail && state.guideDetail.id === action.payload.id) {
+        if (state.guideDetail && state.guideDetail.id === id) {
           if (typeof action.payload.isLiked === 'boolean') state.guideDetail.isLiked = action.payload.isLiked
           if (typeof action.payload.likeCount === 'number') state.guideDetail.likeCount = action.payload.likeCount
         }
       })
+      .addCase(toggleLike.rejected, (state, action) => {
+        if (action.payload === 'aborted') return
+        const id = action.meta.arg
+        const guide = state.guides.find(g => g.id === id)
+        if (guide) {
+          guide.isLiked = !guide.isLiked
+          guide.likeCount = guide.likeCount + (guide.isLiked ? 1 : -1)
+        }
+        if (state.guideDetail && state.guideDetail.id === id) {
+          state.guideDetail.isLiked = !state.guideDetail.isLiked
+          state.guideDetail.likeCount = state.guideDetail.likeCount + (state.guideDetail.isLiked ? 1 : -1)
+        }
+      })
+      //+ 收藏：pending 乐观翻转，rejected 回滚，fulfilled 校准
+      .addCase(toggleFavorite.pending, (state, action) => {
+        const id = action.meta.arg
+        const guide = state.guides.find(g => g.id === id)
+        if (guide) guide.isFavorited = !guide.isFavorited
+        if (state.guideDetail && state.guideDetail.id === id) {
+          state.guideDetail.isFavorited = !state.guideDetail.isFavorited
+        }
+      })
       .addCase(toggleFavorite.fulfilled, (state, action: PayloadAction<{ id: string; isFavorited?: boolean }>) => {
-        // 1. 更新列表中的项
         const guide = state.guides.find(g => g.id === action.payload.id)
         if (guide && typeof action.payload.isFavorited === 'boolean') {
           guide.isFavorited = action.payload.isFavorited
         }
-        // 2. 更新详情
         if (state.guideDetail && state.guideDetail.id === action.payload.id && typeof action.payload.isFavorited === 'boolean') {
           state.guideDetail.isFavorited = action.payload.isFavorited
+        }
+      })
+      .addCase(toggleFavorite.rejected, (state, action) => {
+        if (action.payload === 'aborted') return
+        const id = action.meta.arg
+        const guide = state.guides.find(g => g.id === id)
+        if (guide) guide.isFavorited = !guide.isFavorited
+        if (state.guideDetail && state.guideDetail.id === id) {
+          state.guideDetail.isFavorited = !state.guideDetail.isFavorited
         }
       })
       .addCase(fetchGuideDetail.pending, (state) => {

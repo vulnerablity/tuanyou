@@ -12,9 +12,11 @@ import { usePagedList } from '@/hooks/usePagedList'
 import { fetchPublishActivity, fetchJoinActivity } from '@/store/modules/profile'
 import type { ActivityListItem, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 const MyActivity = () => {
+  useAuthGuard()
   const dispatch: AppDispatch = useDispatch()
   //+ Tab: 0=我发布的 1=我参与的
   const [activeTab, setActiveTab] = useState(0)

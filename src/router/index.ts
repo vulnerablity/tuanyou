@@ -11,7 +11,19 @@ export const ROUTE_PATHS = {
   NOTE_DETAIL: '/pages/NoteDetail/index',
   GUIDE_DETAIL: '/pages/GuideDetail/index',
   ACTIVITY_DETAIL: '/pages/ActivityDetail/index',
-  SEARCH: '/pages/Search/index'
+  SEARCH: '/pages/Search/index',
+  ACTIVITY_LIST: '/pages/Activity/index',
+  MESSAGE: '/pages/Message/index',
+  PROFILE: '/pages/Profile/index',
+  EDIT_PROFILE: '/pages/EditProfile/index',
+  EDIT_USER_INFO: '/pages/EditUserInfo/index',
+  MY_ACTIVITY: '/pages/MyActivity/index',
+  CONTENT: '/pages/Content/index',
+  FOLLOW_LIST: '/pages/FollowList/index',
+  FOLLOWER_LIST: '/pages/FollowerList/index',
+  FAVORITE: '/pages/Favorite/index',
+  LIKE: '/pages/Like/index',
+  SETTINGS: '/pages/Settings/index'
 } as const
 
 //+ H5端路由别名
@@ -27,11 +39,11 @@ export const ROUTE_ALIAS = {
 //+ 路由配置类型
 export type RouteKey = keyof typeof ROUTE_PATHS
 
-//+ 需要登录才能访问的路由
+//+ 需要登录才能访问的路由（默认：全部除 PUBLIC_ROUTES 外都需要登录）
 export const AUTH_REQUIRED_ROUTES: RouteKey[] = []
 
-//+ 白名单路由（无需登录）
-export const PUBLIC_ROUTES: RouteKey[] = ['HOME', 'LOGIN', 'REGISTER', 'FORGOT_PASSWORD', 'LOGOUT', 'SEARCH']
+//+ 白名单路由（无需登录即可访问）
+export const PUBLIC_ROUTES: RouteKey[] = ['LOGIN', 'REGISTER', 'FORGOT_PASSWORD', 'LOGOUT']
 
 import Taro from '@tarojs/taro'
 import { getToken } from '@/utils/token'
@@ -39,6 +51,37 @@ import { getToken } from '@/utils/token'
 //+ 判断是否已登录
 export function isAuthenticated(): boolean {
   return !!getToken()
+}
+
+//+ 判断路由路径是否属于白名单（基于 path 前缀匹配，兼容 params/query）
+//+ 白名单页面：登录 / 注册 / 忘记密码 / 登出
+export function isPublicRoute(path: string): boolean {
+  const normalized = `/${path.replace(/^\//, '')}`
+  const publicPaths = [
+    ROUTE_PATHS.LOGIN,
+    ROUTE_PATHS.REGISTER,
+    ROUTE_PATHS.FORGOT_PASSWORD,
+    ROUTE_PATHS.LOGOUT
+  ]
+  return publicPaths.some(p => normalized.startsWith(p))
+}
+
+//+ 获取当前活动页面的完整路径（含 query，用于登录后回跳）
+export function getCurrentPageFullPath(): string {
+  try {
+    const pages = Taro.getCurrentPages()
+    if (!pages || pages.length === 0) return ROUTE_PATHS.HOME
+    const last = pages[pages.length - 1] as any
+    const route: string = last?.route || last?.$taroPath || ''
+    const options: Record<string, string> = last?.options || last?.$taroParams || {}
+    const params = Object.keys(options)
+      .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(options[k])}`)
+      .join('&')
+    if (!route) return ROUTE_PATHS.HOME
+    return params ? `/${route.replace(/^\//, '')}?${params}` : `/${route.replace(/^\//, '')}`
+  } catch (_) {
+    return ROUTE_PATHS.HOME
+  }
 }
 
 //+ 判断路由是否需要鉴权
@@ -75,12 +118,38 @@ export function routerNavigateBack(delta: number = 1): Promise<TaroGeneral.Callb
   return Taro.navigateBack({ delta })
 }
 
-//+ 登录成功后跳转首页
-export function goHomeAfterLogin(): Promise<TaroGeneral.CallbackResult> {
+//+ 登录成功后跳转：优先跳 redirect 参数来源页，其次首页
+//+ 与 goToLogin(redirect) 配对使用
+export function goAfterLogin(): Promise<TaroGeneral.CallbackResult> {
+  const redirect = Taro.getStorageSync('login_redirect') || ''
+  try { Taro.removeStorageSync('login_redirect') } catch (_) { /* ignore */ }
+  if (redirect && typeof redirect === 'string') {
+    const parsed = String(redirect)
+    //+ 跳 tabBar 页：若包含 HOME/ACTIVITY/MESSAGE/PROFILE 前缀则走 switchTab
+    const pure = parsed.split('?')[0].replace(/^\//, '')
+    const tabMap: Record<string, RouteKey> = {
+      'pages/Home/index': 'HOME',
+      'pages/Activity/index': 'ACTIVITY_LIST',
+      'pages/Message/index': 'MESSAGE',
+      'pages/Profile/index': 'PROFILE'
+    }
+    if (tabMap[pure]) return routerSwitchTab(tabMap[pure])
+    //+ 普通页：redirectTo 直接跳到原路径（路径已含 query）
+    return Taro.redirectTo({ url: parsed }).catch(() => routerRedirectTo('HOME'))
+  }
   return routerRedirectTo('HOME')
 }
 
 //+ 跳转到登录页（未登录时）
-export function goToLogin(): Promise<TaroGeneral.CallbackResult> {
+//+ 可选保存当前页地址，登录后 goAfterLogin 自动回跳
+export function goToLogin(redirect?: string): Promise<TaroGeneral.CallbackResult> {
+  try {
+    if (redirect) {
+      Taro.setStorageSync('login_redirect', redirect)
+    } else {
+      Taro.removeStorageSync('login_redirect')
+    }
+  } catch (_) { /* ignore */ }
+  
   return routerRedirectTo('LOGIN')
 }

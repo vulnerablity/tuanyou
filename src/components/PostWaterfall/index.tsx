@@ -79,10 +79,10 @@ function masonryDistribute(feed: FeedItem[], colWidth: number, infoHeightPx: num
 /**
  * 统一点赞接口（按内容类型分发）
  */
-async function toggleLikeByType(item: FeedItem): Promise<{ isLiked: boolean, likeCount: number }> {
+async function toggleLikeByType(item: FeedItem, signal?: AbortSignal): Promise<{ isLiked: boolean, likeCount: number }> {
   const raw = item.type === 'guide'
-    ? await toggleGuideLikeAPI(item.id)
-    : await toggleNoteLikeAPI(item.id)
+    ? await toggleGuideLikeAPI(item.id, signal)
+    : await toggleNoteLikeAPI(item.id, signal)
   const data: any = (raw as any)?.data ?? raw
   return {
     isLiked: !!data?.isLiked,
@@ -93,10 +93,10 @@ async function toggleLikeByType(item: FeedItem): Promise<{ isLiked: boolean, lik
 /**
  * 统一收藏接口（按内容类型分发）
  */
-async function toggleFavoriteByType(item: FeedItem): Promise<{ isFavorited: boolean }> {
+async function toggleFavoriteByType(item: FeedItem, signal?: AbortSignal): Promise<{ isFavorited: boolean }> {
   const raw = item.type === 'guide'
-    ? await toggleGuideFavoriteAPI(item.id)
-    : await toggleNoteFavoriteAPI(item.id)
+    ? await toggleGuideFavoriteAPI(item.id, signal)
+    : await toggleNoteFavoriteAPI(item.id, signal)
   const data: any = (raw as any)?.data ?? raw
   return { isFavorited: !!data?.isFavorited }
 }
@@ -173,6 +173,14 @@ const FeedCard = ({
   const [localFav, setLocalFav] = useState<boolean>(!!item.isFavorited)
   const [faving, setFaving] = useState(false)
 
+  //+ AbortController：丢弃同资源过期请求（按 item.id 粒度）
+  const likeAbortRef = useRef<AbortController | null>(null)
+  const favAbortRef = useRef<AbortController | null>(null)
+  //+ 操作冷却：完成后计时，防止接口响应极快时用户连续点击产生串行无效请求
+  const likeCooldownRef = useRef<number>(0)
+  const favCooldownRef = useRef<number>(0)
+  const COOLDOWN_MS = 800
+
   //+ 问题1修复：当外部 prop（从详情返回时从 store 同步回来）变化时，同步到本地 state，避免陈旧乐观值
   useEffect(() => {
     setLocalLiked(item.isLiked)
@@ -186,10 +194,28 @@ const FeedCard = ({
     setLocalFav(!!item.isFavorited)
   }, [item.isFavorited])
 
+  //+ 卸载时 abort 未完成请求
+  useEffect(() => {
+    return () => {
+      likeAbortRef.current?.abort()
+      favAbortRef.current?.abort()
+    }
+  }, [])
+
   //+ 点赞/取消点赞（阻止冒泡，不触发卡片跳转）
+  //+ 性能优化：请求锁(liking flag) + AbortController 丢弃过期 + API 失败回滚乐观值
   const handleLikeClick = async (e: any) => {
     e.stopPropagation()
     if (liking) return
+    //+ 操作冷却
+    if (Date.now() < likeCooldownRef.current) return
+    //+ Abort 上一次同资源未完成请求
+    likeAbortRef.current?.abort()
+    const ac = new AbortController()
+    likeAbortRef.current = ac
+
+    const oldLiked = localLiked
+    const oldCount = localLikeCount
     setLiking(true)
     try {
       const newLiked = !localLiked
@@ -200,31 +226,56 @@ const FeedCard = ({
       //+ 通知调用方（例如"我的点赞"列表可以立刻移除项）
       onToggleLike?.(item, newLiked, optimisticCount)
       //+ 异步调用 API（用真实返回值校准最终 count）
-      try {
-        const { isLiked, likeCount } = await toggleLikeByType(item)
-        setLocalLiked(isLiked)
-        setLocalLikeCount(likeCount)
-      } catch (_err) { /* 乐观成功，API 失败时无感知 */ }
+      const { isLiked, likeCount } = await toggleLikeByType(item, ac.signal)
+      setLocalLiked(isLiked)
+      setLocalLikeCount(likeCount)
+    } catch (err: any) {
+      //+ AbortError：被主动丢弃，不回滚（最新 pending 已在 store/UI 侧处理）
+      if (err?.name === 'AbortError') return
+      //+ 失败回滚乐观值
+      setLocalLiked(oldLiked)
+      setLocalLikeCount(oldCount)
     } finally {
+      if (likeAbortRef.current === ac) {
+        likeAbortRef.current = null
+      }
       setLiking(false)
+      if (!ac.signal.aborted) {
+        likeCooldownRef.current = Date.now() + COOLDOWN_MS
+      }
     }
   }
 
   //+ 收藏/取消收藏（右上角；阻止冒泡）
+  //+ 性能优化：请求锁(faving flag) + AbortController 丢弃过期 + API 失败回滚乐观值
   const handleFavClick = async (e: any) => {
     e.stopPropagation()
     if (faving) return
+    //+ 操作冷却
+    if (Date.now() < favCooldownRef.current) return
+    favAbortRef.current?.abort()
+    const ac = new AbortController()
+    favAbortRef.current = ac
+
+    const oldFav = localFav
     setFaving(true)
     try {
       const newFav = !localFav
       setLocalFav(newFav)
       onToggleFavorite?.(item, newFav)
-      try {
-        const { isFavorited } = await toggleFavoriteByType(item)
-        setLocalFav(isFavorited)
-      } catch (_err) { /* 忽略 */ }
+      const { isFavorited } = await toggleFavoriteByType(item, ac.signal)
+      setLocalFav(isFavorited)
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return
+      setLocalFav(oldFav)
     } finally {
+      if (favAbortRef.current === ac) {
+        favAbortRef.current = null
+      }
       setFaving(false)
+      if (!ac.signal.aborted) {
+        favCooldownRef.current = Date.now() + COOLDOWN_MS
+      }
     }
   }
 
@@ -332,9 +383,7 @@ export function PostWaterfall({
   const renderColumn = (items: FeedItem[]) => {
     return items.map(item => (
       <FeedCard
-        //+ 用 `${type}-${id}` 作 key：搜索结果/首页瀑布流中可能同时出现笔记和攻略，
-        //+ 两者来自不同表、id 各自独立自增，纯 id 会重复导致 React key 警告
-        key={`${item.type}-${item.id}`}
+        key={`${item.type}_${item.id}`}
         item={item}
         onToggleLike={onToggleLike}
         actionType={actionType}

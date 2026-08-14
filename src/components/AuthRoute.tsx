@@ -1,56 +1,18 @@
-//+ 路由鉴权高阶组件
-import React, { useEffect, ComponentType } from 'react'
-import { isAuthenticated, routerRedirectTo, ROUTE_PATHS } from '@/router'
+//+ 路由鉴权钩子
+//+ 用法：在需要登录的页面组件顶部调用 useAuthGuard() 即可
+//+ 登录 / 注册 / 忘记密码 等页面不调用此钩子，自然不受保护
+import { useDidShow } from '@tarojs/taro'
+import { isAuthenticated, getCurrentPageFullPath, goToLogin } from '@/router'
 
-//+ 跳转到登录页（未登录时）
-function goToLogin(): Promise<TaroGeneral.CallbackResult> {
-  return routerRedirectTo('LOGIN')
-}
-
-interface AuthRouteOptions {
-  //+ 是否在鉴权失败时显示加载中
-  showLoading?: boolean
-}
-
-//+ 页面级鉴权高阶组件
-export function withAuth<T extends object>(
-  WrappedComponent: ComponentType<T>,
-  options: AuthRouteOptions = {}
-): React.FC<T> {
-  const { showLoading = true } = options
-
-  const AuthComponent: React.FC<T> = (props) => {
-    useEffect(() => {
-      if (!isAuthenticated()) {
-        goToLogin()
-      }
-    }, [])
-
+//+ 页面级鉴权钩子
+//+ 每次 useDidShow（页面显示）时检查 token：
+//+   - 已登录 → 放行
+//+   - 未登录 → 保存当前路径并 redirectTo 登录页，登录后 goAfterLogin 自动回跳
+export function useAuthGuard(): void {
+  useDidShow(() => {
     if (!isAuthenticated()) {
-      if (showLoading) {
-        return null
-      }
-      return null
+      const fullPath = getCurrentPageFullPath()
+      goToLogin(fullPath)
     }
-
-    return <WrappedComponent {...props as T} />
-  }
-
-  return AuthComponent
-}
-
-//+ 函数式鉴权检查（在页面组件中手动调用）
-export function useAuthCheck(): boolean {
-  const [isAuth, setIsAuth] = React.useState(false)
-
-  useEffect(() => {
-    const authenticated = isAuthenticated()
-    if (!authenticated) {
-      goToLogin()
-    } else {
-      setIsAuth(true)
-    }
-  }, [])
-
-  return isAuth
+  })
 }

@@ -5,6 +5,7 @@ import { useState } from 'react'
 import Taro from '@tarojs/taro'
 import { Button, Input, Picker, DatePicker } from '@nutui/nutui-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
+import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
 //+ 性别选项
@@ -37,6 +38,7 @@ const initialData: UserInfoFormState = {
 }
 
 const EditUserInfo = () => {
+  useAuthGuard()
   const [form, setForm] = useState<UserInfoFormState>(initialData)
   const [submitting, setSubmitting] = useState(false)
   const [genderPickerVisible, setGenderPickerVisible] = useState(false)

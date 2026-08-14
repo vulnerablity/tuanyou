@@ -16,6 +16,7 @@ import {
   decrementInteractionUnread,
   decrementSystemUnread,
 } from '@/store/modules/message'
+import { useAuthGuard } from '@/components/AuthRoute'
 import MessageHeader from './components/MessageHeader'
 import MessageTabs from './components/MessageTabs'
 import InteractionItem from './components/InteractionItem'
@@ -25,6 +26,7 @@ import { interactionMockData, systemMockData } from './mock'
 import './index.less'
 
 const Message = () => {
+  useAuthGuard()
   const dispatch = useDispatch<AppDispatch>()
 
   //+ Tab：0=互动 1=系统通知
@@ -100,7 +102,7 @@ const Message = () => {
   }, [dispatch])
 
   //+ 回复评论消息（后期对接链路时替换为 API 调用）
-  const handleReply = useCallback((messageId: string, _replyContent: string) => {
+  const handleReply = useCallback((_messageId: string, _replyContent: string) => {
     Taro.showToast({ title: '回复成功', icon: 'none' })
   }, [])
 

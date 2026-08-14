@@ -2,7 +2,7 @@
 //+ 管理轮播（slides）和Feed流（feed）数据
 //+ Feed流采用单向滑动窗口：pageCache 按页缓存，最多保留50页，超过淘汰头部旧页
 //+ feed 通过 selector 扁平化派生，不复写冗余 state
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
+import { createSlice, createAsyncThunk, PayloadAction, createSelector } from '@reduxjs/toolkit'
 import { getSlidesAPI, getFeedAPI } from '@/apis/home'
 import type { SlideItem, FeedItem, PageResult } from '@/types'
 import type { RootState } from '@/store'
@@ -223,20 +223,26 @@ const homeSlice = createSlice({
 })
 
 //+ Selector：扁平化派生 feed（按 cachedPages 顺序拼接各页数据）
-//+ 避免在 state 中存储派生数据，减少冗余
-export const selectFeed = (state: RootState): FeedItem[] => {
-  const { pageCache, cachedPages } = state.home
-  const result: FeedItem[] = []
-  for (const page of cachedPages) {
-    const list = pageCache[page]
-    if (list) {
-      for (const item of list) {
-        result.push(item)
+//+ 使用 createSelector 做 memoize：仅当 pageCache 或 cachedPages 引用变化时才重新计算
+//+ 否则返回上一次的结果引用，避免 useSelector 因新数组引用触发不必要的重渲染
+const selectPageCache = (state: RootState) => state.home.pageCache
+const selectCachedPages = (state: RootState) => state.home.cachedPages
+
+export const selectFeed = createSelector(
+  [selectPageCache, selectCachedPages],
+  (pageCache, cachedPages): FeedItem[] => {
+    const result: FeedItem[] = []
+    for (const page of cachedPages) {
+      const list = pageCache[page]
+      if (list) {
+        for (const item of list) {
+          result.push(item)
+        }
       }
     }
+    return result
   }
-  return result
-}
+)
 
 //+ 导出Action
 export const { resetFeed, updateFeedItem, setFeedMeta } = homeSlice.actions
