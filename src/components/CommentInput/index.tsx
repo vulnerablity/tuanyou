@@ -88,6 +88,14 @@ const CommentInput: React.FC<CommentInputProps> = ({
     // replyTarget=null 不强制关闭弹层，保持一级评论弹层可继续使用
   }, [replyTarget])
 
+  // ---------- 副作用：Popup 打开时强制清空输入框 ----------
+  //+ 修复：评论成功后再次打开输入框，TextArea 内部状态可能未随 value 同步重置
+  useEffect(() => {
+    if (visible) {
+      setTextareaValue('')
+    }
+  }, [visible])
+
   // ---------- 交互：关闭弹层 ----------
   const handleClose = () => {
     setVisible(false)
@@ -102,7 +110,6 @@ const CommentInput: React.FC<CommentInputProps> = ({
   const handleSend = async () => {
     const content = textareaValue.trim()
     if (!content) return
-    Toast.show({ content: '评论已发送', duration: 1 })
     try {
       await onSendComment?.({
         content,
@@ -115,6 +122,8 @@ const CommentInput: React.FC<CommentInputProps> = ({
       Toast.show({ content: '评论失败', duration: 1 })
       return
     }
+    //+ 成功后才提示，避免 API 失败时误导用户
+    Toast.show({ content: '评论已发送', duration: 1 })
     setTextareaValue('')
     setVisible(false)
     //+ 发送成功，还原回复模式
@@ -163,7 +172,8 @@ const CommentInput: React.FC<CommentInputProps> = ({
         closeIconPosition='top-right'
         title={isReplyMode &&(<div className='reply-to-name'><div className='reply'>回复</div><div className='name'>@{replyTarget?.replyToName || ''}</div></div>  )}
       >
-        <Form>
+        {/* key 强制重建 TextArea：每次 Popup 打开时用新 key 重新挂载，确保清空 NutUI 内部缓存 */}
+        <Form key={visible ? 'open' : 'closed'}>
           <Form.Item name='content' className='form-item'>
             <TextArea
               maxLength={3000}
