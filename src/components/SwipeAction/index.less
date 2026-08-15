@@ -1,0 +1,31 @@
+//+ SwipeAction 样式
+.swipe-action-wrapper {
+  position: relative;
+  overflow: hidden;
+  //+ 保持与外层 message-item 等高
+  display: block;
+}
+
+//+ 底层：删除按钮（红色背景，右侧对齐）
+.swipe-action-delete-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 120px;
+  font-size: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+//+ 顶层：内容区（覆盖在删除按钮之上）
+.swipe-action-content {
+  position: relative;
+  z-index: 1;
+  background: #fff;
+  will-change: transform;
+}

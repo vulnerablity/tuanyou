@@ -126,3 +126,47 @@ export interface CommentRepliesQueryParams {
   page: number
   size: number
 }
+
+// ========== 消息模块协议域 ==========
+
+//+ 消息发送者 DTO（对齐接口文档 sender 字段；系统消息 sender 可为 null）
+export interface MessageSenderDTO {
+  id: string
+  nickname: string
+  avatar: string
+}
+
+//+ 消息 DTO（对齐 GET /messages/interactions 和 GET /messages/system 响应项）
+//+ 互动消息和系统消息共用此结构，通过 msgType 区分
+//+ msgType: 1=互动消息（点赞/收藏/关注/评论），2=系统通知
+export interface MessageDTO {
+  id: string
+  msgType: number
+  content: string
+  sendTime: string
+  isRead: number
+  sender: MessageSenderDTO | null
+}
+
+//+ 消息列表分页响应（data 结构）
+export interface MessageListResult extends PageResult<MessageDTO> {}
+
+//+ 未读消息数响应（GET /messages/unread-count data 结构）
+export interface UnreadCountResult {
+  total: number
+  interactions: number
+  system: number
+}
+
+//+ 消息回复响应（POST /messages/interactions/{id}/reply data 结构）
+export interface MessageReplyResult {
+  id: string
+  replyToId: string
+  content: string
+  sendTime: string
+}
+
+//+ 全部已读响应（PUT /messages/read-all data 结构）
+export interface MarkAllReadResult {
+  updated: number
+}

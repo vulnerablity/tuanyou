@@ -1,0 +1,145 @@
+//+ useSSE Hook：管理 SSE 连接生命周期
+//+ 已登录时自动建立连接，登出时断开
+//+ 监听 SSE 事件并 dispatch 到 Redux store
+//+ 事件分发逻辑：
+//+   1. 非消息页 → 刷新未读数 + 弹出全局弹窗
+//+   2. 消息页当前 tab 匹配 → 刷新未读数 + 显示提示条
+//+   3. 消息页 tab 不匹配 → 仅刷新未读数
+import { useEffect, useRef, useCallback } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import {
+  connectSSE,
+  disconnectSSE,
+  onSSEEvent,
+  onSSEReconnect
+} from '@/utils/sse'
+import { getToken, isLoggedIn } from '@/utils/token'
+import Taro from '@tarojs/taro'
+import type { RootState, AppDispatch } from '@/store'
+import {
+  fetchUnreadCount,
+  showToast,
+  hideToast,
+  clearToastCooldown,
+  setShowNewMessageTip,
+  updateUnreadFromSSE,
+  handleSSEEvent,
+  SSE_EVENT,
+  INTERACTION_EVENTS,
+  SYSTEM_EVENTS,
+  type MessageTab,
+  type SSEEventName,
+  type SSEMessagePayload
+} from '@/store/modules/message'
+
+//+ 判断当前是否在消息页面
+function isOnMessagePage(): boolean {
+  try {
+    const pages = Taro.getCurrentPages()
+    if (pages.length > 0) {
+      const route = pages[pages.length - 1]?.route || ''
+      return route.toLowerCase().includes('message')
+    }
+  } catch {
+    // ignore
+  }
+  //+ 降级：用 window.location.pathname 判断
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.pathname.toLowerCase().includes('message')
+  }
+  return false
+}
+
+//+ 根据事件类型判断属于互动消息还是系统通知
+function eventToTab(event: SSEEventName): MessageTab {
+  if (INTERACTION_EVENTS.includes(event)) return 'interaction'
+  if (SYSTEM_EVENTS.includes(event)) return 'system'
+  //+ comment-reply 归入互动 tab
+  return 'interaction'
+}
+
+//+ useSSE Hook
+export function useSSE() {
+  const dispatch = useDispatch<AppDispatch>()
+  const currentTab = useSelector((state: RootState) => state.message.currentTab)
+  const toastCooldownRef = useRef(false)
+
+  //+ 弹窗防抖：收到非 unread 事件时延迟判断是否弹窗
+  useEffect(() => {
+    //+ 1. 已登录时建立 SSE 连接
+    const token = getToken()
+    if (token) {
+      connectSSE(token)
+    }
+
+    //+ 2. 登出时断开连接（监听 token 变化）
+    const checkTokenInterval = setInterval(() => {
+      if (!isLoggedIn()) {
+        disconnectSSE()
+      }
+    }, 2000)
+
+    //+ 3. 注册 SSE 事件处理器
+    const offEvent = onSSEEvent((event, data) => {
+      handleSSEMessage(event as SSEEventName, data)
+    })
+
+    //+ 4. 注册重连成功处理器（仅刷新未读数）
+    const offReconnect = onSSEReconnect(() => {
+      if (isLoggedIn()) {
+        dispatch(fetchUnreadCount())
+      }
+    })
+
+    return () => {
+      clearInterval(checkTokenInterval)
+      offEvent()
+      offReconnect()
+      disconnectSSE()
+    }
+  }, [dispatch])
+
+  //+ 处理 SSE 消息（对齐推送顺序：先消息事件，再 unread）
+  const handleSSEMessage = useCallback((event: SSEEventName, data: Record<string, any>) => {
+    //+ unread 事件：直接更新未读数
+    if (event === SSE_EVENT.UNREAD) {
+      if (data && typeof data.total === 'number') {
+        dispatch(updateUnreadFromSSE({
+          total: data.total,
+          interactions: data.interactions ?? 0,
+          system: data.system ?? 0
+        }))
+      }
+      return
+    }
+
+    //+ 其他事件：消息事件（like/follow/comment/collect/signup/...）
+    const messagePayload: SSEMessagePayload = { event, data }
+    const tab = eventToTab(event)
+
+    //+ 判断当前是否在消息页面
+    const onMessagePage = isOnMessagePage()
+
+    if (!onMessagePage) {
+      //+ 场景1：非消息页 → 弹出全局弹窗
+      const content = data.content || '收到一条新消息'
+      dispatch(showToast({ content, tab }))
+      //+ 防抖冷却：3 秒后允许下次弹窗
+      toastCooldownRef.current = true
+      setTimeout(() => {
+        dispatch(clearToastCooldown())
+        toastCooldownRef.current = false
+      }, 3000)
+    } else {
+      //+ 场景2：在消息页 → 判断 tab
+      //+ currentTab: 0=互动, 1=系统通知
+      const expectedTabIndex = tab === 'interaction' ? 0 : 1
+      if (expectedTabIndex === currentTab) {
+        //+ 分支2.1：当前 tab 匹配 → 显示提示条
+        dispatch(handleSSEEvent(messagePayload))
+      }
+      //+ 分支2.2：tab 不匹配 → 只更新未读数（已在 unread 事件处理中完成）
+      //+ 此处不再做额外操作
+    }
+  }, [dispatch, currentTab])
+}

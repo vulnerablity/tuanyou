@@ -118,6 +118,9 @@
   content: "\e603";
   font-size: 36px;
 }
+.icon-shanchu:before {
+  content: "\e612";
+}
 @media screen and (min-width: 768px) {
   .iconfont {
     font-size: 24px;

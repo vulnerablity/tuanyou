@@ -235,7 +235,7 @@ const CommentSection = (props: CommentSectionProps) => {
             <span className='nickname-self'>{c.member.nickname}</span>
             {c.replyToName && (
               <>
-                <span className='nickname-at'> @ </span>
+                <span className='nickname-at'>  </span>
                 <span className='nickname-target'>{c.replyToName}</span>
               </>
             )}
