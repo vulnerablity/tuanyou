@@ -43,7 +43,13 @@ export type {
   CommentListResult,
   CreateCommentParams,
   CommentQueryParams,
-  CommentRepliesQueryParams
+  CommentRepliesQueryParams,
+  MessageSenderDTO,
+  MessageDTO,
+  MessageListResult,
+  UnreadCountResult,
+  MessageReplyResult,
+  MarkAllReadResult
 } from './api'
 
 //+ 上传专项

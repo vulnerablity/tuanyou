@@ -207,16 +207,21 @@ export interface Comment {
 }
 
 //+ 互动消息数据结构
-//+ type: like=点赞 favorite=收藏 follow=关注 comment=评论
+//+ 互动消息（对齐 GET /messages/interactions 响应）
+//+ 文档原始字段：id/msgType/content/sendTime/isRead/sender
+//+ 前端兼容字段：type/member/targetTitle/createdAt/read/replyCount/replies
+//+ 由 API 适配层 normalizeInteraction 从原始字段映射出来，组件层继续用兼容字段
 export interface InteractionMessage {
   id: string
-  type: 'like' | 'favorite' | 'follow' | 'comment'
-  member: {
-    id: string
-    nickname: string
-    avatar: string
-  }
+  //+ --- 文档字段 ---
+  msgType: number
   content: string
+  sendTime: string
+  isRead: number
+  sender: { id: string; nickname: string; avatar: string } | null
+  //+ --- 前端兼容字段（API 适配层填充） ---
+  type: 'like' | 'favorite' | 'follow' | 'comment'
+  member: { id: string; nickname: string; avatar: string }
   targetTitle: string
   createdAt: string
   read: boolean
@@ -225,11 +230,17 @@ export interface InteractionMessage {
   replies?: { id: string; author: 'me' | 'ta'; content: string }[]
 }
 
-//+ 系统消息数据结构
+//+ 系统消息（对齐 GET /messages/system 响应）
 export interface SystemMessage {
   id: string
-  type: 'system'
+  //+ --- 文档字段 ---
+  msgType: number
   content: string
+  sendTime: string
+  isRead: number
+  sender: { id: string; nickname: string; avatar: string } | null
+  //+ --- 前端兼容字段 ---
+  type: 'system'
   createdAt: string
   read: boolean
 }

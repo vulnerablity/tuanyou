@@ -1,0 +1,25 @@
+.swipe-action-wrapper {
+  position: relative;
+  overflow: hidden;
+  display: block;
+}
+.swipe-action-delete-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 120px;
+  font-size: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+  cursor: pointer;
+  user-select: none;
+}
+.swipe-action-content {
+  position: relative;
+  z-index: 1;
+  background: #fff;
+  will-change: transform;
+}

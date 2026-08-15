@@ -70,10 +70,35 @@
   transform: translateX(40%);
   white-space: nowrap;
 }
+.message-list-wrapper {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.message-list-wrapper .nut-pulltorefresh {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.message-list-wrapper .nut-pulltorefresh-head {
+  flex: 0 0 auto;
+}
+.message-list-wrapper .nut-pulltorefresh-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .message-list-container {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 .message-empty {
   text-align: center;
@@ -256,6 +281,23 @@
 .system-icon-box .system-icon {
   font-size: 40px;
   color: #428a46;
+}
+.message-new-tip {
+  flex: 0 0 auto;
+  text-align: center;
+  padding: 16px 0;
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-size: 26px;
+  cursor: pointer;
+  border-top: 1px solid #c8e6c9;
+  border-bottom: 1px solid #c8e6c9;
+}
+.message-loading-more {
+  text-align: center;
+  padding: 24px 0;
+  color: #999;
+  font-size: 26px;
 }
 @media screen and (min-width: 768px) {
   .message-page {

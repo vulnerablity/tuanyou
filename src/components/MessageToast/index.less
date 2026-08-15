@@ -1,0 +1,51 @@
+//+ MessageToast 样式
+.message-toast-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+.message-toast {
+  width: 80%;
+  max-width: 560px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  padding: 40px 32px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.message-toast-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.message-toast-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.message-toast-brand {
+  font-size: 32px;
+  font-weight: 700;
+  color: #000;
+}
+
+.message-toast-content {
+  font-size: 28px;
+  color: #333;
+  line-height: 1.5;
+}

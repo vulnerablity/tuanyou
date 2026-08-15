@@ -5,7 +5,7 @@
 //+ 标签使用习惯：NutUI 组件优先（Button/Tag），其余用原生 HTML 标签（div/img/span）
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
-import { Button, Tag as NutuiTag, Dialog } from '@nutui/nutui-react'
+import { Button, Tag as NutuiTag, Dialog ,Ellipsis} from '@nutui/nutui-react'
 import Tag from '@/components/Tag'
 import { useSelector, useDispatch } from 'react-redux'
 import type { AppDispatch, RootState } from '@/store'
@@ -301,7 +301,7 @@ const ActivityDetail = () => {
                       {status}
                     </NutuiTag>
                   </div>
-                  <div className='activity-title'>{currentActivity.title}</div>
+                  <Ellipsis className='activity-title' content={currentActivity.title} rows={1} />
                 </div>
 
                 {/* 活动信息面板 */}

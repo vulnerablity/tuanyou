@@ -4,6 +4,11 @@ import {Provider} from 'react-redux'
 import store from '@/store'
 import TabList from '@/components/TabList'
 import Taro from '@tarojs/taro'
+import { fetchUnreadCount, resetMessageState } from '@/store/modules/message'
+import { isLoggedIn, clearToken } from '@/utils/token'
+import { disconnectSSE } from '@/utils/sse'
+import { useSSE } from '@/hooks/useSSE'
+import MessageToast from '@/components/MessageToast'
 
 // app.tsx
 import '@nutui/nutui-react/dist/style.css'  // NutUI基础样式
@@ -57,9 +62,20 @@ function shouldShowTabBar(): boolean {
   return TAB_BAR_PAGE_NAMES.includes(pageName)
 }
 
+//+ Provider 内部子组件：负责挂载 useSSE
+//+ 必须放在 Provider 内部，因为 useSSE 内部使用了 useDispatch/useSelector
+function SSEProvider() {
+  useSSE()
+  return null
+}
+
 function App({ children }: PropsWithChildren<any>) {
   useLaunch(() => {
     console.log('App launched.')
+    //+ 应用启动时拉取未读消息数（仅已登录用户），用于 TabBar 红点
+    if (isLoggedIn()) {
+      store.dispatch(fetchUnreadCount())
+    }
   })
 
   const [showTabBar, setShowTabBar] = useState(true)
@@ -76,26 +92,41 @@ function App({ children }: PropsWithChildren<any>) {
   useEffect(() => {
     updateTabBarVisibility()
   }, [children, updateTabBarVisibility])
-  
+
+  //+ 监听登出事件：清空 token + 断开 SSE + 重置消息状态
+  useEffect(() => {
+    const handleLogout = () => {
+      disconnectSSE()
+      store.dispatch(resetMessageState())
+    }
+    //+ 监听 storage 事件（跨页面登出同步）
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'tuyou_token' && !e.newValue) {
+        handleLogout()
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [])
+
   // children 是将要会渲染的页面
   return (
     <Provider store={store}>
       <div className='app-container'>
+        {/* SSE 连接：必须在 Provider 内部调用 useSSE（内部用到 useDispatch/useSelector） */}
+        <SSEProvider />
         <div>{children}</div>
         {showTabBar && (
           <div className='app-tab-container'>
            <TabList />
         </div>)}
+        {/* 全局消息弹窗（场景1：非消息页收到 SSE 推送时显示） */}
+        <MessageToast />
       </div>
-        
-        
-        
-   
     </Provider>
   )
-
 }
-
-  
 
 export default App
