@@ -4,6 +4,7 @@
 //+ 删除：外层 SwipeAction 包裹，左滑露出红色删除按钮
 import { useState } from 'react'
 import { IconFont } from '@nutui/icons-react'
+import { Ellipsis } from '@nutui/nutui-react'
 import '@/assets/iconfont.css'
 import SwipeAction from '@/components/SwipeAction'
 import { formatMessageTime } from '@/utils/formatMessageTime'
@@ -18,9 +19,9 @@ interface SystemMessageItemProps {
 }
 
 const SystemMessageItem = ({ item, onMarkRead, onDelete, swipeOpen, onSwipeOpen }: SystemMessageItemProps) => {
-  const [expanded, setExpanded] = useState(false)
-
-  const mayOverflow = item.content.length > 20
+  // const [expanded, setExpanded] = useState(false)
+  // const [rows, setRows] = useState(2)
+  
 
   const tryMarkRead = () => {
     if (!item.read) {
@@ -56,13 +57,12 @@ const SystemMessageItem = ({ item, onMarkRead, onDelete, swipeOpen, onSwipeOpen 
         </div>
 
         <div className='message-item-body'>
-          <div className={`message-item-content ${expanded ? 'expanded' : 'collapsed'}`}>
-            {item.content}
-          </div>
+          <Ellipsis className={`message-item-content`} content={item.content} rows={2} expandText='展开' collapseText='收起' />
+           
 
           <div className='message-item-time-row'>
             <span className='message-item-time'>{formatMessageTime(item.createdAt)}</span>
-            {mayOverflow && (
+            {/* {rows >=2 && (
               <span
                 className='message-item-expand-btn'
                 onClick={(e) => {
@@ -73,7 +73,7 @@ const SystemMessageItem = ({ item, onMarkRead, onDelete, swipeOpen, onSwipeOpen 
               >
                 {expanded ? '收起' : '展开'}
               </span>
-            )}
+            )} */}
           </div>
         </div>
 

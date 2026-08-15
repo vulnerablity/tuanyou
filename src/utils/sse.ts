@@ -8,7 +8,7 @@
 //+   3. 自动重连：指数退避（1s → 2s → 4s → ... → 30s 上限）
 //+   4. 消息解析：按 SSE 协议解析 event:/data: 行，支持多行 data
 //+   5. 心跳处理：: 开头的注释行，忽略
-//+   6. 重连成功回调：仅刷新未读数，不主动刷新列表
+//+   6. 重连成功回调：仅断线重连成功后触发（首次连接不触发），用于刷新未读数
 //+   7. Mock 模式降级：用 setTimeout 模拟推送，避免真实连接
 //+
 //+ 数据格式（对齐接口文档）：
@@ -32,6 +32,9 @@ const MAX_RECONNECT_DELAY = 30000
 let eventHandlers: Set<SSEEventHandler> = new Set()
 let reconnectHandlers: Set<SSEReconnectHandler> = new Set()
 let currentToken: string | null = null
+//+ 是否曾经成功连接过（用于区分"首次连接"与"断线重连"）
+//+ 首次连接成功时不触发 reconnect 回调，避免与 app 启动/页面挂载重复请求未读数
+let hasConnectedBefore = false
 
 //+ Mock 模式下用 setTimeout 模拟 SSE 推送
 let mockTimer: ReturnType<typeof setTimeout> | null = null
@@ -46,20 +49,32 @@ function getStreamUrl(): string {
 
 //+ 解析一条完整的 SSE 消息（按空行分隔的块）
 //+ 格式：event:xxx\ndata:{json}\n\n
+//+ 容错：
+//+   1. 归一化 \r\n 为 \n
+//+   2. 每行 trim 前后空白（处理后端偶发的前导/尾随空格）
+//+   3. 注释行同时支持半角冒号 :ping 和全角冒号 ：ping
 function parseSSEChunk(chunk: string): { event: string; data: Record<string, any> } | null {
-  const lines = chunk.split('\n')
+  //+ 归一化 Windows 换行
+  const normalized = chunk.replace(/\r\n/g, '\n')
+  const lines = normalized.split('\n')
   let event = 'message'
   const dataLines: string[] = []
 
-  for (const line of lines) {
-    //+ 忽略注释行（心跳 :ping）
-    if (line.startsWith(':')) continue
+  for (const rawLine of lines) {
+    //+ trim 前后空白（处理后端可能的前导空格）
+    const line = rawLine.trim()
+    if (line.length === 0) continue
+
+    //+ 忽略注释行（心跳 :ping / ：ping 都算）
+    if (line.startsWith(':') || line.startsWith('：')) continue
+
     if (line.startsWith('event:')) {
       event = line.slice(6).trim()
     } else if (line.startsWith('data:')) {
-      //+ data: 后面的内容（去掉前缀和可选空格）
+      //+ data: 后面的内容（前缀已去掉，line 已整体 trim，再去开头可选空格）
       dataLines.push(line.slice(5).replace(/^\s/, ''))
     }
+    //+ 其他不符合 SSE 协议的字段直接忽略
   }
 
   if (dataLines.length === 0) return null
@@ -67,8 +82,10 @@ function parseSSEChunk(chunk: string): { event: string; data: Record<string, any
   try {
     const dataStr = dataLines.join('\n')
     const data = JSON.parse(dataStr)
+    console.log('[SSE] 解析成功:', { event, data })
     return { event, data }
-  } catch {
+  } catch (err) {
+    console.warn('[SSE] data JSON 解析失败:', dataLines, err)
     return null
   }
 }
@@ -94,13 +111,17 @@ function startMockSSE(): void {
   isConnecting = false
   isConnected = true
   reconnectDelay = 1000
-  reconnectHandlers.forEach(handler => {
-    try {
-      handler()
-    } catch (e) {
-      console.error('[SSE-Mock] reconnect handler error:', e)
-    }
-  })
+  //+ 首次连接不触发 reconnect 回调，只有断线重连后才触发
+  if (hasConnectedBefore) {
+    reconnectHandlers.forEach(handler => {
+      try {
+        handler()
+      } catch (e) {
+        console.error('[SSE-Mock] reconnect handler error:', e)
+      }
+    })
+  }
+  hasConnectedBefore = true
 
   //+ 推送一次：先消息事件，300ms 后 unread 事件（对齐推送顺序）
   const pushOnce = () => {
@@ -183,13 +204,17 @@ async function connectRealSSE(token: string): Promise<void> {
     isConnecting = false
     isConnected = true
     reconnectDelay = 1000
-    reconnectHandlers.forEach(handler => {
-      try {
-        handler()
-      } catch (e) {
-        console.error('[SSE] reconnect handler error:', e)
-      }
-    })
+    //+ 首次连接不触发 reconnect 回调，只有断线重连后才触发
+    if (hasConnectedBefore) {
+      reconnectHandlers.forEach(handler => {
+        try {
+          handler()
+        } catch (e) {
+          console.error('[SSE] reconnect handler error:', e)
+        }
+      })
+    }
+    hasConnectedBefore = true
 
     //+ 读取流
     const reader = response.body.getReader()
@@ -213,6 +238,11 @@ async function connectRealSSE(token: string): Promise<void> {
 
         const parsed = parseSSEChunk(chunk)
         if (parsed) {
+          //+ 调试：确认 handler 数量，避免被误清
+          console.log('[SSE] 派发事件给 handlers, 当前数量:', eventHandlers.size, 'event:', parsed.event)
+          if (eventHandlers.size === 0) {
+            console.warn('[SSE] ⚠️ eventHandlers 为空！handler 未注册或被误清')
+          }
           eventHandlers.forEach(handler => {
             try {
               handler(parsed.event, parsed.data)
@@ -278,6 +308,10 @@ export function connectSSE(token: string): void {
 }
 
 //+ 主动断开 SSE 连接
+//+ 注意：不清理 eventHandlers / reconnectHandlers，它们的注册/注销由
+//+ onSSEEvent / onSSEReconnect 返回的 off 函数管理（组件 unmount 时调用）
+//+ 之前在这里 clear() 会导致 StrictMode 双调用场景下 handler 被误清，
+//+ 表现为 SSE 连接成功、消息能解析，但 handler 不被调用（弹窗不出现）
 export function disconnectSSE(): void {
   if (reconnectTimer) {
     clearTimeout(reconnectTimer)
@@ -293,8 +327,9 @@ export function disconnectSSE(): void {
   isConnecting = false
   isConnected = false
   reconnectDelay = 1000
-  eventHandlers.clear()
-  reconnectHandlers.clear()
+  //+ 重置首次连接标志：登出/主动断开后，下次连接视为首次连接
+  hasConnectedBefore = false
+  //+ 不清理 eventHandlers / reconnectHandlers：由 onSSEEvent/off 管理
   currentToken = null
 }
 

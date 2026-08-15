@@ -13,7 +13,7 @@ import {
   clearToastCooldown,
   setPendingJumpTab
 } from '@/store/modules/message'
-import logo from '@/assets/logo.png'
+// import logo from '@/assets/logo.png'
 import './index.less'
 
 const AUTO_CLOSE_MS = 4000
@@ -59,12 +59,14 @@ const MessageToast = () => {
 
   if (!visible) return null
 
+  console.log('[MessageToast] 渲染弹窗 visible=', visible, 'content=', content, 'tab=', toastTab)
+
   return (
     <div className='message-toast-mask' onClick={handleMaskClick}>
       <div className='message-toast' onClick={handleClick}>
         {/* 左上角 logo + "途友" 文字 */}
         <div className='message-toast-header'>
-          <img className='message-toast-logo' src={logo} alt='途友' />
+          {/* <img className='message-toast-logo' src='http://192.168.10.7:89/logo.png' alt='途友' /> */}
           <span className='message-toast-brand'>途友</span>
         </div>
         {/* SSE 推送内容，Ellipsis 2行省略 */}

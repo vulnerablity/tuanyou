@@ -347,9 +347,11 @@ const messageSlice = createSlice({
     showToast(state, action: PayloadAction<{ content: string; tab: MessageTab }>) {
       //+ 冷却中只更新内容，不重复弹窗
       if (state.toastCooldown) {
+        console.log('[store/showToast] 冷却中，仅更新内容:', action.payload.content)
         state.toastContent = action.payload.content
         return
       }
+      console.log('[store/showToast] 弹窗显示:', action.payload.content, 'tab:', action.payload.tab)
       state.toastVisible = true
       state.toastContent = action.payload.content
       state.toastTab = action.payload.tab
