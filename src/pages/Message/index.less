@@ -151,7 +151,7 @@
 .message-item {
   display: flex;
   flex-direction: row;
-  padding: 24px 32px;
+  padding: 24px 60px 24px 32px;
   background: #fff;
   border-bottom: 1px solid #f0f0f0;
   position: relative;
@@ -214,21 +214,19 @@
   line-height: 1.5;
 
   //+ 折叠状态：2行省略
-  &.collapsed {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  // &.collapsed {
+    
+  //   overflow: hidden;
+   
+  // }
   //+ 展开状态：完整显示
-  &.expanded {
-    display: block;
-  }
+  // &.expanded {
+  //   display: block;
+  // }
 }
 
 //+ 展开/收起按钮（绿色细体文字）
-.message-item-expand-btn {
+ .system-message-item .nut-ellipsis-text {
   font-size: 24px;
   color: #2e7d32;
   font-weight: 400;
