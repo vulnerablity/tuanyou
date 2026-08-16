@@ -506,7 +506,7 @@ const messageSlice = createSlice({
           const replies = m.replies || []
           return {
             ...m,
-            replies: [...replies, { id: reply.id, author: 'me' as const, content: reply.content }],
+            replies: [...replies, { id: reply.id, sender: 'me' as const, content: reply.content }],
             replyCount: (m.replyCount || 0) + 1
           }
         })

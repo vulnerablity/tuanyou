@@ -41,8 +41,18 @@ function extractTargetTitle(content: string): string {
 
 //+ 适配器：后端 MessageDTO → 前端 InteractionMessage 实体
 //+ sender 为 null 时使用默认占位（互动消息理论上 sender 不为 null，做兜底）
+//+ 评论类消息：解析 m.comment.replies 映射到 item.replies，replyCount 取 replies.length
 function normalizeInteraction(m: MessageDTO): InteractionMessage {
   const sender = m.sender || { id: '', nickname: '匿名用户', avatar: '' }
+  //+ 解析评论回复列表：后端 comment.replies → 前端 { id, sender, content }
+  const commentReplies = m.comment?.replies
+  const replies = Array.isArray(commentReplies)
+    ? commentReplies.map(r => ({
+        id: r.commentId,
+        sender: r.sender,
+        content: r.content
+      }))
+    : []
   return {
     id: m.id,
     //+ --- 文档字段（透传） ---
@@ -57,8 +67,8 @@ function normalizeInteraction(m: MessageDTO): InteractionMessage {
     targetTitle: extractTargetTitle(m.content),
     createdAt: m.sendTime,
     read: m.isRead === 1,
-    replyCount: 0,
-    replies: []
+    replyCount: replies.length,
+    replies
   }
 }
 

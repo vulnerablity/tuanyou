@@ -60,7 +60,7 @@ const CommentMessageItem = ({ item, onMarkRead, onReply, onDelete, swipeOpen, on
     const text = replyText.trim()
     if (!text) return
     tryMarkRead()
-    const newReply = { id: `local-${Date.now()}`, author: 'me' as const, content: text }
+    const newReply = { id: `local-${Date.now()}`, sender: 'me' as const, content: text }
     setLocalReplies([...localReplies, newReply])
     setReplyText('')
     setReplyInputVisible(false)
@@ -124,7 +124,8 @@ const CommentMessageItem = ({ item, onMarkRead, onReply, onDelete, swipeOpen, on
             <div className='reply-list-box'>
               {localReplies.map((r) => (
                 <div key={r.id} className='reply-list-row'>
-                  <span className='reply-author'>{r.author === 'me' ? '我' : 'ta'}</span>
+                  {/*+ sender='me' 显示"我 {content}"，'you' 显示"ta {content}" */}
+                  <span className='reply-author'>{r.sender === 'me' ? '我' : 'ta'}</span>
                   <span className='reply-content-text'>{r.content}</span>
                 </div>
               ))}

@@ -8,6 +8,8 @@ import Taro, { useDidHide } from '@tarojs/taro'
 import { View } from '@tarojs/components'
 import { Button } from '@nutui/nutui-react'
 import { ArrowDown, ArrowUp } from '@nutui/icons-react'
+import { useSelector } from 'react-redux'
+import type { RootState } from '@/store'
 import Avatar from '@/components/Avatar'
 import type { Comment } from '@/types/entity'
 import './index.less'
@@ -118,10 +120,13 @@ const CommentSection = (props: CommentSectionProps) => {
   } | null>(null)
 
   // ---------- 派生 ----------
-  //+ 已加载评论总数：一级 + 所有已加载二级（用于标题展示）
+  //+ 评论总数：优先用后端返回的 totalComments（含二级回复），降级用已加载数据累加
+  const storeTotalComments = useSelector((state: RootState) => state.comment.totalComments)
   const totalCount = useMemo(
-    () => comments.reduce((sum, c) => sum + 1 + (c.replies?.length || 0), 0),
-    [comments]
+    () => storeTotalComments > 0
+      ? storeTotalComments
+      : comments.reduce((sum, c) => sum + 1 + (c.replies?.length || 0), 0),
+    [storeTotalComments, comments]
   )
 
   // ---------- 工具：本地更新 ----------

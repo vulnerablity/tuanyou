@@ -22,6 +22,7 @@ import {
 } from '@/store/modules/comment'
 import { COMMENT_TARGET_TYPE } from '@/types'
 import { useAuthGuard } from '@/components/AuthRoute'
+import { useCommentPolling } from '@/hooks/useCommentPolling'
 import './index.less'
 
 const GuideDetail = () => {
@@ -36,6 +37,9 @@ const GuideDetail = () => {
   //+ 路由参数：id（攻略ID）
   const router = Taro.getCurrentInstance().router
   const id = router?.params?.id || ''
+
+  //+ 评论点赞数轮询：15s 一次，只 patch likeCount 变化项，离开详情页自动清理
+  useCommentPolling(COMMENT_TARGET_TYPE.GUIDE, id)
 
   //+ 请求锁 + AbortController：key = `${op}:${id}`，值 = RTK dispatch promise
   //+ promise.abort() 会触发 RTK 内部 signal → 传入 API → request 层 abort 真实请求
@@ -253,7 +257,11 @@ const GuideDetail = () => {
       //+ store 已追加新评论 → initData 同步展示；切回一级模式
       setReplyTarget(null)
     } else {
-      throw new Error((action as any)?.payload || '发表评论失败')
+      //+ payload 现为 { code, message } 对象，构造带 code 的 Error 抛给 CommentInput 区分提示
+      const payload = (action as any)?.payload as { code: number; message: string } | undefined
+      const err = new Error(payload?.message || '发表评论失败')
+      ;(err as any).code = payload?.code
+      throw err
     }
   }, [dispatch, id, commentList])
 
