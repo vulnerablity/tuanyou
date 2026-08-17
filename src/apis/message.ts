@@ -25,8 +25,13 @@ import type {
 
 //+ 互动消息类型关键词映射（从 content 文本中推导 type 字段）
 //+ 优先级：comment > favorite > follow > like > 默认 like
-function deriveInteractionType(content: string): InteractionMessage['type'] {
-  if (content.includes('评论') || content.includes('回复')) return 'comment'
+//+ 判断互动消息类型：以 m.comment 是否为 null 为准（后端权威字段）
+//+ - comment != null → 'comment'（评论/回复消息，有回复功能）
+//+ - comment == null → 按 content 文本判断其他类型（赞/收藏/关注）
+//+ 不再仅靠 content 文本判断，避免"赞了你的评论"被误判为 comment 类型
+function deriveInteractionType(m: MessageDTO): InteractionMessage['type'] {
+  if (m.comment != null) return 'comment'
+  const content = m.content || ''
   if (content.includes('收藏')) return 'favorite'
   if (content.includes('关注')) return 'follow'
   if (content.includes('赞')) return 'like'
@@ -62,7 +67,7 @@ function normalizeInteraction(m: MessageDTO): InteractionMessage {
     isRead: m.isRead,
     sender: m.sender,
     //+ --- 前端兼容字段（适配层填充） ---
-    type: deriveInteractionType(m.content),
+    type: deriveInteractionType(m),
     member: { id: sender.id, nickname: sender.nickname, avatar: sender.avatar },
     targetTitle: extractTargetTitle(m.content),
     createdAt: m.sendTime,

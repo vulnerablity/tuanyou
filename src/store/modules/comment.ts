@@ -202,7 +202,12 @@ export const createComment = createAsyncThunk(
       }
       return rejectWithValue({ code: res.code, message: res.message || '发表评论失败' })
     } catch (error: any) {
-      return rejectWithValue({ code: -1, message: error?.message || '网络错误' })
+      //+ request.ts 在 code 非 0/200 时 reject(完整 ResponseData)
+      //+ 透传后端的 code（如 2001=违禁词）和 message，让组件层能区分业务错误
+      return rejectWithValue({
+        code: typeof error?.code === 'number' ? error.code : -1,
+        message: error?.message || '网络错误'
+      })
     }
   }
 )

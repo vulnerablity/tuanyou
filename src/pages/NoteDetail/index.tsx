@@ -260,6 +260,56 @@ const NoteDetail = () => {
     await dispatch(loadMoreComments())
   }, [dispatch])
 
+  // ---------- 滑动触底加载（一级评论）----------
+  //+ 距底部阈值（px）：提前触发，用户感觉不到停顿
+  const BOTTOM_THRESHOLD = 300
+  //+ 滚动容器 ref（.note-detail-content，实际滚动载体）
+  const contentRef = useRef<HTMLDivElement | null>(null)
+  //+ 正在加载中锁：onScroll 高频触发，防止重复请求
+  const loadingLockRef = useRef(false)
+
+  //+ 尝试加载下一页：所有条件满足才调用，否则跳过
+  //+ 供 onScroll 和首屏 useEffect 复用
+  const tryLoadNextPage = useCallback(async () => {
+    if (loadingLockRef.current) return          //+ 同页请求中
+    if (!commentHasMore) return                  //+ 没有更多
+    if (commentLoadingMore) return               //+ store loadingMore 已在请求
+    //+ 加锁，onScroll 后续事件不会再触发
+    loadingLockRef.current = true
+    try {
+      await handleLoadMoreComments()
+    } finally {
+      loadingLockRef.current = false
+    }
+  }, [commentHasMore, commentLoadingMore, handleLoadMoreComments])
+
+  //+ 滚动监听：距底部 <= threshold 时触发加载
+  const handleScroll = useCallback(() => {
+    const el = contentRef.current
+    if (!el) return
+    //+ scrollHeight = 内容真实高度，clientHeight = 可见高度，scrollTop = 已滚动
+    const remain = el.scrollHeight - el.scrollTop - el.clientHeight
+    if (remain <= BOTTOM_THRESHOLD) {
+      void tryLoadNextPage()
+    }
+  }, [tryLoadNextPage])
+
+  //+ 首屏自动补满：评论数少未撑出滚动条 → 自动加载下一页直到出现滚动条或 hasMore=false
+  useEffect(() => {
+    //+ 要等评论列表和轮询都稳定后再判断
+    const check = () => {
+      const el = contentRef.current
+      if (!el) return
+      //+ 滚动条高度为 0（未撑满）且还有更多数据
+      if (el.scrollHeight <= el.clientHeight + 1) {
+        void tryLoadNextPage()
+      }
+    }
+    //+ 初始 check + 每次评论列表 / hasMore 变化后再 check
+    const timer = setTimeout(check, 80)
+    return () => clearTimeout(timer)
+  }, [commentList, commentHasMore, tryLoadNextPage])
+
   //+ 加载更多二级评论（store 追加到对应一级评论 → initData 同步）
   const handleLoadMoreReplies = useCallback(async (parentId: string): Promise<{ hasMore: boolean }> => {
     const action = await dispatch(fetchReplies({ parentId }))
@@ -363,7 +413,11 @@ const NoteDetail = () => {
         more={!!noteDetail?.isOwner}
         onMoreClick={handleMoreClick}
       />
-      <div className='note-detail-content'>
+      <div
+        className='note-detail-content'
+        ref={contentRef}
+        onScroll={handleScroll}
+      >
         {/* 轮播图/视频 */}
        
       {isVideo

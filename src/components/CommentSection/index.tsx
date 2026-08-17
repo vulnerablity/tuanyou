@@ -346,11 +346,21 @@ const CommentSection = (props: CommentSectionProps) => {
         )}
         {comments.map(renderLevel1)}
 
-        {/* 加载更多一级评论 */}
-        {hasMoreComments && onLoadMoreComments && (
-          <div className='comment-load-more' onClick={handleLoadMoreComments}>
-            {loadingMore ? '加载中...' : '加载更多评论'}
+        {/* 一级评论加载更多：滑动触发为主，点击作兜底 */}
+        {/* hasMore=true && loadingMore=false → 提示"上滑加载更多/手动点"（点击兜底触发 handleLoadMoreComments）*/}
+        {/* hasMore=true && loadingMore=true  → 提示"加载中..." */}
+        {/* hasMore=false                     → 提示"已经到底啦" */}
+        {hasMoreComments ? (
+          <div
+            className='comment-load-more'
+            onClick={loadingMore ? undefined : handleLoadMoreComments}
+          >
+            {loadingMore ? '加载中...' : '上滑加载更多，或者点我'}
           </div>
+        ) : (
+          comments.length > 0 && (
+            <div className='comment-load-more comment-no-more'>— 已经到底啦 —</div>
+          )
         )}
       </div>
 
