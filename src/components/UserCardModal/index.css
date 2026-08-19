@@ -1,6 +1,8 @@
 .comment-section .nut-popup {
   background-color: transparent;
-  max-width: calc(360px * var(--nut-scale-f, 1));
+  max-width: none;
+  width: 80%;
+  max-height: none;
 }
 .user-card-modal {
   width: 100%;
@@ -12,7 +14,7 @@
 }
 .user-card-bg {
   width: 100%;
-  height: 6rem;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background-color: #f5f6f7;
 }
@@ -94,6 +96,12 @@
 .user-card-follow-btn.nut-button-primary {
   background-color: #2e7d32;
   border-color: #2e7d32;
+  color: #fff;
+}
+.user-card-follow-btn.nut-button-default {
+  background-color: #f3f4f6;
+  border-color: #f3f4f6;
+  color: #a3abc0;
 }
 .user-card-loading {
   padding: 3rem 1rem;
@@ -105,10 +113,4 @@
   width: 1rem;
   height: 1rem;
   color: #909399;
-}
-@media screen and (min-width: 768px) {
-  .user-card-modal {
-    width: 60vw;
-    max-width: 420px;
-  }
 }
