@@ -66,8 +66,8 @@ export const fetchLogin = createAsyncThunk(
     password?: string
     code?: string
     type?: 'password' | 'code'
-    captchaId?: string
-    captchaCode?: string
+    captcha_id?: string
+    captcha?: string
   }, { rejectWithValue }) => {
     try {
       const res = await loginAPI(params)

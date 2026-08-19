@@ -44,8 +44,8 @@ export function loginAPI(params: {
   code?: string
   type?: 'password' | 'code'
   //+ 密码登录需回传图形验证码 ID 与用户输入值（来自 GET /auth/captcha）
-  captchaId?: string
-  captchaCode?: string
+  captcha_id?: string
+  captcha?: string
 }) {
   return post('/auth/login', params)
 }

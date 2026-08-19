@@ -65,8 +65,8 @@ const Login = () => {
       type: 'password' | 'code'
       password?: string
       code?: string
-      captchaId?: string
-      captchaCode?: string
+      captcha_id?: string
+      captcha?: string
     } = {
       phone,
       type: loginMode === 'code' ? 'code' : 'password',
@@ -98,8 +98,9 @@ const Login = () => {
         return
       }
       params.password = password
-      params.captchaId = captchaId
-      params.captchaCode = captchaCode
+      params.captcha_id = captchaId
+      params.captcha = captchaCode
+      params.code=""
     }
 
     const result: any = await dispatch(fetchLogin(params))
@@ -159,6 +160,7 @@ const Login = () => {
               captchaImage={captchaImage}
               loading={captchaLoading}
               onRefresh={refreshCaptcha}
+             
             />
           </>
         )}
