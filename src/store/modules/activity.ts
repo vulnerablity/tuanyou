@@ -5,11 +5,11 @@
 //+ Mock 降级：由 utils/request.ts 统一处理，响应数据中 __fromMock 标记数据来源
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import {
-  getActivityBannersAPI,
-  getActivityListAPI,
-  getActivityDetailAPI,
-  toggleActivitySignupAPI,
-  deleteActivityAPI
+  getActivityBanners,
+  getActivityList,
+  getActivityDetail,
+  toggleActivitySignup,
+  deleteActivity as deleteActivityApi
 } from '@/apis/activity'
 import type { Activity, ActivityBanner, ActivityListItem, Participant } from '@/types'
 
@@ -65,17 +65,8 @@ const initialState: ActivityState = {
 //+ 获取活动Banner异步Action
 export const fetchBanners = createAsyncThunk(
   'activity/fetchBanners',
-  async (_, { rejectWithValue }) => {
-    try {
-      const res = await getActivityBannersAPI()
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取活动Banner失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async () => {
+    return await getActivityBanners()
   }
 )
 
@@ -86,75 +77,45 @@ export const fetchBanners = createAsyncThunk(
 export const fetchActivities = createAsyncThunk(
   'activity/fetchActivities',
   async (
-    params: { category?: string; date?: string; page: number; size: number; loadMore?: boolean },
-    { rejectWithValue }
+    params: { category?: string; date?: string; page: number; size: number; loadMore?: boolean }
   ) => {
-    try {
-      const res = await getActivityListAPI({
-        category: params.category,
-        date: params.date,
-        page: params.page,
-        size: params.size,
-      })
-      if (res.code === 0 || res.code === 200) {
-        //+ request.ts 会自动处理 Mock 降级，__fromMock 标记数据来源
-        return { ...res.data, loadMore: !!params.loadMore }
-      }
-      return rejectWithValue(res.message || '获取活动列表失败')
-    } catch (error: any) {
-      return rejectWithValue(error.message || '获取活动列表失败')
-    }
+    const data = await getActivityList({
+      category: params.category,
+      date: params.date,
+      page: params.page,
+      size: params.size,
+    })
+    //+ request.ts 会自动处理 Mock 降级，__fromMock 标记数据来源
+    return { ...data, loadMore: !!params.loadMore }
   }
 )
 
 //+ 获取活动详情异步Action
 export const fetchActivityDetail = createAsyncThunk(
   'activity/fetchActivityDetail',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      const res = await getActivityDetailAPI(id)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue(res.message || '获取活动详情失败')
-    } catch (error: any) {
-      return rejectWithValue(error.message || '获取活动详情失败')
-    }
+  async (id: string) => {
+    return await getActivityDetail(id)
   }
 )
 
 //+ 报名/取消报名异步Action
-//+ 后端返回 { isJoined, currentPeople, wechatQR }，前端据此更新本地状态
-//+ wechatQR：仅报名成功（isJoined=true）时返回，用于报名成功后弹微信群二维码卡片
+//+ 后端返回 { isJoined, currentPeople }，前端据此更新本地状态
+//+ wechatQR：仅报名成功（isJoined=true）时后端可能额外返回，用于报名成功后弹微信群二维码卡片
 export const fetchToggleSignup = createAsyncThunk(
   'activity/fetchToggleSignup',
-  async (id: string, { rejectWithValue, signal }) => {
-    try {
-      const res = await toggleActivitySignupAPI(id, signal)
-      if (res.code === 0 || res.code === 200) {
-        return res.data as { isJoined: boolean; currentPeople: number; wechatQR?: string }
-      }
-      return rejectWithValue(res.message || '操作失败')
-    } catch (error: any) {
-      if (error?.name === 'AbortError') return rejectWithValue('aborted')
-      return rejectWithValue(error.message || '操作失败')
-    }
+  async (id: string, { signal }) => {
+    const data = await toggleActivitySignup(id, signal)
+    //+ 兼容后端额外下发的 wechatQR（解包契约未列该字段，按可选读取）
+    return data as { isJoined: boolean; currentPeople: number; wechatQR?: string }
   }
 )
 
 //+ 删除活动异步Action
 export const deleteActivity = createAsyncThunk(
   'activity/deleteActivity',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      const res = await deleteActivityAPI(id)
-      if (res.code === 0 || res.code === 200) {
-        return { id }
-      }
-      return rejectWithValue(res.message || '删除活动失败')
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (id: string) => {
+    await deleteActivityApi(id)
+    return { id }
   }
 )
 
@@ -202,7 +163,7 @@ const activitySlice = createSlice({
       })
       .addCase(fetchBanners.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '获取活动Banner失败'
       })
       //+ 获取活动列表
       .addCase(fetchActivities.pending, (state, action) => {
@@ -219,7 +180,7 @@ const activitySlice = createSlice({
         state.loading = false
         state.loadingMore = false
         state.page = page
-        state.totalPage = total_page ??1
+        state.totalPage = total_page ?? 1
         //+ 加载更多追加，否则替换
         if (loadMore) {
           state.activityList = [...state.activityList, ...list]
@@ -230,7 +191,7 @@ const activitySlice = createSlice({
       .addCase(fetchActivities.rejected, (state, action) => {
         state.loading = false
         state.loadingMore = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '获取活动列表失败'
       })
       //+ 获取活动详情
       .addCase(fetchActivityDetail.pending, (state) => {
@@ -243,7 +204,7 @@ const activitySlice = createSlice({
       })
       .addCase(fetchActivityDetail.rejected, (state, action) => {
         state.detailLoading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '获取活动详情失败'
       })
       //+ 报名/取消报名：关闭乐观更新（报名是高权重操作，等服务器确认后再更新 UI）
       //+ 仅用 signupLoading 做请求锁 + 组件层 cooldown 防狂点
@@ -270,8 +231,9 @@ const activitySlice = createSlice({
       })
       .addCase(fetchToggleSignup.rejected, (state, action) => {
         state.signupLoading = false
-        if (action.payload === 'aborted') return
-        state.error = action.payload as string
+        //+ AbortController 主动取消：丢弃过期响应，不置错误
+        if (action.error.name === 'AbortError') return
+        state.error = action.error.message ?? '操作失败'
       })
       //+ 删除活动
       .addCase(deleteActivity.pending, (state) => {
@@ -289,7 +251,7 @@ const activitySlice = createSlice({
       })
       .addCase(deleteActivity.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '删除活动失败'
       })
   },
 })

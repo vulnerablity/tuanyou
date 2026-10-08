@@ -3,7 +3,7 @@
 //+ Feed流采用单向滑动窗口：pageCache 按页缓存，最多保留50页，超过淘汰头部旧页
 //+ feed 通过 selector 扁平化派生，不复写冗余 state
 import { createSlice, createAsyncThunk, PayloadAction, createSelector } from '@reduxjs/toolkit'
-import { getSlidesAPI, getFeedAPI } from '@/apis/home'
+import { getSlides, getFeed } from '@/apis/home'
 import type { SlideItem, FeedItem, PageResult } from '@/types'
 import type { RootState } from '@/store'
 
@@ -60,17 +60,8 @@ const initialState: HomeState = {
 //+ 获取轮播数据异步Action
 export const fetchSlides = createAsyncThunk(
   'home/fetchSlides',
-  async (_, { rejectWithValue }) => {
-    try {
-      const res = await getSlidesAPI()
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取轮播数据失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async () => {
+    return await getSlides()
   }
 )
 
@@ -80,17 +71,8 @@ export const fetchSlides = createAsyncThunk(
 //+     （reducer 置 loading=true），再执行 thunk 体，导致 page>1 时永远命中拦截，触底加载失效
 export const fetchFeed = createAsyncThunk(
   'home/fetchFeed',
-  async (params: FeedQueryParams, { rejectWithValue }) => {
-    try {
-      const res = await getFeedAPI(params)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取Feed流失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (params: FeedQueryParams) => {
+    return await getFeed(params)
   }
 )
 
@@ -99,37 +81,28 @@ export const fetchFeed = createAsyncThunk(
 //+ 已被滑动窗口淘汰的页面直接跳过；不做头部新增笔记软同步
 export const softSyncFeed = createAsyncThunk(
   'home/softSyncFeed',
-  async (params: FeedQueryParams, { dispatch, rejectWithValue, getState }) => {
+  async (params: FeedQueryParams, { dispatch, getState }) => {
     const state = getState() as RootState
     if (state.home.feedLoading) return
-    try {
-      const res = await getFeedAPI({ ...params, page: 1 })
-      if (res.code === 0 || res.code === 200) {
-        const page1List = (res.data as PageResult<FeedItem>).list || []
+    const page1 = await getFeed({ ...params, page: 1 })
+    const page1List = page1.list || []
 
-        //+ 仅对当前 pageCache 中存在的条目逐项 patch；不在内存的跳过（已被淘汰）
-        //+ page1 的条目一定在 pageCache[1] 中（除非 1 已被淘汰，此时跳过即可）
-        for (const item of page1List) {
-          dispatch(updateFeedItem({ id: item.id, patch: item }))
-        }
-
-        //+ 更新 total/hasMore 元信息，避免 hasMore 误判
-        const payload = res.data as PageResult<FeedItem>
-        const syncSize = payload.size || 10
-        const syncTotalPage = payload.total_page ?? Math.ceil(payload.total / syncSize)
-        dispatch(setFeedMeta({
-          total: payload.total,
-          totalPage: syncTotalPage,
-          hasMore: payload.page < syncTotalPage
-        }))
-
-        return payload
-      } else {
-        return rejectWithValue(res.message || '同步失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
+    //+ 仅对当前 pageCache 中存在的条目逐项 patch；不在内存的跳过（已被淘汰）
+    //+ page1 的条目一定在 pageCache[1] 中（除非 1 已被淘汰，此时跳过即可）
+    for (const item of page1List) {
+      dispatch(updateFeedItem({ id: item.id, patch: item }))
     }
+
+    //+ 更新 total/hasMore 元信息，避免 hasMore 误判
+    const syncSize = page1.size || 10
+    const syncTotalPage = page1.total_page ?? Math.ceil(page1.total / syncSize)
+    dispatch(setFeedMeta({
+      total: page1.total,
+      totalPage: syncTotalPage,
+      hasMore: page1.page < syncTotalPage
+    }))
+
+    return page1
   }
 )
 
@@ -180,7 +153,7 @@ const homeSlice = createSlice({
       })
       .addCase(fetchSlides.rejected, (state, action) => {
         state.slidesLoading = false
-        state.slidesError = action.payload as string
+        state.slidesError = action.error.message ?? '网络错误'
       })
       //+ Feed流
       .addCase(fetchFeed.pending, (state) => {
@@ -217,7 +190,7 @@ const homeSlice = createSlice({
       })
       .addCase(fetchFeed.rejected, (state, action) => {
         state.feedLoading = false
-        state.feedError = action.payload as string
+        state.feedError = action.error.message ?? '网络错误'
       })
   }
 })

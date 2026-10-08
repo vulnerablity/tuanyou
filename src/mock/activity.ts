@@ -1,10 +1,12 @@
 //+ 活动模块Mock数据和路由
 //+ 用户分两类：mockUsers=会员，mockLeaders=领队
-import { randomInt, randomItem, randomDate, randomFutureDate, createPageResponse, successResponse, errorResponse } from './utils'
+import type { ActivityBanner } from '@/types'
+import { randomInt, randomItem, randomDate, randomFutureDate, createPageResponse, successResponse, errorResponse, toNumber } from './utils'
+import type { MockHandler, MockData } from './utils'
 import { mockUsers, mockLeaders } from './user'
 
 //+ 活动Banner数据
-export const mockBanners = [
+export const mockBanners: ActivityBanner[] = [
   {
     id: '1',
     title: '武功山云海露营',
@@ -131,14 +133,14 @@ function generateActivity(id: number) {
 export const mockActivities: ReturnType<typeof generateActivity>[] = Array.from({ length: 20 }, (_, i) => generateActivity(i + 1))
 
 //+ Mock路由映射：活动模块
-export const activityMockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const activityMockRoutes: Record<string, MockHandler> = {
   //+ 获取首页活动Banner
   'GET /api/v1/activities/banners': () => successResponse(mockBanners),
 
   //+ 获取活动列表（与 OpenAPI 对齐：按 category / date 筛选）
-  'GET /api/v1/activities': (data) => {
-    const page = Number(data?.page) || 1
-    const size = Number(data?.size) || 10
+  'GET /api/v1/activities': (data?: MockData) => {
+    const page = toNumber(data?.page, 1)
+    const size = toNumber(data?.size, 10)
 
     let filteredActivities = [...mockActivities]
 
@@ -161,8 +163,8 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
   },
 
   //+ 获取活动详情
-  'GET /api/v1/activities/:id': (_, url) => {
-    const id = (url as string).split('/').pop() || '1'
+  'GET /api/v1/activities/:id': (_data, url) => {
+    const id = (url || '').split('/').pop() || '1'
     const activity = mockActivities.find(a => a.id === id)
     if (activity) {
       return successResponse(activity)
@@ -170,8 +172,8 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
     return errorResponse('活动不存在')
   },
 
-  //+ 创建活动（仅领队）
-  'POST /api/v1/activities': (data) => {
+  //+ 创建活动（仅领队，真实 unshift 进 mockActivities，列表立即可见）
+  'POST /api/v1/activities': (data?: MockData) => {
     //+ 创建者为领队（mockLeaders[0]），只提取必要字段
     const creator = mockLeaders[0]
     const newActivity = {
@@ -183,20 +185,20 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
         bio: creator.bio || '',
         isFollowed: false
       },
-      title: data?.title || '新活动',
-      coverImg: data?.coverImg || '',
-      category: data?.category || '徒步',
-      address: data?.address || '',
-      activityContent: data?.activityContent || '',
-      startTime: data?.startTime || randomDate(14),
-      endTime: data?.endTime || randomDate(7),
+      title: String(data?.title || '新活动'),
+      coverImg: String(data?.coverImg || ''),
+      category: String(data?.category || '徒步'),
+      address: String(data?.address || ''),
+      activityContent: String(data?.activityContent || ''),
+      startTime: String(data?.startTime || randomFutureDate(14)),
+      endTime: String(data?.endTime || randomFutureDate(7)),
       //+ signUpStart/signUpEnd 由后端自动计算，Mock 仅占位
       signUpStart: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      signUpEnd: data?.startTime || randomDate(1),
-      maxPeople: data?.maxPeople || 20,
+      signUpEnd: String(data?.startTime || randomDate(1)),
+      maxPeople: toNumber(data?.maxPeople, 20),
       currentPeople: 0,
-      price: data?.price || 0,
-      difficulty: data?.difficulty || '中等',
+      price: toNumber(data?.price, 0),
+      difficulty: String(data?.difficulty || '中等'),
       activityStatus: '报名中',
       joined: false,
       members: [] as { id: string; nickname: string; avatar: string }[],
@@ -207,10 +209,10 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
     return successResponse(newActivity)
   },
 
-  //+ 报名/取消报名（与 API 文档对齐：返回 isJoined + currentPeople）
+  //+ 报名/取消报名（真实翻转 joined + currentPeople）
   'POST /api/v1/activities/:id/signup': (_, url) => {
     //+ URL 格式 /api/v1/activities/{id}/signup，提取 id 需去掉 /signup 后取末段
-    const id = (url as string).replace('/signup', '').split('/').pop() || '1'
+    const id = (url || '').replace('/signup', '').split('/').pop() || '1'
     const activity = mockActivities.find(a => a.id === id)
     if (activity) {
       activity.joined = !activity.joined
@@ -229,9 +231,9 @@ export const activityMockRoutes: Record<string, (data?: any, url?: string) => an
     return successResponse(myActivities)
   },
 
-  //+ 删除活动（领队）
-  'DELETE /api/v1/activities/:id': (_, url) => {
-    const id = (url as string).split('/').pop() || '1'
+  //+ 删除活动（领队，真实从 mockActivities 移除）
+  'DELETE /api/v1/activities/:id': (_data, url) => {
+    const id = (url || '').split('/').pop() || '1'
     const idx = mockActivities.findIndex(a => a.id === id)
     if (idx >= 0) {
       mockActivities.splice(idx, 1)

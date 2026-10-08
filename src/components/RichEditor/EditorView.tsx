@@ -9,7 +9,7 @@
  *
  * 非 H5 环境下退化为普通输入说明（小程序端本方案暂未实现，只做 H5 先）
  */
-import React, { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react'
+import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react'
 import Taro from '@tarojs/taro'
 
 export interface EditorViewProps {
@@ -80,7 +80,7 @@ const EditorView = forwardRef<EditorViewRef, EditorViewProps>(({
     getRoot: () => (isWeb ? rootRef.current : null),
     focus: () => {
       if (!isWeb || !rootRef.current) return
-      rootRef.current.focus({ preventScroll: false } as any)
+      rootRef.current.focus({ preventScroll: false })
       // 把光标移到末尾
       const el = rootRef.current
       if (window.getSelection && document.createRange) {
@@ -115,17 +115,17 @@ const EditorView = forwardRef<EditorViewRef, EditorViewProps>(({
   if (!isWeb) {
     // 小程序端先降级为一个说明占位（方案 B H5 优先）
     return (
-      <div className="md-edit-view md-editor-fallback" style={{ minHeight: h, padding: '12px 16px' }}>
-        富文本编辑器当前仅支持 H5 / App 端，小程序端可在"发布内容"页面内以纯文本方式编辑。
+      <div className='md-edit-view md-editor-fallback' style={{ minHeight: h, padding: '12px 16px' }}>
+        富文本编辑器当前仅支持 H5 / App 端，小程序端可在“发布内容”页面内以纯文本方式编辑。
       </div>
     )
   }
 
   return (
-    <div className="md-edit-view" style={{ minHeight: h, position: 'relative' }}>
+    <div className='md-edit-view' style={{ minHeight: h, position: 'relative' }}>
       {isEmpty && !readOnly && (
         <div
-          className="md-ph"
+          className='md-ph'
           style={{
             position: 'absolute',
             left: 16,
@@ -143,7 +143,7 @@ const EditorView = forwardRef<EditorViewRef, EditorViewProps>(({
       )}
       <div
         ref={rootRef}
-        className="md-textarea md-richtext-root"
+        className='md-textarea md-richtext-root'
         contentEditable={!readOnly}
         suppressContentEditableWarning
         style={{
@@ -165,7 +165,7 @@ const EditorView = forwardRef<EditorViewRef, EditorViewProps>(({
           //   Enter      → 分段（插入新段落，execCommand('insertParagraph')）
           //   Shift+Enter → 软换行（同段内<br/>）
           //   移动端软键盘"换行"键也会触发 Enter keyCode，所以同样处理
-          if (!e.isComposing && (e.key === 'Enter' || e.keyCode === 13)) {
+          if (!(e.nativeEvent as KeyboardEvent).isComposing && (e.key === 'Enter' || e.keyCode === 13)) {
             if (e.shiftKey) {
               e.preventDefault()
               document.execCommand('insertLineBreak', false)
@@ -178,17 +178,16 @@ const EditorView = forwardRef<EditorViewRef, EditorViewProps>(({
             // 立即同步内容
             requestAnimationFrame(emitChange)
           }
-          void emitChange
         }}
         onBeforeInput={(e) => {
           // 移动端 IOS 中文 IME 可能吞换行；这里捕获 beforeinput insertParagraph/insertLineBreak 兜底
-          const inputType = (e as any).inputType
+          const inputType = (e.nativeEvent as InputEvent).inputType
           if (inputType === 'insertParagraph' || inputType === 'insertLineBreak') {
             // 允许默认行为，但确保之后 emit
             requestAnimationFrame(emitChange)
           }
         }}
-        onBlur={(e) => {
+        onBlur={() => {
           // 失焦前保存选区（极端情况下兜底）
           savedRangeRef.current = (() => {
             const sel = window.getSelection?.()
@@ -200,7 +199,6 @@ const EditorView = forwardRef<EditorViewRef, EditorViewProps>(({
           })()
           // blur 也同步一次 HTML（防止点击外部没触发 input）
           emitChange()
-          void e
         }}
       />
     </div>

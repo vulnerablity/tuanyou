@@ -15,6 +15,21 @@
  * 3. escapeHtml —— 通用 escape
  */
 
+/**
+ * 详情页正文内容统一归一化
+ * ============================================================
+ * 编辑器升级后，后端 content 字段可能存两种格式：
+ *   ① 旧数据：Markdown 纯文本 或 纯文本（没有任何标签）
+ *   ② 新数据：富文本 HTML 字符串
+ *
+ * 自动识别：
+ *   - 如果含明显的 HTML 标签（<xx> 或 <xx/>）→ 直接 sanitizeHtml（信任语义标签）
+ *   - 否则视为 Markdown/纯文本 → 走 renderMarkdown 转 HTML（保留原排版）
+ *
+ * 返回可直接 dangerouslySetInnerHTML / RichText nodes 使用的安全 HTML
+ */
+import { renderMarkdown } from './markdown'
+
 const ALLOWED_TAGS: Record<string, Record<string, (v: string) => string | false>> = {
   h1: {}, h2: {}, h3: {}, h4: {}, h5: {}, h6: {},
   p: {}, br: {},
@@ -105,7 +120,6 @@ export function sanitizeHtml(dirty: string): string {
 
   // 2) 用正则逐标签处理（只保留白名单标签，其余去掉标签保留内部文本）
   // 使用函数 replace，针对每个 <tag attr=val ...> 和 </tag> 做决策
-  type M = { open: boolean; close: boolean; slashClose: boolean; name: string; attrs: string }
   const tagRe = /<(\/)?\s*([a-zA-Z0-9-]+)\s*([^>]*?)\s*(\/)?>/g
   s = s.replace(tagRe, (_m: string, slash: string | undefined, rawName: string, rawAttrs: string, selfClose: string | undefined): string => {
     const name = rawName.toLowerCase()
@@ -190,21 +204,6 @@ export function truncateHtmlByText(html: string, max: number): { html: string; t
   const kept = escapeHtml(text.slice(0, max))
   return { html: `<p>${kept}</p>`, truncated: true }
 }
-
-/**
- * 详情页正文内容统一归一化
- * ============================================================
- * 编辑器升级后，后端 content 字段可能存两种格式：
- *   ① 旧数据：Markdown 纯文本 或 纯文本（没有任何标签）
- *   ② 新数据：富文本 HTML 字符串
- *
- * 自动识别：
- *   - 如果含明显的 HTML 标签（<xx> 或 <xx/>）→ 直接 sanitizeHtml（信任语义标签）
- *   - 否则视为 Markdown/纯文本 → 走 renderMarkdown 转 HTML（保留原排版）
- *
- * 返回可直接 dangerouslySetInnerHTML / RichText nodes 使用的安全 HTML
- */
-import { renderMarkdown } from './markdown'
 
 const LOOKS_LIKE_HTML = /<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>|<\/[a-zA-Z][a-zA-Z0-9-]*\s*>|<[a-zA-Z][a-zA-Z0-9-]*\s*\/?>/
 

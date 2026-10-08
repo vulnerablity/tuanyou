@@ -19,7 +19,7 @@
 //+   未读数：event:unread
 //+           data:{"total":5,"interactions":4,"system":1}
 //+   心跳：:ping（注释行，忽略）
-export type SSEEventHandler = (event: string, data: Record<string, any>) => void
+export type SSEEventHandler = (event: string, data: Record<string, unknown>) => void
 export type SSEReconnectHandler = () => void
 
 //+ 全局状态
@@ -53,7 +53,7 @@ function getStreamUrl(): string {
 //+   1. 归一化 \r\n 为 \n
 //+   2. 每行 trim 前后空白（处理后端偶发的前导/尾随空格）
 //+   3. 注释行同时支持半角冒号 :ping 和全角冒号 ：ping
-function parseSSEChunk(chunk: string): { event: string; data: Record<string, any> } | null {
+function parseSSEChunk(chunk: string): { event: string; data: Record<string, unknown> } | null {
   //+ 归一化 Windows 换行
   const normalized = chunk.replace(/\r\n/g, '\n')
   const lines = normalized.split('\n')
@@ -257,12 +257,14 @@ async function connectRealSSE(token: string): Promise<void> {
     //+ 流正常结束，标记断开并尝试重连
     isConnected = false
     scheduleReconnect()
-  } catch (error: any) {
-    console.warn('[SSE] 连接错误:', error?.message || error)
+  } catch (error) {
+    const errName = error instanceof Error ? error.name : ''
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.warn('[SSE] 连接错误:', errMsg)
     isConnecting = false
     isConnected = false
     //+ AbortError 是主动断开，不重连
-    if (error?.name !== 'AbortError') {
+    if (errName !== 'AbortError') {
       scheduleReconnect()
     }
   }

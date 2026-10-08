@@ -5,10 +5,11 @@
 //+ 状态：列表/分页/筛选/加载状态归 Store；弹窗显隐等纯 UI 状态留页面内
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import Taro, { useDidShow } from '@tarojs/taro'
+import { useDidShow } from '@tarojs/taro'
 import { Loading, Empty } from '@nutui/nutui-react'
 import type { RootState, AppDispatch } from '@/store'
 import { fetchActivities, setCategory, setDate } from '@/store/modules/activity'
+import { routerNavigateTo } from '@/router'
 import SearchBar from '@/components/SearchBar'
 import DateScroller from '@/components/DateScroller'
 import CalendarPopup from '@/components/CalendarPopup'
@@ -53,12 +54,13 @@ const Activity = () => {
   const [calendarVisible, setCalendarVisible] = useState(false)
 
   //+ 加载活动列表（page=1 替换，page>1 追加）
+  //+ targetDate 为空字符串=不过滤日期；'全部' 兜底归一为 ''
   const loadActivities = useCallback(
-    (targetCategory: string, targetPage: number, loadMore: boolean,targetDate?: string, ) => {
+    (targetCategory: string, targetPage: number, loadMore: boolean, targetDate?: string) => {
       dispatch(
         fetchActivities({
           category: targetCategory === '全部' ? '' : targetCategory,
-          date: targetDate==="全部"?'':targetDate,
+          date: targetDate === '全部' ? '' : targetDate,
           page: targetPage,
           size: PAGE_SIZE,
           loadMore,
@@ -108,19 +110,24 @@ const Activity = () => {
     }
   }
 
+  //+ 跳活动详情（带参走 router 包装；H5 自动拼 query）
+  const goToDetail = useCallback((activityId: string) => {
+    routerNavigateTo('ACTIVITY_DETAIL', { id: activityId })
+  }, [])
+
   //+ 点击卡片跳转详情
   const handleCardClick = (activity: ActivityListItem) => {
-    Taro.navigateTo({ url: `/pages/ActivityDetail/index?id=${activity.id}` })
+    goToDetail(activity.id)
   }
 
   //+ 点击报名按钮：跳转详情页完成报名（文档4.3节：列表页按钮仅展示，点击跳转详情页）
   const handleSignup = (activity: ActivityListItem) => {
-    Taro.navigateTo({ url: `/pages/ActivityDetail/index?id=${activity.id}` })
+    goToDetail(activity.id)
   }
 
   //+ 点击取消报名按钮：同样跳转详情页操作（列表页不直接调接口）
   const handleCancelSignup = (activity: ActivityListItem) => {
-    Taro.navigateTo({ url: `/pages/ActivityDetail/index?id=${activity.id}` })
+    goToDetail(activity.id)
   }
 
   //+ 页面再次显示时刷新列表（文档4.2节方案一：从详情页返回时同步报名状态）
@@ -132,25 +139,25 @@ const Activity = () => {
   })
 
   return (
-    <div className="activity-page">
+    <div className='activity-page'>
       {/* 顶部导航：SearchBar（含"途友"标题 + 搜索 + 头像） */}
-      <div className="activity-header">
+      <div className='activity-header'>
         <SearchBar />
       </div>
 
       {/* 可滚动内容区 */}
-      <div className="activity-content" ref={scrollRef} onScroll={handleScroll}>
+      <div className='activity-content' ref={scrollRef} onScroll={handleScroll}>
         {/* 筛选区（吸顶）：分类栏 + 日期滚动条 */}
-        <div className="activity-filter-bar">
-          <div className="category-bar">
+        <div className='activity-filter-bar'>
+          <div className='category-bar'>
             {CATEGORY_LIST.map((cat) => (
               <div
                 key={cat}
                 className={`category-item ${cat === category ? 'active' : ''}`}
                 onClick={() => handleCategoryChange(cat)}
               >
-                <div className="category-icon">{CATEGORY_ICON[cat]}</div>
-                <div className="category-name">{cat}</div>
+                <div className='category-icon'>{CATEGORY_ICON[cat]}</div>
+                <div className='category-name'>{cat}</div>
               </div>
             ))}
           </div>
@@ -163,7 +170,7 @@ const Activity = () => {
         </div>
 
         {/* 活动列表 */}
-        <div className="activity-list">
+        <div className='activity-list'>
           {activityList.map((activity) => (
             <ActivityCard
               key={activity.id}
@@ -177,14 +184,14 @@ const Activity = () => {
 
         {/* 加载中（首次） */}
         {loading && activityList.length === 0 && (
-          <div className="activity-loading">
+          <div className='activity-loading'>
             <Loading>加载中...</Loading>
           </div>
         )}
 
         {/* 加载更多中 */}
         {loadingMore && (
-          <div className="activity-loading">
+          <div className='activity-loading'>
             <Loading>加载中...</Loading>
           </div>
         )}
@@ -196,7 +203,7 @@ const Activity = () => {
 
         {/* 没有更多 */}
         {!loading && activityList.length > 0 && page >= totalPage && (
-          <div className="activity-no-more">已加载全部</div>
+          <div className='activity-no-more'>已加载全部</div>
         )}
       </div>
 

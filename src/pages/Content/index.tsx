@@ -10,6 +10,7 @@ import HeaderNavBar from '@/components/HeaderNavBar'
 import { PostWaterfall } from '@/components/PostWaterfall'
 import { usePagedList } from '@/hooks/usePagedList'
 import { fetchProfileNotes, fetchProfileStrategys } from '@/store/modules/profile'
+import { routerNavigateTo } from '@/router'
 //+ 说明：点赞 API 由 PostWaterfall 组件内部调用（含乐观 UI）；
 //+ "我的内容"为管理列表，不展示收藏按钮，无需父级回调同步
 import { toFeedList } from '@/utils/postAdapter'
@@ -17,6 +18,18 @@ import type { ProfilePostItem, FeedItem, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
 import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
+
+//+ 每页条数
+const PAGE_SIZE = 10
+
+//+ 失败时返回的空分页（rejected 动作无 payload）
+const emptyPageResult = (page: number, size: number): PageResult<ProfilePostItem> => ({
+  list: [],
+  total: 0,
+  page,
+  size,
+  total_page: 0
+})
 
 const Content = () => {
   useAuthGuard()
@@ -30,26 +43,28 @@ const Content = () => {
 
   //+ 两个独立的分页实例：一个给笔记，一个给攻略（相互独立不共享状态）
   const notesPaged = usePagedList<ProfilePostItem>({
-    size: 10,
+    size: PAGE_SIZE,
     fetcher: useCallback(
       async ({ page, size }) => {
         const action = await dispatch(fetchProfileNotes({ page, size }))
-        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
-        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
-        return { code: 0, data: payload }
+        if (fetchProfileNotes.fulfilled.match(action)) {
+          return { code: 0, data: action.payload }
+        }
+        return { code: -1, data: emptyPageResult(page, size) }
       },
       [dispatch]
     )
   })
 
   const strategysPaged = usePagedList<ProfilePostItem>({
-    size: 10,
+    size: PAGE_SIZE,
     fetcher: useCallback(
       async ({ page, size }) => {
         const action = await dispatch(fetchProfileStrategys({ page, size }))
-        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
-        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
-        return { code: 0, data: payload }
+        if (fetchProfileStrategys.fulfilled.match(action)) {
+          return { code: 0, data: action.payload }
+        }
+        return { code: -1, data: emptyPageResult(page, size) }
       },
       [dispatch]
     )
@@ -89,10 +104,8 @@ const Content = () => {
 
   //+ 点击详情：传 isMine=1 标识详情页显示删除按钮
   const handleItemClick = (item: FeedItem) => {
-    const pagePath = item.type === 'guide'
-      ? '/pages/GuideDetail/index'
-      : '/pages/NoteDetail/index'
-    Taro.navigateTo({ url: `${pagePath}?id=${item.id}&type=${item.type}&isMine=1` })
+    const routeKey = item.type === 'guide' ? 'GUIDE_DETAIL' : 'NOTE_DETAIL'
+    routerNavigateTo(routeKey, { id: item.id, type: item.type, isMine: 1 })
   }
 
   //+ Q2：Tab 切换 —— 实时请求新 Tab 第一页（不累积旧数据）

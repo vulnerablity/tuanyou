@@ -11,10 +11,23 @@ import ActivityCard from '@/components/ActivityCard'
 import { usePagedList } from '@/hooks/usePagedList'
 import { fetchPublishActivity, fetchJoinActivity } from '@/store/modules/profile'
 import { setParticipants } from '@/store/modules/activity'
+import { routerNavigateTo } from '@/router'
 import type { ActivityListItem, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
 import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
+
+//+ 每页条数
+const PAGE_SIZE = 10
+
+//+ 失败时返回的空分页（rejected 动作无 payload）
+const emptyPageResult = (page: number, size: number): PageResult<ActivityListItem> => ({
+  list: [],
+  total: 0,
+  page,
+  size,
+  total_page: 0
+})
 
 const MyActivity = () => {
   useAuthGuard()
@@ -26,26 +39,28 @@ const MyActivity = () => {
 
   //+ 两个独立分页实例：发布/参与（互相独立，互不干扰）
   const publishPaged = usePagedList<ActivityListItem>({
-    size: 10,
+    size: PAGE_SIZE,
     fetcher: useCallback(
       async ({ page, size }) => {
         const action = await dispatch(fetchPublishActivity({ page, size }))
-        const payload: PageResult<ActivityListItem> | undefined = (action as any)?.payload
-        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
-        return { code: 0, data: payload }
+        if (fetchPublishActivity.fulfilled.match(action)) {
+          return { code: 0, data: action.payload }
+        }
+        return { code: -1, data: emptyPageResult(page, size) }
       },
       [dispatch]
     )
   })
 
   const joinPaged = usePagedList<ActivityListItem>({
-    size: 10,
+    size: PAGE_SIZE,
     fetcher: useCallback(
       async ({ page, size }) => {
         const action = await dispatch(fetchJoinActivity({ page, size }))
-        const payload: PageResult<ActivityListItem> | undefined = (action as any)?.payload
-        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
-        return { code: 0, data: payload }
+        if (fetchJoinActivity.fulfilled.match(action)) {
+          return { code: 0, data: action.payload }
+        }
+        return { code: -1, data: emptyPageResult(page, size) }
       },
       [dispatch]
     )
@@ -85,12 +100,12 @@ const MyActivity = () => {
     if (activeTab === 0 && activity.participants) {
       dispatch(setParticipants(activity.participants))
     }
-    Taro.navigateTo({ url: `/pages/ActivityDetail/index?id=${activity.id}` })
+    routerNavigateTo('ACTIVITY_DETAIL', { id: activity.id })
   }
 
   //+ 点击报名：跳转详情页完成报名
   const handleSignup = (activity: ActivityListItem) => {
-    Taro.navigateTo({ url: `/pages/ActivityDetail/index?id=${activity.id}` })
+    routerNavigateTo('ACTIVITY_DETAIL', { id: activity.id })
   }
 
   //+ Q2：Tab 切换 —— 实时请求新 Tab 第一页（不累积旧数据）

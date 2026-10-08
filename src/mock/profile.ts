@@ -1,6 +1,7 @@
 //+ 个人中心模块Mock数据和路由
 //+ 对应后端 /personal/* 系列接口（服务于 Profile/我的 系列页面）
 import { createPageResponse, successResponse } from './utils'
+import type { MockHandler, MockData } from './utils'
 
 //+ 当前登录用户（作者信息）
 const me = {
@@ -75,15 +76,42 @@ function genUser(id: number, isFollowed: boolean) {
   }
 }
 
+interface ParticipantItem {
+  id: string
+  nickname: string
+  avatar: string
+  phone: string
+}
+
+interface ActivityItem {
+  id: string
+  leader: typeof me
+  title: string
+  coverImg: string
+  category: string
+  address: string
+  startTime: string
+  endTime: string
+  signUpEnd: string
+  price: number
+  maxPeople: number
+  currentPeople: number
+  difficulty: string
+  activityStatus: string
+  joined: boolean
+  isOwner: boolean
+  participants?: ParticipantItem[]
+}
+
 //+ 生成活动列表项
 //+ isPublish=true 时为"我发布的"活动，附带 participants（含手机号，仅领队可见）
-function genActivity(id: number, joined: boolean, isPublish = false) {
+function genActivity(id: number, joined: boolean, isPublish = false): ActivityItem {
   const titles = ['武功山两日徒步', '青海湖骑行活动', '千岛湖露营聚会', '哈巴雪山攀登', '城市夜跑团']
   const addresses = ['江西萍乡', '青海海北', '浙江淳安', '云南迪庆', '杭州西湖']
   const difficulties = ['简单', '中等', '困难']
   const statuses = ['报名中', '进行中', '已结束']
   const currentPeople = 5 + (id * 3) % 15
-  const result: any = {
+  const result: ActivityItem = {
     id: String(id),
     leader: { ...me },
     title: titles[id % titles.length],
@@ -126,7 +154,7 @@ const mockPublishActivity = Array.from({ length: 5 }, (_, i) => genActivity(i + 
 const mockJoinActivity = Array.from({ length: 3 }, (_, i) => genActivity(i + 1, true))
 
 //+ 分页读取辅助：从 data 取 page/size，返回标准分页响应
-function paged(items: any[], data?: any) {
+function paged(items: unknown[], data?: MockData) {
   const page = Number(data?.page) || 1
   const size = Number(data?.size) || 10
   return successResponse(createPageResponse(items, page, size))
@@ -136,10 +164,13 @@ function paged(items: any[], data?: any) {
 //+ key=用户ID，value=是否已关注
 const FOLLOW_STATUS_KEY = '__profile_follow_status__'
 function getFollowStatusMap(): Record<string, boolean> {
-  if (!(globalThis as any)[FOLLOW_STATUS_KEY]) {
-    ;(globalThis as any)[FOLLOW_STATUS_KEY] = {}
+  const g = globalThis as Record<string, unknown>
+  const store = g[FOLLOW_STATUS_KEY]
+  if (!store || typeof store !== 'object') {
+    g[FOLLOW_STATUS_KEY] = {}
+    return {}
   }
-  return (globalThis as any)[FOLLOW_STATUS_KEY]
+  return store as Record<string, boolean>
 }
 //+ 初始化：关注列表中 isFollowed=true 的用户预设为已关注
 mockFollowList.forEach(u => {
@@ -147,35 +178,35 @@ mockFollowList.forEach(u => {
 })
 
 //+ 个人中心Mock路由（key 与 request.ts 的 relativeUrl 对齐：/api/v1 + /personal/*）
-export const profileMockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const profileMockRoutes: Record<string, MockHandler> = {
   //+ 获取主页信息
   'GET /api/v1/personal': () => successResponse(mockProfileInfo),
   //+ 编辑个人信息
-  'PUT /api/v1/personal': (data) => successResponse({ ...mockProfileInfo, ...data }),
+  'PUT /api/v1/personal': (data?: MockData) => successResponse({ ...mockProfileInfo, ...(data || {}) }),
 
   //+ 笔记/攻略列表
-  'GET /api/v1/personal/notes': (data) => paged(mockProfileNotes, data),
-  'GET /api/v1/personal/strategys': (data) => paged(mockProfileStrategys, data),
+  'GET /api/v1/personal/notes': (data?: MockData) => paged(mockProfileNotes, data),
+  'GET /api/v1/personal/strategys': (data?: MockData) => paged(mockProfileStrategys, data),
 
   //+ 关注/粉丝列表
-  'GET /api/v1/personal/follow': (data) => paged(mockFollowList, data),
-  'GET /api/v1/personal/fans': (data) => paged(mockFansList, data),
+  'GET /api/v1/personal/follow': (data?: MockData) => paged(mockFollowList, data),
+  'GET /api/v1/personal/fans': (data?: MockData) => paged(mockFansList, data),
 
   //+ 收藏列表
-  'GET /api/v1/personal/favorite-note': (data) => paged(mockFavoriteNotes, data),
-  'GET /api/v1/personal/favorite-strategy': (data) => paged(mockFavoriteStrategys, data),
+  'GET /api/v1/personal/favorite-note': (data?: MockData) => paged(mockFavoriteNotes, data),
+  'GET /api/v1/personal/favorite-strategy': (data?: MockData) => paged(mockFavoriteStrategys, data),
 
   //+ 点赞列表
-  'GET /api/v1/personal/liked-notes': (data) => paged(mockLikedNotes, data),
-  'GET /api/v1/personal/liked-strategys': (data) => paged(mockLikedStrategys, data),
+  'GET /api/v1/personal/liked-notes': (data?: MockData) => paged(mockLikedNotes, data),
+  'GET /api/v1/personal/liked-strategys': (data?: MockData) => paged(mockLikedStrategys, data),
 
   //+ 活动列表
-  'GET /api/v1/personal/publish-activity': (data) => paged(mockPublishActivity, data),
-  'GET /api/v1/personal/join-activity': (data) => paged(mockJoinActivity, data),
+  'GET /api/v1/personal/publish-activity': (data?: MockData) => paged(mockPublishActivity, data),
+  'GET /api/v1/personal/join-activity': (data?: MockData) => paged(mockJoinActivity, data),
 
   //+ 关注/取关（切换式，返回最新 isFollowed）
   //+ url 形如 /api/v1/personal/follow/2，取最后一段作为 followeeId
-  'POST /api/v1/personal/follow/:followeeId': (_, url) => {
+  'POST /api/v1/personal/follow/:followeeId': (_data, url) => {
     const followeeId = (url || '').split('/').pop() || ''
     const map = getFollowStatusMap()
     const prev = !!map[followeeId]

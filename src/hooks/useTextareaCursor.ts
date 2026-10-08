@@ -2,6 +2,19 @@ import { useCallback } from 'react'
 import Taro from '@tarojs/taro'
 import type { CursorPos } from '@/types/markdown'
 
+//+ 文本域 ref 的结构类型（H5 下可能是 NutUI 包裹层，需穿透到原生 textarea）
+interface TextareaLikeElement {
+  nativeElement?: HTMLElement
+  querySelector?: (selector: string) => Element | null
+  focus?: () => void
+}
+
+//+ 光标事件结构（H5 target.selectionStart / 小程序 e.detail）
+interface CursorEvent {
+  target?: { selectionStart?: number; selectionEnd?: number }
+  detail?: { selectionStart?: number; selectionEnd?: number; cursor?: number }
+}
+
 /**
  * 双端 Textarea 光标位置读写
  * H5：target.selectionStart/End + setSelectionRange
@@ -9,10 +22,10 @@ import type { CursorPos } from '@/types/markdown'
  *         作为 NutUI Textarea 的 selection-start/selection-end props 传入。
  */
 export function useTextareaCursor(
-  textareaRef: React.RefObject<any>,
+  textareaRef: React.RefObject<TextareaLikeElement | null>,
   setSelProps?: (start: number, end: number) => void
 ) {
-  const extractFromEvent = useCallback((e: any): CursorPos => {
+  const extractFromEvent = useCallback((e: CursorEvent): CursorPos => {
     if (!e) return { start: 0, end: 0 }
     const tgt = e.target
     if (tgt && typeof tgt.selectionStart === 'number') {
@@ -37,7 +50,7 @@ export function useTextareaCursor(
     const e = Math.max(s, typeof end === 'number' ? end : start)
     const isWeb = Taro.getEnv() === Taro.ENV_TYPE.WEB
     if (isWeb && textareaRef?.current) {
-      const el = textareaRef.current as any
+      const el = textareaRef.current
       const realEl = (el && (el.nativeElement || el.querySelector?.('textarea') || el)) as HTMLTextAreaElement | null
       if (realEl && typeof realEl.setSelectionRange === 'function') {
         try {
@@ -52,7 +65,7 @@ export function useTextareaCursor(
   const focus = useCallback(() => {
     const isWeb = Taro.getEnv() === Taro.ENV_TYPE.WEB
     if (isWeb && textareaRef?.current) {
-      const el = textareaRef.current as any
+      const el = textareaRef.current
       const realEl = (el && (el.nativeElement || el.querySelector?.('textarea') || el)) as HTMLTextAreaElement | null
       realEl?.focus?.()
     }

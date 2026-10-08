@@ -4,12 +4,12 @@
 //+ 密码登录：需输入图形验证码（CaptchaInput + useCaptcha），captchaId/captchaCode 回传后端
 //+ 验证码登录：仅需短信验证码（CodeInput + useSendCode）
 import { Button, Input } from '@nutui/nutui-react'
-import { Navigator } from '@tarojs/components'
-import { useDispatch } from 'react-redux'
 import Taro from '@tarojs/taro'
+import { useDispatch } from 'react-redux'
+import { useState } from 'react'
 import { fetchLogin } from '@/store/modules/user'
 import type { AppDispatch } from '@/store'
-import { useState } from 'react'
+import { goAfterLogin, routerNavigateTo } from '@/router'
 import { useSendCode } from '@/hooks/useSendCode'
 import { useCaptcha } from '@/hooks/useCaptcha'
 import CodeInput from '@/components/CodeInput'
@@ -19,6 +19,20 @@ import '@/styles/auth.less'
 import './index.less'
 
 type LoginMode = 'password' | 'code'
+
+//+ 手机号 / 短信验证码校验规则（模块级常量，稳定 useCallback 依赖）
+const PHONE_REGEX = /^1[3-9]\d{9}$/
+const SMS_CODE_REGEX = /^\d{6}$/
+
+//+ 登录请求参数（对齐 apis/user.login 入参）
+interface LoginParams {
+  phone: string
+  type: 'password' | 'code'
+  password?: string
+  code?: string
+  captcha_id?: string
+  captcha?: string
+}
 
 const Login = () => {
   const dispatch: AppDispatch = useDispatch<AppDispatch>()
@@ -55,19 +69,12 @@ const Login = () => {
       Taro.showToast({ title: '请输入手机号', icon: 'none' })
       return
     }
-    if (!/^1[3-9]\d{9}$/.test(phone)) {
+    if (!PHONE_REGEX.test(phone)) {
       Taro.showToast({ title: '请输入正确的手机号', icon: 'none' })
       return
     }
 
-    const params: {
-      phone: string
-      type: 'password' | 'code'
-      password?: string
-      code?: string
-      captcha_id?: string
-      captcha?: string
-    } = {
+    const params: LoginParams = {
       phone,
       type: loginMode === 'code' ? 'code' : 'password',
     }
@@ -77,7 +84,7 @@ const Login = () => {
         Taro.showToast({ title: '请输入验证码', icon: 'none' })
         return
       }
-      if (!/^\d{6}$/.test(code)) {
+      if (!SMS_CODE_REGEX.test(code)) {
         Taro.showToast({ title: '请输入6位数字验证码', icon: 'none' })
         return
       }
@@ -100,18 +107,20 @@ const Login = () => {
       params.password = password
       params.captcha_id = captchaId
       params.captcha = captchaCode
-      params.code=""
+      //+ 密码登录不带短信验证码：显式置空，与历史请求体保持一致
+      params.code = ''
     }
 
-    const result: any = await dispatch(fetchLogin(params))
+    const result = await dispatch(fetchLogin(params))
 
-    if (result.type === 'user/fetchLogin/fulfilled') {
+    if (fetchLogin.fulfilled.match(result)) {
       Taro.showToast({ title: '登录成功', icon: 'success' })
+      //+ setToken 已在 thunk 内处理；成功后按 redirect 回跳来源页，默认首页
       setTimeout(() => {
-        Taro.redirectTo({ url: '/pages/Home/index' })
+        goAfterLogin()
       }, 1500)
     } else {
-      const errMsg = result.payload || '登录失败，请检查手机号和密码'
+      const errMsg = result.error?.message || '登录失败，请检查手机号和密码'
       Taro.showToast({ title: errMsg, icon: 'none' })
       //+ 密码登录失败：图形验证码已被后端消费，需刷新避免重复使用
       if (loginMode === 'password') {
@@ -122,36 +131,36 @@ const Login = () => {
   }
 
   return (
-    <div className="auth-container">
+    <div className='auth-container'>
       {/* logo */}
-      <div className="auth-logo">
-        <img src="http://192.168.10.7:89/logo.png" alt="logo" />
+      <div className='auth-logo'>
+        <img src='http://192.168.10.7:89/logo.png' alt='logo' />
         <p>探索自然，结伴前行</p>
       </div>
 
       {/* 表单区域 */}
-      <div className="auth-form">
+      <div className='auth-form'>
         {/* 手机号 */}
-        <div className="auth-form-item">
+        <div className='auth-form-item'>
           <Input
             value={phone}
             onChange={setPhone}
-            placeholder="请输入手机号"
-            type="tel"
-            className="auth-input"
+            placeholder='请输入手机号'
+            type='tel'
+            className='auth-input'
           />
         </div>
 
         {/* 密码登录模式：密码 + 图形验证码 */}
         {loginMode === 'password' && (
           <>
-            <div className="auth-form-item">
+            <div className='auth-form-item'>
               <Input
                 value={password}
                 onChange={setPassword}
-                placeholder="请输入密码"
-                type="password"
-                className="auth-input"
+                placeholder='请输入密码'
+                type='password'
+                className='auth-input'
               />
             </div>
             <CaptchaInput
@@ -160,7 +169,6 @@ const Login = () => {
               captchaImage={captchaImage}
               loading={captchaLoading}
               onRefresh={refreshCaptcha}
-             
             />
           </>
         )}
@@ -177,30 +185,34 @@ const Login = () => {
         )}
 
         {/* 提交按钮 */}
-        <Button type="primary" className="auth-submit-btn" onClick={handleSubmit}>
+        <Button type='primary' className='auth-submit-btn' onClick={handleSubmit}>
           {loginMode === 'password' ? '登录' : '短信登录'}
         </Button>
       </div>
 
       {/* 模式切换 + 忘记密码 */}
-      <div className="auth-actions">
-        <span className="auth-action-text">
-          <Navigator url="/forgot-password" className="auth-link-text">
-            忘记密码?
-          </Navigator>
+      <div className='auth-actions'>
+        <span
+          className='auth-link-text'
+          onClick={() => routerNavigateTo('FORGOT_PASSWORD')}
+        >
+          忘记密码?
         </span>
-        <span className="auth-action-text" onClick={toggleMode}>
+        <span className='auth-action-text' onClick={toggleMode}>
           {loginMode === 'password' ? '短信登录' : '密码登录'}
         </span>
       </div>
 
       {/* 注册引导 */}
-      <div className="auth-link">
-        <div className="auth-link-row">
+      <div className='auth-link'>
+        <div className='auth-link-row'>
           还没有账号？
-          <Navigator url="/register" className="auth-link-text">
+          <span
+            className='auth-link-text'
+            onClick={() => routerNavigateTo('REGISTER')}
+          >
             立即注册
-          </Navigator>
+          </span>
         </div>
       </div>
     </div>

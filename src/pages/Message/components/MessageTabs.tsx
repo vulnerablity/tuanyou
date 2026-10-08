@@ -2,7 +2,7 @@
 //+ 参考 NutUI Tabs 自定义 title 示例：title render prop + nut-tabs-titles-item 类名
 //+ 文字右上方有红色未读数提示
 //+ props 驱动，后期接入链路时只需传入 unreadCount 即可
-import { Tabs ,Badge} from '@nutui/nutui-react'
+import { Tabs, Badge } from '@nutui/nutui-react'
 
 interface MessageTabsProps {
   activeTab: number

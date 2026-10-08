@@ -6,12 +6,17 @@ import { Button, Input } from '@nutui/nutui-react'
 import { useState } from 'react'
 import Taro from '@tarojs/taro'
 import HeaderNavBar from '@/components/HeaderNavBar'
-import { changePhoneAPI } from '@/apis/user'
+import { changePhone } from '@/apis/user'
 import { useSendCode } from '@/hooks/useSendCode'
 import CodeInput from '@/components/CodeInput'
 import { useAuthGuard } from '@/components/AuthRoute'
+import { routerNavigateBack } from '@/router'
 import '@/styles/auth.less'
 import './index.less'
+
+//+ 手机号 / 短信验证码校验规则（模块级常量）
+const PHONE_REGEX = /^1[3-9]\d{9}$/
+const SMS_CODE_REGEX = /^\d{6}$/
 
 const ChangePhone = () => {
   useAuthGuard()
@@ -27,7 +32,7 @@ const ChangePhone = () => {
       Taro.showToast({ title: '请输入新手机号', icon: 'none' })
       return
     }
-    if (!/^1[3-9]\d{9}$/.test(newPhone)) {
+    if (!PHONE_REGEX.test(newPhone)) {
       Taro.showToast({ title: '请输入正确的手机号', icon: 'none' })
       return
     }
@@ -39,7 +44,7 @@ const ChangePhone = () => {
       Taro.showToast({ title: '请输入新手机号', icon: 'none' })
       return
     }
-    if (!/^1[3-9]\d{9}$/.test(newPhone)) {
+    if (!PHONE_REGEX.test(newPhone)) {
       Taro.showToast({ title: '请输入正确的手机号', icon: 'none' })
       return
     }
@@ -47,41 +52,37 @@ const ChangePhone = () => {
       Taro.showToast({ title: '请输入验证码', icon: 'none' })
       return
     }
-    if (!/^\d{6}$/.test(code)) {
+    if (!SMS_CODE_REGEX.test(code)) {
       Taro.showToast({ title: '请输入6位数字验证码', icon: 'none' })
       return
     }
 
     setSubmitting(true)
     try {
-      const res = await changePhoneAPI({ newPhone, code })
-      if (res.code === 0 || res.code === 200) {
-        Taro.showToast({ title: '修改成功', icon: 'success' })
-        setTimeout(() => Taro.navigateBack({ delta: 1 }), 1000)
-      } else {
-        Taro.showToast({ title: res.message || '修改失败', icon: 'none' })
-      }
-    } catch (err: any) {
-      const msg = err?.message || err?.payload || '修改失败'
-      Taro.showToast({ title: typeof msg === 'string' ? msg : '修改失败', icon: 'none' })
+      await changePhone({ newPhone, code })
+      Taro.showToast({ title: '修改成功', icon: 'success' })
+      setTimeout(() => routerNavigateBack(), 1000)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '修改失败'
+      Taro.showToast({ title: msg, icon: 'none' })
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="auth-container change-phone-page">
-      <HeaderNavBar title="修改手机号" backPageNum={1} fixed={false} />
+    <div className='auth-container change-phone-page'>
+      <HeaderNavBar title='修改手机号' backPageNum={1} fixed={false} />
 
-      <div className="auth-form">
-        <div className="auth-form-item">
+      <div className='auth-form'>
+        <div className='auth-form-item'>
           <Input
             value={newPhone}
             onChange={setNewPhone}
-            placeholder="请输入新手机号"
-            type="tel"
+            placeholder='请输入新手机号'
+            type='tel'
             maxLength={11}
-            className="auth-input"
+            className='auth-input'
           />
         </div>
 
@@ -94,8 +95,8 @@ const ChangePhone = () => {
         />
 
         <Button
-          type="primary"
-          className="auth-submit-btn"
+          type='primary'
+          className='auth-submit-btn'
           loading={submitting}
           disabled={submitting}
           onClick={handleSubmit}

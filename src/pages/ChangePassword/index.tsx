@@ -7,10 +7,14 @@ import { Button, Input } from '@nutui/nutui-react'
 import { useState } from 'react'
 import Taro from '@tarojs/taro'
 import HeaderNavBar from '@/components/HeaderNavBar'
-import { updatePasswordAPI } from '@/apis/user'
+import { updatePassword } from '@/apis/user'
 import { useAuthGuard } from '@/components/AuthRoute'
+import { routerNavigateBack } from '@/router'
 import '@/styles/auth.less'
 import './index.less'
+
+//+ 新密码最小长度
+const PASSWORD_MIN = 6
 
 const ChangePassword = () => {
   useAuthGuard()
@@ -28,8 +32,8 @@ const ChangePassword = () => {
       Taro.showToast({ title: '请输入新密码', icon: 'none' })
       return
     }
-    if (newPassword.length < 6) {
-      Taro.showToast({ title: '新密码至少6位', icon: 'none' })
+    if (newPassword.length < PASSWORD_MIN) {
+      Taro.showToast({ title: `新密码至少${PASSWORD_MIN}位`, icon: 'none' })
       return
     }
     if (newPassword !== confirmPassword) {
@@ -43,58 +47,54 @@ const ChangePassword = () => {
 
     setSubmitting(true)
     try {
-      const res = await updatePasswordAPI({ oldPassword, newPassword, confirmPassword })
-      if (res.code === 0 || res.code === 200) {
-        Taro.showToast({ title: '修改成功', icon: 'success' })
-        setTimeout(() => Taro.navigateBack({ delta: 1 }), 1000)
-      } else {
-        Taro.showToast({ title: res.message || '修改失败', icon: 'none' })
-      }
-    } catch (err: any) {
-      //+ 业务错误（如原密码错误）由响应拦截器 reject ResponseData，此处读取 message
-      const msg = err?.message || err?.payload || '修改失败'
-      Taro.showToast({ title: typeof msg === 'string' ? msg : '修改失败', icon: 'none' })
+      await updatePassword({ oldPassword, newPassword, confirmPassword })
+      Taro.showToast({ title: '修改成功', icon: 'success' })
+      setTimeout(() => routerNavigateBack(), 1000)
+    } catch (err: unknown) {
+      //+ 业务错误（如原密码错误）由请求层抛 ApiError（继承 Error），此处取 message
+      const msg = err instanceof Error ? err.message : '修改失败'
+      Taro.showToast({ title: msg, icon: 'none' })
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="auth-container change-password-page">
-      <HeaderNavBar title="修改密码" backPageNum={1} fixed={false} />
+    <div className='auth-container change-password-page'>
+      <HeaderNavBar title='修改密码' backPageNum={1} fixed={false} />
 
-      <div className="auth-form">
-        <div className="auth-form-item">
+      <div className='auth-form'>
+        <div className='auth-form-item'>
           <Input
             value={oldPassword}
             onChange={setOldPassword}
-            placeholder="请输入原密码"
-            type="password"
-            className="auth-input"
+            placeholder='请输入原密码'
+            type='password'
+            className='auth-input'
           />
         </div>
-        <div className="auth-form-item">
+        <div className='auth-form-item'>
           <Input
             value={newPassword}
             onChange={setNewPassword}
-            placeholder="请输入新密码（至少6位）"
-            type="password"
-            className="auth-input"
+            placeholder='请输入新密码（至少6位）'
+            type='password'
+            className='auth-input'
           />
         </div>
-        <div className="auth-form-item">
+        <div className='auth-form-item'>
           <Input
             value={confirmPassword}
             onChange={setConfirmPassword}
-            placeholder="请确认新密码"
-            type="password"
-            className="auth-input"
+            placeholder='请确认新密码'
+            type='password'
+            className='auth-input'
           />
         </div>
 
         <Button
-          type="primary"
-          className="auth-submit-btn"
+          type='primary'
+          className='auth-submit-btn'
           loading={submitting}
           disabled={submitting}
           onClick={handleSubmit}

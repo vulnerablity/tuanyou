@@ -1,8 +1,8 @@
 //+ Favorite 我的收藏列表页
-//+ Q2 Tab 懒加载：默认笔记，切攻略才请求；每次切Tab实时刷新
-//+ Q3 布局统一：复用 PostWaterfall 双列瀑布流，加载更多在外层（不在右侧）
-//+ Q7：useReachBottom 上拉加载 + usePullDownRefresh 下拉刷新
-//+ Q8：取消收藏 → 调用真实API → 延迟移除（离开页面时统一清理，给用户反悔机会）
+//+ Tab 懒加载：默认笔记，切攻略才请求；每次切Tab实时刷新
+//+ 布局统一：复用 PostWaterfall 双列瀑布流，加载更多在外层（不在右侧）
+//+ 容器级 onScroll 触底加载 + usePullDownRefresh 下拉刷新
+//+ 取消收藏 → 调用真实API → 延迟移除（离开页面时统一清理，给用户反悔机会）
 import { useState, useCallback, useMemo, useRef } from 'react'
 import { useDispatch } from 'react-redux'
 import Taro, { useDidShow, useDidHide, usePullDownRefresh } from '@tarojs/taro'
@@ -12,9 +12,10 @@ import { PostWaterfall } from '@/components/PostWaterfall'
 import { usePagedList } from '@/hooks/usePagedList'
 import { fetchFavoriteNotes, fetchFavoriteStrategys } from '@/store/modules/profile'
 import { toFeedList } from '@/utils/postAdapter'
-import type { ProfilePostItem, FeedItem, PageResult } from '@/types'
+import type { ProfilePostItem, FeedItem } from '@/types'
 import type { AppDispatch } from '@/store'
 import { useAuthGuard } from '@/components/AuthRoute'
+import { routerNavigateTo } from '@/router'
 import './index.less'
 
 const Favorite = () => {
@@ -32,10 +33,12 @@ const Favorite = () => {
     size: 10,
     fetcher: useCallback(
       async ({ page, size }) => {
-        const action = await dispatch(fetchFavoriteNotes({ page, size }))
-        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
-        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
-        return { code: 0, data: payload }
+        try {
+          const payload = await dispatch(fetchFavoriteNotes({ page, size })).unwrap()
+          return { code: 0, data: payload }
+        } catch {
+          return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
+        }
       },
       [dispatch]
     )
@@ -45,10 +48,12 @@ const Favorite = () => {
     size: 10,
     fetcher: useCallback(
       async ({ page, size }) => {
-        const action = await dispatch(fetchFavoriteStrategys({ page, size }))
-        const payload: PageResult<ProfilePostItem> | undefined = (action as any)?.payload
-        if (!payload) return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
-        return { code: 0, data: payload }
+        try {
+          const payload = await dispatch(fetchFavoriteStrategys({ page, size })).unwrap()
+          return { code: 0, data: payload }
+        } catch {
+          return { code: -1, data: { list: [], total: 0, page, size, total_page: 0 } }
+        }
       },
       [dispatch]
     )
@@ -60,7 +65,7 @@ const Favorite = () => {
     return toFeedList(currentPaged.list).map(f => ({ ...f, isFavorited: true }))
   }, [currentPaged.list])
 
-  //+ Q2：页面显示时刷新当前 Tab（覆盖：首次进入 + 从详情页返回），保证数据实时
+  //+ 页面显示时刷新当前 Tab（覆盖：首次进入 + 从详情页返回），保证数据实时
   //+ 注意：不能用 useEffect 依赖 notesPaged/strategysPaged —— 它们每次渲染都是新对象引用，会触发无限请求
   useDidShow(() => {
     currentPaged.loadFirstPage()
@@ -83,7 +88,7 @@ const Favorite = () => {
     }
   }
 
-  //+ Q8 改造：取消收藏不立即移除，标记为待移除；再次收藏则撤销标记（给用户反悔机会）
+  //+ 取消收藏不立即移除，标记为待移除；再次收藏则撤销标记（给用户反悔机会）
   const handleToggleFavorite = (item: FeedItem, newIsFavorited: boolean) => {
     if (!newIsFavorited) {
       pendingRemoveRef.current.add(item.id)
@@ -102,9 +107,12 @@ const Favorite = () => {
     pendingRemoveRef.current.clear()
   })
 
+  //+ 点击卡片跳详情（走 router 包装，带 id/type 参数）
   const handleItemClick = (item: FeedItem) => {
-    const path = item.type === 'guide' ? '/pages/GuideDetail/index' : '/pages/NoteDetail/index'
-    Taro.navigateTo({ url: `${path}?id=${item.id}&type=${item.type}` })
+    routerNavigateTo(item.type === 'guide' ? 'GUIDE_DETAIL' : 'NOTE_DETAIL', {
+      id: item.id,
+      type: item.type
+    })
   }
 
   const { loading, hasMore } = currentPaged
@@ -119,7 +127,7 @@ const Favorite = () => {
           onChange={(v) => {
             const next = Number(v)
             setActiveTab(next)
-            //+ Q2：切 Tab 实时请求新 Tab 第一页（不累积旧数据）
+            //+ 切 Tab 实时请求新 Tab 第一页（不累积旧数据）
             ;(next === 0 ? notesPaged : strategysPaged).loadFirstPage()
           }}
           activeColor='#428a46'
@@ -129,8 +137,7 @@ const Favorite = () => {
           <Tabs.TabPane title='攻略' value={1} />
         </Tabs>
 
-        {/* Q3 修复：瀑布流容器 + 加载更多分离，加载更多放在外层（下方） */}
-        {/* Q8 修正：收藏图标替代点赞图标位置（底部右侧），点击取消收藏 → 移除项 */}
+        {/* 瀑布流容器 + 加载更多分离，加载更多放在外层（下方）；收藏图标替代点赞图标位置 */}
         <PostWaterfall
           feed={currentList}
           loading={loading && currentList.length === 0}

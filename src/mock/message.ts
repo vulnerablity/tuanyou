@@ -10,9 +10,10 @@
 //+ 数据格式为后端 DTO（msgType/content/sendTime/isRead/sender）
 //+ 由 apis/message.ts 适配器转换为前端 InteractionMessage / SystemMessage 实体
 //+ 可变缓存：支持已读/回复/删除后状态持久（页面内多次请求结果一致）
-import { randomInt, randomItem, successResponse, errorResponse, createPageResponse } from './utils'
-import { mockUsers } from './user'
 import type { MessageDTO } from '@/types'
+import { randomInt, randomItem, successResponse, errorResponse, createPageResponse, toNumber } from './utils'
+import type { MockHandler, MockData } from './utils'
+import { mockUsers } from './user'
 
 //+ 生成 "YYYY-MM-DD HH:mm:ss" 格式时间（n 分钟前）
 function minutesAgo(m: number): string {
@@ -118,19 +119,19 @@ function findMessageAnywhere(id: string): MessageDTO | null {
 }
 
 //+ 消息模块Mock路由映射
-export const messageMockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const messageMockRoutes: Record<string, MockHandler> = {
   //+ 获取互动消息列表（分页）
-  'GET /api/v1/messages/interactions': (data) => {
-    const page = Number(data?.page) || 1
-    const size = Math.min(Number(data?.size) || 10, 100)
+  'GET /api/v1/messages/interactions': (data?: MockData) => {
+    const page = toNumber(data?.page, 1)
+    const size = Math.min(toNumber(data?.size, 10), 100)
     const list = getInteractionCache()
     return successResponse(createPageResponse(list, page, size))
   },
 
   //+ 获取系统通知列表（分页）
-  'GET /api/v1/messages/system': (data) => {
-    const page = Number(data?.page) || 1
-    const size = Math.min(Number(data?.size) || 10, 100)
+  'GET /api/v1/messages/system': (data?: MockData) => {
+    const page = toNumber(data?.page, 1)
+    const size = Math.min(toNumber(data?.size, 10), 100)
     const list = getSystemCache()
     return successResponse(createPageResponse(list, page, size))
   },
@@ -147,8 +148,8 @@ export const messageMockRoutes: Record<string, (data?: any, url?: string) => any
   },
 
   //+ 标记单条消息已读
-  'PUT /api/v1/messages/:id/read': (_, url) => {
-    const id = (url as string).split('/').slice(-2, -1)[0] || ''
+  'PUT /api/v1/messages/:id/read': (_data, url: string) => {
+    const id = (url || '').split('/').slice(-2, -1)[0] || ''
     const msg = findMessageAnywhere(id)
     if (!msg) return errorResponse('消息不存在', 404)
     msg.isRead = 1
@@ -168,8 +169,8 @@ export const messageMockRoutes: Record<string, (data?: any, url?: string) => any
   },
 
   //+ 回复互动消息（评论回复）
-  'POST /api/v1/messages/interactions/:id/reply': (data, url) => {
-    const id = (url as string).split('/').slice(-2, -1)[0] || ''
+  'POST /api/v1/messages/interactions/:id/reply': (data?: MockData, url?: string) => {
+    const id = (url || '').split('/').slice(-2, -1)[0] || ''
     const msg = findMessageAnywhere(id)
     if (!msg) return errorResponse('消息不存在', 404)
     const content = String(data?.content ?? '').trim()
@@ -185,8 +186,8 @@ export const messageMockRoutes: Record<string, (data?: any, url?: string) => any
   },
 
   //+ 删除消息
-  'DELETE /api/v1/messages/:id': (_, url) => {
-    const id = (url as string).split('/').pop() || ''
+  'DELETE /api/v1/messages/:id': (_data, url: string) => {
+    const id = (url || '').split('/').pop() || ''
     //+ 从互动缓存中删除
     let removed = false
     const interactions = getInteractionCache()

@@ -3,12 +3,13 @@
 //+ 设计：store 作为单一数据源，CommentSection 通过 initData 同步展示；点赞/删除由组件乐观更新，store 在 fulfilled 后同步权威状态
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import {
-  getCommentsAPI,
-  createCommentAPI,
-  toggleCommentLikeAPI,
-  deleteCommentAPI,
-  getCommentRepliesAPI
+  getComments,
+  createComment as createCommentApi,
+  toggleCommentLike as toggleCommentLikeApi,
+  deleteComment as deleteCommentApi,
+  getCommentReplies
 } from '@/apis/comment'
+import { ApiError } from '@/utils/request'
 import type { Comment, PageResult, CreateCommentParams } from '@/types'
 import { diffCommentLikes, type CommentLikePatch } from '@/utils/diffCommentLikes'
 
@@ -146,29 +147,20 @@ function appendRepliesToParent(list: Comment[], parentId: string, replies: Comme
 // ==================== 异步 Thunks ====================
 
 //+ 获取一级评论列表（首页，重置列表）
-//+ signal：切换详情页时 abort 上一次请求，防止旧 fulfilled 覆盖新页面的 totalComments/list
+//+ signal：切换详情页时 abort 上一次请求，防止旧 fulfilled 覆盖新数据
 export const fetchComments = createAsyncThunk(
   'comment/fetchComments',
-  async (args: FetchCommentsArgs, { rejectWithValue, signal }) => {
-    try {
-      const res = await getCommentsAPI({
-        targetType: args.targetType,
-        targetId: args.targetId,
-        page: args.page ?? 1,
-        size: args.size ?? 15
-      }, signal)
-      if (res.code === 0 || res.code === 200) {
-        return {
-          ...res.data,
-          targetType: args.targetType,
-          targetId: String(args.targetId)
-        }
-      }
-      return rejectWithValue(res.message || '获取评论失败')
-    } catch (error: any) {
-      //+ abort 时返回 'aborted'，reducer 据此跳过 state 更新
-      if (error?.name === 'AbortError' || signal?.aborted) return rejectWithValue('aborted')
-      return rejectWithValue(error?.message || '网络错误')
+  async (args: FetchCommentsArgs, { signal }) => {
+    const data = await getComments({
+      targetType: args.targetType,
+      targetId: args.targetId,
+      page: args.page ?? 1,
+      size: args.size ?? 15
+    }, signal)
+    return {
+      ...data,
+      targetType: args.targetType,
+      targetId: String(args.targetId)
     }
   }
 )
@@ -176,24 +168,16 @@ export const fetchComments = createAsyncThunk(
 //+ 加载更多一级评论（下一页，追加）
 export const loadMoreComments = createAsyncThunk(
   'comment/loadMoreComments',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { getState }) => {
     const state = (getState() as { comment: CommentState }).comment
     const { targetType, targetId, page, size } = state
-    if (!targetType || !targetId) return rejectWithValue('缺少评论目标')
-    try {
-      const res = await getCommentsAPI({
-        targetType,
-        targetId,
-        page: page + 1,
-        size: size || 15
-      })
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue(res.message || '加载更多失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+    if (!targetType || !targetId) throw new Error('缺少评论目标')
+    return await getComments({
+      targetType,
+      targetId,
+      page: page + 1,
+      size: size || 15
+    })
   }
 )
 
@@ -203,80 +187,57 @@ export const createComment = createAsyncThunk(
   'comment/createComment',
   async (args: CreateCommentParams, { rejectWithValue }) => {
     try {
-      const res = await createCommentAPI(args)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue({ code: res.code, message: res.message || '发表评论失败' })
-    } catch (error: any) {
-      //+ request.ts 在 code 非 0/200 时 reject(完整 ResponseData)
+      return await createCommentApi(args)
+    } catch (err) {
+      //+ apis 层在业务码非 0/200 时抛 ApiError（code 为后端业务码）
       //+ 透传后端的 code（如 2001=违禁词）和 message，让组件层能区分业务错误
+      if (err instanceof ApiError) {
+        return rejectWithValue({ code: err.code, message: err.message })
+      }
       return rejectWithValue({
-        code: typeof error?.code === 'number' ? error.code : -1,
-        message: error?.message || '网络错误'
+        code: -1,
+        message: err instanceof Error ? err.message : '网络错误'
       })
     }
   }
 )
 
 //+ 点赞 / 取消点赞评论
-//+ Pending 乐观翻转，Rejected 回滚，Fulfilled 用后端真实值校准
+//+ Pending 乐观翻转，Rejected 回滚（AbortError 除外），Fulfilled 用后端真实值校准
 export const toggleCommentLike = createAsyncThunk(
   'comment/toggleCommentLike',
-  async (id: string, { rejectWithValue, signal }) => {
-    try {
-      const res = await toggleCommentLikeAPI(id, signal)
-      if (res.code === 0 || res.code === 200) {
-        return { id, ...(res.data || {}) }
-      }
-      return rejectWithValue(res.message || '操作失败')
-    } catch (error: any) {
-      if (error?.name === 'AbortError') return rejectWithValue('aborted')
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (id: string, { signal }) => {
+    const data = await toggleCommentLikeApi(id, signal)
+    return { id, ...data }
   }
 )
 
 //+ 删除评论
 export const deleteComment = createAsyncThunk(
   'comment/deleteComment',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      const res = await deleteCommentAPI(id)
-      if (res.code === 0 || res.code === 200) {
-        return { id }
-      }
-      return rejectWithValue(res.message || '删除失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (id: string) => {
+    await deleteCommentApi(id)
+    return { id }
   }
 )
 
-//+ 获取二级评论列表（展开加载更多），返回 { parentId, list, hasMore }
+//+ 获取二级评论列表（展开加载更多），返回 { parentId, list, page, hasMore }
 export const fetchReplies = createAsyncThunk(
   'comment/fetchReplies',
-  async (args: FetchRepliesArgs, { getState, rejectWithValue }) => {
+  async (args: FetchRepliesArgs, { getState }) => {
     const state = (getState() as { comment: CommentState }).comment
     const nextPage = args.page ?? ((state.repliesPage[args.parentId] ?? 1))
-    try {
-      const res = await getCommentRepliesAPI({
-        parentId: args.parentId,
-        page: nextPage,
-        size: args.size ?? 10
-      })
-      if (res.code === 0 || res.code === 200) {
-        const hasMore = res.data.page < (res.data.total_page || 0)
-        return {
-          parentId: args.parentId,
-          list: res.data.list,
-          page: res.data.page,
-          hasMore
-        }
-      }
-      return rejectWithValue(res.message || '获取回复失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
+    const data = await getCommentReplies({
+      parentId: args.parentId,
+      page: nextPage,
+      size: args.size ?? 10
+    })
+    const hasMore = data.page < (data.total_page || 0)
+    return {
+      parentId: args.parentId,
+      list: data.list,
+      page: data.page,
+      hasMore
     }
   }
 )
@@ -289,7 +250,7 @@ export const fetchReplies = createAsyncThunk(
 //+   4. 不替换整个 list，只改 likeCount 字段，引用最小化，UI 无抖动
 export const pollCommentUpdates = createAsyncThunk(
   'comment/pollCommentUpdates',
-  async (_, { getState, rejectWithValue, signal }) => {
+  async (_payload, { getState, signal, rejectWithValue }) => {
     const state = (getState() as { comment: CommentState }).comment
     //+ targetType/targetId 为空（未进入详情页）→ 不轮询
     if (state.targetType == null || !state.targetId) {
@@ -300,40 +261,29 @@ export const pollCommentUpdates = createAsyncThunk(
     //+      fulfilled 晚于 fetchComments(B) 到达 → 用 A 的 totalComments 覆盖 B
     const reqTargetType = state.targetType
     const reqTargetId = state.targetId
-    try {
-      //+ 并发请求所有已加载的一级评论页（1 ~ state.page）
-      //+ 之前只请求 state.page（当前页），导致前几页的 likeCount 变化轮询不到
-      const pages = Array.from({ length: state.page }, (_, i) => i + 1)
-      const results = await Promise.all(
-        pages.map(page =>
-          getCommentsAPI({
-            targetType: reqTargetType,
-            targetId: Number(reqTargetId) || 0,
-            page,
-            size: state.size
-          }, signal)
-        )
+    //+ 并发请求所有已加载的一级评论页（1 ~ state.page）
+    //+ 之前只请求 state.page（当前页），导致前几页的 likeCount 变化轮询不到
+    const pages = Array.from({ length: state.page }, (_, i) => i + 1)
+    const results = await Promise.all(
+      pages.map(page =>
+        getComments({
+          targetType: reqTargetType,
+          targetId: Number(reqTargetId) || 0,
+          page,
+          size: state.size
+        }, signal)
       )
-      //+ 任一页失败则整体失败（保持数据一致性）
-      const failed = results.find(r => r.code !== 0 && r.code !== 200)
-      if (failed) {
-        return rejectWithValue(failed.message || 'poll failed')
-      }
-      //+ 合并所有页的评论列表，按页顺序拼接
-      const allRemoteComments = results.flatMap(r => r.data.list)
-      //+ diff 出 likeCount 变化项（一级 + 二级前2条都会比对）
-      const patch = diffCommentLikes(state.list, allRemoteComments)
-      //+ totalComments 每页都返回相同值，取第一页的即可
-      return {
-        patch,
-        totalComments: results[0]?.data.totalComments,
-        targetType: reqTargetType,
-        targetId: reqTargetId
-      }
-    } catch (error: any) {
-      //+ abort 时返回 'aborted'，reducer 跳过 state 更新
-      if (error?.name === 'AbortError' || signal?.aborted) return rejectWithValue('aborted')
-      return rejectWithValue(error?.message || '网络错误')
+    )
+    //+ 合并所有页的评论列表，按页顺序拼接（apis 已解包，任一页失败 Promise.all 整体 reject）
+    const allRemoteComments = results.flatMap(r => r.list)
+    //+ diff 出 likeCount 变化项（一级 + 二级前2条都会比对）
+    const patch = diffCommentLikes(state.list, allRemoteComments)
+    //+ totalComments 每页都返回相同值，取第一页的即可
+    return {
+      patch,
+      totalComments: results[0]?.totalComments,
+      targetType: reqTargetType,
+      targetId: reqTargetId
     }
   }
 )
@@ -386,9 +336,9 @@ const commentSlice = createSlice({
       })
       .addCase(fetchComments.rejected, (state, action) => {
         //+ abort 触发的 rejected：跳过 state 更新，避免清掉新请求的数据
-        if (action.payload === 'aborted') return
+        if (action.error.name === 'AbortError') return
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '获取评论失败'
       })
       //+ 加载更多一级评论
       .addCase(loadMoreComments.pending, (state) => {
@@ -404,7 +354,7 @@ const commentSlice = createSlice({
       })
       .addCase(loadMoreComments.rejected, (state, action) => {
         state.loadingMore = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ 发表评论
       .addCase(createComment.pending, (state) => {
@@ -431,10 +381,10 @@ const commentSlice = createSlice({
       })
       .addCase(createComment.rejected, (state, action) => {
         state.sending = false
-        //+ payload 现为 { code, message } 对象，取 message 存 error
+        //+ payload 仍为 { code, message } 对象（thunk 内 rejectWithValue 透传业务码），取 message 存 error
         state.error = (action.payload as { code: number; message: string })?.message || '发表评论失败'
       })
-      //+ 评论点赞：pending 乐观翻转，rejected 回滚，fulfilled 校准（同时支持一级/二级评论树）
+      //+ 评论点赞：pending 乐观翻转，rejected 回滚（AbortError 除外），fulfilled 校准（同时支持一级/二级评论树）
       .addCase(toggleCommentLike.pending, (state, action) => {
         const id = action.meta.arg
         //+ 记录乐观更新时间，轮询 patch 时跳过 2s 内操作过的评论
@@ -472,7 +422,8 @@ const commentSlice = createSlice({
         }
       })
       .addCase(toggleCommentLike.rejected, (state, action) => {
-        if (action.payload === 'aborted') return
+        //+ AbortController 主动取消：丢弃过期响应，不做回滚
+        if (action.error.name === 'AbortError') return
         //+ 回滚：再翻转一次
         const id = action.meta.arg
         const mutList = [...state.list]
@@ -552,8 +503,8 @@ const commentSlice = createSlice({
         }
       })
       //+ 轮询 rejected：abort 触发的跳过，避免覆盖新页数据
-      .addCase(pollCommentUpdates.rejected, (state, action) => {
-        if (action.payload === 'aborted') return
+      .addCase(pollCommentUpdates.rejected, (_state, action) => {
+        if (action.error.name === 'AbortError') return
       })
   }
 })

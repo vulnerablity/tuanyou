@@ -25,8 +25,29 @@ import {
 import { COMMENT_TARGET_TYPE } from '@/types'
 import { useAuthGuard } from '@/components/AuthRoute'
 import { useCommentPolling } from '@/hooks/useCommentPolling'
+import { routerNavigateBack, routerSwitchTab } from '@/router'
 import '@/components/MarkdownEditor/index.less'
 import './index.less'
+
+//+ 操作冷却（ms）：完成后计时，防止接口响应极快时用户连续点击产生串行无效请求
+const COOLDOWN_MS = 800
+//+ 滑动触底阈值（px）：距底部提前触发评论下一页，用户无停顿感
+const BOTTOM_THRESHOLD = 300
+
+//+ 判断是否为 AbortController 主动取消（RTK rejected action 的 error.name === 'AbortError'）
+function isAbortError(err: unknown): boolean {
+  return !!err && typeof err === 'object' && (err as { name?: string }).name === 'AbortError'
+}
+
+//+ 从未知错误中提取可读 message（兼容 Error 实例与 RTK SerializedError plain object）
+function errMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message
+  if (err && typeof err === 'object') {
+    const m = (err as { message?: string }).message
+    if (typeof m === 'string' && m) return m
+  }
+  return fallback
+}
 
 const GuideDetail = () => {
   useAuthGuard()
@@ -45,11 +66,9 @@ const GuideDetail = () => {
   useCommentPolling(COMMENT_TARGET_TYPE.GUIDE, id)
 
   //+ 请求锁 + AbortController：key = `${op}:${id}`，值 = RTK dispatch promise
-  //+ promise.abort() 会触发 RTK 内部 signal → 传入 API → request 层 abort 真实请求
   const promiseRef = useRef<Map<string, { abort: () => void }>>(new Map())
-  //+ 操作冷却：完成后计时，防止接口响应极快时用户连续点击产生串行无效请求
+  //+ 操作冷却
   const cooldownRef = useRef<Map<string, number>>(new Map())
-  const COOLDOWN_MS = 800
 
   //+ 协调状态：CommentSection 点"回复"时设置 replyTarget → 传入 CommentInput 打开回复模式弹层
   const [replyTarget, setReplyTarget] = useState<CommentInputReplyTarget | null>(null)
@@ -78,7 +97,6 @@ const GuideDetail = () => {
       //+ 评论列表：切换目标时重置后拉取首页（targetType=2 攻略）
       dispatch(resetComments())
       //+ 保存 promise：组件卸载或 id 变化时 abort 旧请求
-      //+ 防止旧请求的 fulfilled 晚于新请求到达，覆盖新页面的 totalComments/list（评论总数对不齐）
       const commentsPromise = dispatch(fetchComments({ targetType: COMMENT_TARGET_TYPE.GUIDE, targetId: id }))
       return () => {
         commentsPromise.abort()
@@ -93,7 +111,6 @@ const GuideDetail = () => {
 
   //+ 点赞（guide 模块 thunk → 单次 API；fulfilled 后 store 自动同步详情）
   //+ 同时同步 home store 中对应卡片的点赞状态，返回首页时卡片图标和数字一致
-  //+ 性能优化：按资源ID请求锁 + AbortController；pending 阶段 store 已乐观 UI 翻转
   const handleToggleLike = useCallback(async (nextIsLiked: boolean) => {
     if (!guideDetail?.id) return
     const resKey = `like:${guideDetail.id}`
@@ -102,26 +119,25 @@ const GuideDetail = () => {
     const prev = promiseRef.current.get(resKey)
     if (prev) prev.abort()
 
-    const promise = dispatch(toggleGuideLike(guideDetail.id))
-    promiseRef.current.set(resKey, promise)
+    const dispatchPromise = dispatch(toggleGuideLike(guideDetail.id))
+    promiseRef.current.set(resKey, dispatchPromise)
     let wasAborted = false
     try {
-      const action = await promise
-      wasAborted = (action as any)?.payload === 'aborted'
-      const status = (action as any)?.meta?.requestStatus
-      if (status === 'fulfilled') {
-        const payload = (action as any)?.payload || {}
-        const finalLiked = typeof payload.isLiked === 'boolean' ? payload.isLiked : nextIsLiked
-        const finalCount = typeof payload.likeCount === 'number' ? payload.likeCount : (guideDetail.likeCount || 0) + (finalLiked ? 1 : -1)
-        dispatch(updateFeedItem({ id: guideDetail.id, patch: { isLiked: finalLiked, likeCount: finalCount } }))
-        Taro.showToast({ title: finalLiked ? '点赞成功' : '已取消点赞', icon: 'success' })
-      } else if (!wasAborted) {
-        Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
-      }
+      const payload = await dispatchPromise.unwrap()
+      const finalLiked = typeof payload.isLiked === 'boolean' ? payload.isLiked : nextIsLiked
+      const finalCount = typeof payload.likeCount === 'number'
+        ? payload.likeCount
+        : (guideDetail.likeCount || 0) + (finalLiked ? 1 : -1)
+      dispatch(updateFeedItem({ id: guideDetail.id, patch: { isLiked: finalLiked, likeCount: finalCount } }))
+      Taro.showToast({ title: finalLiked ? '点赞成功' : '已取消点赞', icon: 'success' })
     } catch (err) {
-      console.warn('[GuideDetail] 点赞失败:', err)
+      if (isAbortError(err)) {
+        wasAborted = true
+      } else {
+        Taro.showToast({ title: errMessage(err, '操作失败'), icon: 'none' })
+      }
     } finally {
-      if (promiseRef.current.get(resKey) === promise) {
+      if (promiseRef.current.get(resKey) === dispatchPromise) {
         promiseRef.current.delete(resKey)
       }
       if (!wasAborted) {
@@ -133,7 +149,6 @@ const GuideDetail = () => {
   }, [guideDetail, dispatch])
 
   //+ 收藏（同时同步 home store，保证返回首页后卡片状态一致）
-  //+ 性能优化：按资源ID请求锁 + AbortController；pending 阶段已乐观 UI 翻转
   const handleToggleFavorite = useCallback(async (nextIsFavorited: boolean) => {
     if (!guideDetail?.id) return
     const resKey = `fav:${guideDetail.id}`
@@ -142,25 +157,22 @@ const GuideDetail = () => {
     const prev = promiseRef.current.get(resKey)
     if (prev) prev.abort()
 
-    const promise = dispatch(toggleGuideFavorite(guideDetail.id))
-    promiseRef.current.set(resKey, promise)
+    const dispatchPromise = dispatch(toggleGuideFavorite(guideDetail.id))
+    promiseRef.current.set(resKey, dispatchPromise)
     let wasAborted = false
     try {
-      const action = await promise
-      wasAborted = (action as any)?.payload === 'aborted'
-      const status = (action as any)?.meta?.requestStatus
-      if (status === 'fulfilled') {
-        const payload = (action as any)?.payload || {}
-        const finalFav = typeof payload.isFavorited === 'boolean' ? payload.isFavorited : nextIsFavorited
-        dispatch(updateFeedItem({ id: guideDetail.id, patch: { isFavorited: finalFav } }))
-        Taro.showToast({ title: finalFav ? '收藏成功' : '已取消收藏', icon: 'success' })
-      } else if (!wasAborted) {
-        Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
-      }
+      const payload = await dispatchPromise.unwrap()
+      const finalFav = typeof payload.isFavorited === 'boolean' ? payload.isFavorited : nextIsFavorited
+      dispatch(updateFeedItem({ id: guideDetail.id, patch: { isFavorited: finalFav } }))
+      Taro.showToast({ title: finalFav ? '收藏成功' : '已取消收藏', icon: 'success' })
     } catch (err) {
-      console.warn('[GuideDetail] 收藏失败:', err)
+      if (isAbortError(err)) {
+        wasAborted = true
+      } else {
+        Taro.showToast({ title: errMessage(err, '操作失败'), icon: 'none' })
+      }
     } finally {
-      if (promiseRef.current.get(resKey) === promise) {
+      if (promiseRef.current.get(resKey) === dispatchPromise) {
         promiseRef.current.delete(resKey)
       }
       if (!wasAborted) {
@@ -171,8 +183,6 @@ const GuideDetail = () => {
     }
   }, [guideDetail, dispatch])
 
-  //+ 关注/取消关注（user 模块 thunk，成功后同步到攻略详情的 isFollowed）
-  //+ 性能优化：按被关注 userId 请求锁 + AbortController
   //+ 关注/取消关注（统一走 profile/toggleProfileFollow，POST /personal/follow/{id}）
   const handleToggleFollow = useCallback(async (authorUserId: string, nextIsFollowed: boolean) => {
     if (!authorUserId) return
@@ -182,28 +192,24 @@ const GuideDetail = () => {
     const prev = promiseRef.current.get(resKey)
     if (prev) prev.abort()
 
-    const promise = dispatch(toggleProfileFollow(authorUserId))
-    promiseRef.current.set(resKey, promise)
+    const dispatchPromise = dispatch(toggleProfileFollow(authorUserId))
+    promiseRef.current.set(resKey, dispatchPromise)
     let wasAborted = false
     try {
-      const action = await promise
-      wasAborted = (action as any)?.payload === 'aborted'
-      // const action = await dispatch(toggleProfileFollow(authorUserId))
-      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
-      if (ok) {
-        const payload = (action as any)?.payload || {}
-        const finalIsFollowed = typeof payload.isFollowed === 'boolean'
-          ? payload.isFollowed
-          : nextIsFollowed
-        dispatch(patchGuideDetail({ isFollowed: finalIsFollowed }))
-        Taro.showToast({ title: finalIsFollowed ? '关注成功' : '已取消关注', icon: 'success' })
-      } else if (!wasAborted) {
-        Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
-      }
+      const payload = await dispatchPromise.unwrap()
+      const finalIsFollowed = typeof payload.isFollowed === 'boolean'
+        ? payload.isFollowed
+        : nextIsFollowed
+      dispatch(patchGuideDetail({ isFollowed: finalIsFollowed }))
+      Taro.showToast({ title: finalIsFollowed ? '关注成功' : '已取消关注', icon: 'success' })
     } catch (err) {
-      console.warn('[GuideDetail] 关注失败:', err)
+      if (isAbortError(err)) {
+        wasAborted = true
+      } else {
+        Taro.showToast({ title: errMessage(err, '操作失败'), icon: 'none' })
+      }
     } finally {
-      if (promiseRef.current.get(resKey) === promise) {
+      if (promiseRef.current.get(resKey) === dispatchPromise) {
         promiseRef.current.delete(resKey)
       }
       if (!wasAborted) {
@@ -243,8 +249,8 @@ const GuideDetail = () => {
     setReplyTarget(null)
   }, [])
 
-  //+ CommentInput 点击"发送"（一级或回复模式）→ 调用 createComment thunk，成功后 store 自动追加并同步到列表
-  //+ 失败时 throw，触发 CommentInput 的"评论失败"提示并保留输入内容
+  //+ CommentInput 点击"发送"（一级或回复模式）→ 调用 createComment thunk
+  //+ createComment 用 rejectWithValue({ code, message })：失败时原样抛出，CommentInput 据此区分提示（2001=违禁词）
   const handleSendComment = useCallback(async (payload: CommentInputSendPayload) => {
     if (!id) return
     //+ API 入参：replyToId 为一级评论 ID（即 parentCommentId）；回复二级评论时需传 replyToMemberId
@@ -258,21 +264,19 @@ const GuideDetail = () => {
         replyToMemberId = replied?.member.id ? Number(replied.member.id) || undefined : undefined
       }
     }
-    const action = await dispatch(createComment({
-      targetType: COMMENT_TARGET_TYPE.GUIDE,
-      targetId: Number(id) || 0,
-      content: payload.content,
-      replyToId: apiReplyToId,
-      replyToMemberId
-    }))
-    if ((action as any)?.meta?.requestStatus === 'fulfilled') {
-      //+ store 已追加新评论 → initData 同步展示；切回一级模式
+    try {
+      await dispatch(createComment({
+        targetType: COMMENT_TARGET_TYPE.GUIDE,
+        targetId: Number(id) || 0,
+        content: payload.content,
+        replyToId: apiReplyToId,
+        replyToMemberId
+      })).unwrap()
       setReplyTarget(null)
-    } else {
-      //+ payload 现为 { code, message } 对象，构造带 code 的 Error 抛给 CommentInput 区分提示
-      const payload = (action as any)?.payload as { code: number; message: string } | undefined
-      const err = new Error(payload?.message || '发表评论失败')
-      ;(err as any).code = payload?.code
+    } catch (err) {
+      //+ Abort 主动取消：静默，不抛错打扰输入框
+      if (isAbortError(err)) return
+      //+ rejectWithValue({ code, message }) 原样抛出：CommentInput 读取 err.code/err.message（2001=违禁词）
       throw err
     }
   }, [dispatch, id, commentList])
@@ -283,19 +287,16 @@ const GuideDetail = () => {
   }, [dispatch])
 
   // ---------- 滑动触底加载（一级评论）----------
-  //+ 距底部阈值（px）：提前触发，用户感觉不到停顿
-  const BOTTOM_THRESHOLD = 300
   //+ 滚动容器 ref（.guide-detail-content，实际滚动载体）
   const contentRef = useRef<HTMLDivElement | null>(null)
   //+ 正在加载中锁：onScroll 高频触发，防止重复请求
   const loadingLockRef = useRef(false)
 
   //+ 尝试加载下一页：所有条件满足才调用，否则跳过
-  //+ 供 onScroll 和首屏 useEffect 复用
   const tryLoadNextPage = useCallback(async () => {
-    if (loadingLockRef.current) return          //+ 同页请求中
-    if (!commentHasMore) return                  //+ 没有更多
-    if (commentLoadingMore) return               //+ store loadingMore 已在请求
+    if (loadingLockRef.current) return
+    if (!commentHasMore) return
+    if (commentLoadingMore) return
     loadingLockRef.current = true
     try {
       await handleLoadMoreComments()
@@ -329,15 +330,11 @@ const GuideDetail = () => {
 
   //+ 加载更多二级评论（store 追加到对应一级评论 → initData 同步）
   const handleLoadMoreReplies = useCallback(async (parentId: string): Promise<{ hasMore: boolean }> => {
-    const action = await dispatch(fetchReplies({ parentId }))
-    if ((action as any)?.meta?.requestStatus === 'fulfilled') {
-      return { hasMore: !!(action as any)?.payload?.hasMore }
-    }
-    throw new Error((action as any)?.payload || '加载回复失败')
+    const payload = await dispatch(fetchReplies({ parentId })).unwrap()
+    return { hasMore: payload.hasMore }
   }, [dispatch])
 
   //+ 评论点赞（失败 throw 触发 CommentSection 回滚）
-  //+ 性能优化：操作冷却 + AbortController 丢弃过期请求
   const handleToggleCommentLike = useCallback(async (commentId: string) => {
     const resKey = `commentLike:${commentId}`
     const cd = cooldownRef.current.get(resKey)
@@ -345,18 +342,19 @@ const GuideDetail = () => {
     const prev = promiseRef.current.get(resKey)
     if (prev) prev.abort()
 
-    const promise = dispatch(toggleCommentLike(commentId))
-    promiseRef.current.set(resKey, promise)
+    const dispatchPromise = dispatch(toggleCommentLike(commentId))
+    promiseRef.current.set(resKey, dispatchPromise)
     let wasAborted = false
     try {
-      const action = await promise
-      wasAborted = (action as any)?.payload === 'aborted'
-      if ((action as any)?.meta?.requestStatus !== 'fulfilled') {
-        if (wasAborted) return
-        throw new Error((action as any)?.payload || '操作失败')
+      await dispatchPromise.unwrap()
+    } catch (err) {
+      if (isAbortError(err)) {
+        wasAborted = true
+      } else {
+        throw new Error(errMessage(err, '操作失败'))
       }
     } finally {
-      if (promiseRef.current.get(resKey) === promise) {
+      if (promiseRef.current.get(resKey) === dispatchPromise) {
         promiseRef.current.delete(resKey)
       }
       if (!wasAborted) {
@@ -369,9 +367,11 @@ const GuideDetail = () => {
 
   //+ 删除评论（失败 throw 触发 CommentSection 提示）
   const handleDeleteComment = useCallback(async (commentId: string) => {
-    const action = await dispatch(deleteComment(commentId))
-    if ((action as any)?.meta?.requestStatus !== 'fulfilled') {
-      throw new Error((action as any)?.payload || '删除失败')
+    try {
+      await dispatch(deleteComment(commentId)).unwrap()
+    } catch (err) {
+      if (isAbortError(err)) return
+      throw new Error(errMessage(err, '删除失败'))
     }
   }, [dispatch])
 
@@ -399,25 +399,18 @@ const GuideDetail = () => {
     setDeleteLoading(true)
     Taro.showLoading({ title: '删除中...', mask: true })
     try {
-      const action = await dispatch(deleteGuide(id))
-      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
+      await dispatch(deleteGuide(id)).unwrap()
       Taro.hideLoading()
-      if (ok) {
-        Taro.showToast({ title: '删除成功', icon: 'success' })
-        setDeleteVisible(false)
-        //+ 删除成功后返回上一页
-        setTimeout(() => {
-          Taro.navigateBack({ delta: 1 }).catch(() => {
-            Taro.switchTab({ url: '/pages/Home/index' })
-          })
-        }, 500)
-      } else {
-        Taro.showToast({ title: (action as any)?.payload || '删除失败', icon: 'none' })
-      }
+      Taro.showToast({ title: '删除成功', icon: 'success' })
+      setDeleteVisible(false)
+      //+ 删除成功后返回上一页（栈为空时回退到首页 tab）
+      setTimeout(() => {
+        routerNavigateBack(1).catch(() => routerSwitchTab('HOME'))
+      }, 500)
     } catch (err) {
       Taro.hideLoading()
       console.warn('[GuideDetail] 删除失败:', err)
-      Taro.showToast({ title: '删除失败', icon: 'none' })
+      Taro.showToast({ title: errMessage(err, '删除失败'), icon: 'none' })
     } finally {
       setDeleteLoading(false)
     }
@@ -445,17 +438,17 @@ const GuideDetail = () => {
         }
 
         {/* 攻略详情区（内联：标题→作者→路线信息→正文→标签） */}
-        <div className="guide-detail-info">
+        <div className='guide-detail-info'>
           {/* 标题 */}
-          <p className="g-info-title">{guideDetail?.title}</p>
+          <p className='g-info-title'>{guideDetail?.title}</p>
 
           {/* 头像+昵称+时间+关注 */}
-          <div className="g-info-header">
-            <div className="g-info-header-left">
-              <Avatar url={guideDetail?.author?.avatar || ''} size="small" />
-              <div className="g-info-header-left-content">
-                <span className="g-nickname">{guideDetail?.author?.nickname || ''}</span>
-                <span className="g-publish-time">{(guideDetail?.publishTime || '').split('T')[0]}</span>
+          <div className='g-info-header'>
+            <div className='g-info-header-left'>
+              <Avatar url={guideDetail?.author?.avatar || ''} size='small' />
+              <div className='g-info-header-left-content'>
+                <span className='g-nickname'>{guideDetail?.author?.nickname || ''}</span>
+                <span className='g-publish-time'>{(guideDetail?.publishTime || '').split('T')[0]}</span>
               </div>
             </div>
             {!isSelf && authorId && (
@@ -471,32 +464,34 @@ const GuideDetail = () => {
 
           {/* 路线信息（攻略专属） */}
           {guideDetail?.routeInfo && (
-            <div className="g-route-info">
-              <p className="g-route-info-title">路线信息</p>
-              <div className="g-route-info-grid">
-                <div className="g-route-info-item">
-                  <span className="g-route-info-label">距离</span>
-                  <span className="g-route-info-value">{guideDetail.routeInfo.distance || '-'}</span>
+            <div className='g-route-info'>
+              <p className='g-route-info-title'>路线信息</p>
+              <div className='g-route-info-grid'>
+                <div className='g-route-info-item'>
+                  <span className='g-route-info-label'>距离</span>
+                  <span className='g-route-info-value'>{guideDetail.routeInfo.distance || '-'}</span>
                 </div>
-                <div className="g-route-info-item">
-                  <span className="g-route-info-label">时长</span>
-                  <span className="g-route-info-value">{guideDetail.routeInfo.duration || '-'}</span>
+                <div className='g-route-info-item'>
+                  <span className='g-route-info-label'>时长</span>
+                  <span className='g-route-info-value'>{guideDetail.routeInfo.duration || '-'}</span>
                 </div>
-                <div className="g-route-info-item">
-                  <span className="g-route-info-label">难度</span>
-                  <span className="g-route-info-value">{guideDetail.routeInfo.difficulty || '-'}</span>
+                <div className='g-route-info-item'>
+                  <span className='g-route-info-label'>难度</span>
+                  <span className='g-route-info-value'>{guideDetail.routeInfo.difficulty || '-'}</span>
                 </div>
-                <div className="g-route-info-item">
-                  <span className="g-route-info-label">交通</span>
-                  <span className="g-route-info-value">{guideDetail.routeInfo.transport || '-'}</span>
+                <div className='g-route-info-item'>
+                  <span className='g-route-info-label'>交通</span>
+                  <span className='g-route-info-value'>{guideDetail.routeInfo.transport || '-'}</span>
                 </div>
               </div>
             </div>
           )}
 
           {/* 正文内容 - Markdown 渲染 */}
-          <div className="g-info-content md-content">
+          <div className='g-info-content md-content'>
             {isH5 ? (
+              //+ markdown 已由 useMarkdownRender 消毒，H5 端需注入 HTML 渲染富文本
+              // eslint-disable-next-line react/no-danger
               <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
             ) : (
               <RichText nodes={contentHtml} />
@@ -504,10 +499,10 @@ const GuideDetail = () => {
           </div>
 
           {/* 标签 */}
-          <div className="g-info-tags">
-            {guideDetail?.tags?.map((tag: string) => (
-              <span key={tag} className="g-tag" onClick={() => { }}>
-                <span className="g-tag-icon">#</span>{tag}
+          <div className='g-info-tags'>
+            {guideDetail?.tags?.map((tag) => (
+              <span key={tag} className='g-tag'>
+                <span className='g-tag-icon'>#</span>{tag}
               </span>
             ))}
           </div>

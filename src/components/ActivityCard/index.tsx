@@ -13,6 +13,7 @@
 //+   │ 已结束      │ status=已结束                                                   │ 灰禁用 → Toast"活动已结束"
 //+   │ 已取消      │ status=已取消                                                   │ 灰禁用 → Toast"活动已取消"
 //+   └────────────┴─────────────────────────────────────────────────────────────────┘
+import type { MouseEvent } from 'react'
 import { Button } from '@nutui/nutui-react'
 import Taro from '@tarojs/taro'
 import Avatar from '@/components/Avatar'
@@ -98,19 +99,20 @@ const DISABLED_TOAST: Record<SignupBtnKind, string> = {
   activity_cancel: '活动已取消',
 }
 
+//+ NutUI Button 允许的 type 取值（"立即报名"用 primary 绿，其余用 default 灰边框）
+type NutButtonType = 'primary' | 'default'
+
 const ActivityCard = ({ activity, onClick, onSignup, onCancelSignup }: ActivityCardProps) => {
   const {
     coverImg,
     title,
     startTime,
-    endTime,
     address,
     leader,
     currentPeople,
     maxPeople,
     price,
     activityStatus,
-   
   } = activity
 
   //+ 报名进度百分比（兜底除零）
@@ -120,7 +122,7 @@ const ActivityCard = ({ activity, onClick, onSignup, onCancelSignup }: ActivityC
   const btnState = computeBtnState(activity, Date.now())
 
   //+ 点击报名按钮（阻止冒泡，不触发卡片跳转）
-  const handleSignupBtn = (e: any) => {
+  const handleSignupBtn = (e: MouseEvent) => {
     e?.stopPropagation?.()
     if (btnState.clickable) {
       if (btnState.kind === 'signup') {
@@ -140,58 +142,55 @@ const ActivityCard = ({ activity, onClick, onSignup, onCancelSignup }: ActivityC
   //+ 由 kind 映射到 NutUI Button 的 type/block/danger/自定义 class
   //+ NutUI type 可选 'default' | 'primary' | 'info' | 'success' | 'warning' | 'danger'
   //+ "取消报名"用灰色边框：type=default + class 自定义样式
-  const buttonType: any = btnState.kind === 'signup' ? 'primary' : 'default'
+  const buttonType: NutButtonType = btnState.kind === 'signup' ? 'primary' : 'default'
   const buttonClass =
     btnState.kind === 'signup' ? 'ac-btn-signup'
       : btnState.kind === 'cancel' ? 'ac-btn-cancel'
         : 'ac-btn-disabled'
 
   return (
-    <div className="activity-card" onClick={handleClick}>
+    <div className='activity-card' onClick={handleClick}>
       {/* 上：封面图 + 标题/时间/地点 */}
-      <div className="card-top">
-        <div className="card-cover">
+      <div className='card-top'>
+        <div className='card-cover'>
           <img src={coverImg} alt={title} />
           {/* 状态标签 */}
           <span
-            className="card-status"
+            className='card-status'
             style={{ color: STATUS_COLOR[activityStatus] || '#999' }}
           >
             {activityStatus}
           </span>
         </div>
-        <div className="card-info">
-          <div className="card-title">{title}</div>
-          <div className="card-metas">
-            <div className="card-meta">📅 {startTime.slice(0, 16)}</div>
-            <div className="card-meta">📍 {address}</div>
+        <div className='card-info'>
+          <div className='card-title'>{title}</div>
+          <div className='card-metas'>
+            <div className='card-meta'>📅 {startTime.slice(0, 16)}</div>
+            <div className='card-meta'>📍 {address}</div>
           </div>
-
         </div>
       </div>
 
       {/* 下：进度条 + 人数/价格 + 领队/报名 */}
-      <div className="card-bottom">
-         {/* 进度条上方元信息：已报人数 / 价格 */}
-        <div className="progress-meta">
-          <span className="meta-people">已报 {currentPeople}/{maxPeople}人</span>
-          <span className="meta-price">{price === 0 ? '免费' : `${price}元/人`}</span>
+      <div className='card-bottom'>
+        {/* 进度条上方元信息：已报人数 / 价格 */}
+        <div className='progress-meta'>
+          <span className='meta-people'>已报 {currentPeople}/{maxPeople}人</span>
+          <span className='meta-price'>{price === 0 ? '免费' : `${price}元/人`}</span>
         </div>
         {/* 进度条 */}
-        <div className="progress-bar">
-          <div className="progress-inner" style={{ width: `${percent}%` }} />
+        <div className='progress-bar'>
+          <div className='progress-inner' style={{ width: `${percent}%` }} />
         </div>
 
-       
-
         {/* 领队 + 报名按钮 */}
-        <div className="progress-footer">
-          <div className="leader">
-            <Avatar url={leader.avatar} size="small" />
-            <span className="leader-name">{leader.nickname}</span>
+        <div className='progress-footer'>
+          <div className='leader'>
+            <Avatar url={leader.avatar} size='small' />
+            <span className='leader-name'>{leader.nickname}</span>
           </div>
           <Button
-            size="small"
+            size='small'
             type={buttonType}
             disabled={!btnState.clickable}
             onClick={handleSignupBtn}

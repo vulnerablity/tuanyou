@@ -23,16 +23,16 @@ const MessageSkeleton = () => {
           <Skeleton
             visible={false}
             animated
-            shape="circle"
-            width="80px"
-            height="80px"
+            shape='circle'
+            width='80px'
+            height='80px'
             style={{ marginRight: '20px', flexShrink: 0 }}
           />
           {/* 右侧三行文字骨架 */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <Skeleton visible={false} animated rows={1} width="40%" />
-            <Skeleton visible={false} animated rows={1} width="80%" />
-            <Skeleton visible={false} animated rows={1} width="20%" />
+            <Skeleton visible={false} animated rows={1} width='40%' />
+            <Skeleton visible={false} animated rows={1} width='80%' />
+            <Skeleton visible={false} animated rows={1} width='20%' />
           </div>
         </div>
       ))}

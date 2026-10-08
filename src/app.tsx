@@ -1,9 +1,8 @@
 import { PropsWithChildren, useCallback, useEffect, useState } from 'react'
-import { useLaunch } from '@tarojs/taro'
+import Taro, { useLaunch } from '@tarojs/taro'
 import {Provider} from 'react-redux'
 import store from '@/store'
 import TabList from '@/components/TabList'
-import Taro from '@tarojs/taro'
 import { fetchUnreadCount, resetMessageState } from '@/store/modules/message'
 import { getUserInfo } from '@/store/modules/user'
 import { isLoggedIn } from '@/utils/token'
@@ -70,7 +69,7 @@ function SSEProvider() {
   return null
 }
 
-function App({ children }: PropsWithChildren<any>) {
+function App({ children }: PropsWithChildren<unknown>) {
   useLaunch(() => {
     console.log('App launched.')
     //+ 应用启动时拉取未读消息数 + 用户信息（仅已登录用户）

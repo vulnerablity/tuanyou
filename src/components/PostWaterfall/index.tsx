@@ -2,13 +2,15 @@
 //+ 布局：Masonry 错落排布（按累计列高分配，非奇偶）
 //+ 封面：CoverBox 统一封装，onError 渲染兜底 UI，容器尺寸不受图片加载影响
 //+ 渲染：直接渲染 FeedCard，H5/小程序逻辑统一，无离屏回收闪动
-import { Loading, Ellipsis } from '@nutui/nutui-react'
-import Taro from '@tarojs/taro'
-import Tag from '@/components/Tag'
-import type { FeedItem } from '@/types'
+//+ 例外说明（§8）：本组件在 FeedCard 内部直调点赞/收藏 API（乐观 UI + 请求锁 + AbortController 防重复 + 失败回滚），
+//+            回调 onToggleLike / onToggleFavorite 仅用于通知列表（如"我的点赞"页可据此移除项），语义保持现状
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { toggleNoteLikeAPI, toggleNoteFavoriteAPI } from '@/apis/note'
-import { toggleGuideLikeAPI, toggleGuideFavoriteAPI } from '@/apis/guide'
+import { Loading, Ellipsis } from '@nutui/nutui-react'
+import { toggleGuideLike, toggleGuideFavorite } from '@/apis/guide'
+import { toggleNoteLike, toggleNoteFavorite } from '@/apis/note'
+import Tag from '@/components/Tag'
+import { routerNavigateTo } from '@/router'
+import type { FeedItem } from '@/types'
 import './index.less'
 
 //+ 组件Props接口
@@ -78,27 +80,22 @@ function masonryDistribute(feed: FeedItem[], colWidth: number, infoHeightPx: num
 
 /**
  * 统一点赞接口（按内容类型分发）
+ * 注：apis 层已统一解包，toggleNoteLike/toggleGuideLike 直接返回 { isLiked, likeCount }
  */
 async function toggleLikeByType(item: FeedItem, signal?: AbortSignal): Promise<{ isLiked: boolean, likeCount: number }> {
-  const raw = item.type === 'guide'
-    ? await toggleGuideLikeAPI(item.id, signal)
-    : await toggleNoteLikeAPI(item.id, signal)
-  const data: any = (raw as any)?.data ?? raw
-  return {
-    isLiked: !!data?.isLiked,
-    likeCount: typeof data?.likeCount === 'number' ? data.likeCount : (item.likeCount + (data?.isLiked ? 1 : -1))
-  }
+  return item.type === 'guide'
+    ? await toggleGuideLike(item.id, signal)
+    : await toggleNoteLike(item.id, signal)
 }
 
 /**
  * 统一收藏接口（按内容类型分发）
+ * 注：apis 层已统一解包，toggleNoteFavorite/toggleGuideFavorite 直接返回 { isFavorited }
  */
 async function toggleFavoriteByType(item: FeedItem, signal?: AbortSignal): Promise<{ isFavorited: boolean }> {
-  const raw = item.type === 'guide'
-    ? await toggleGuideFavoriteAPI(item.id, signal)
-    : await toggleNoteFavoriteAPI(item.id, signal)
-  const data: any = (raw as any)?.data ?? raw
-  return { isFavorited: !!data?.isFavorited }
+  return item.type === 'guide'
+    ? await toggleGuideFavorite(item.id, signal)
+    : await toggleNoteFavorite(item.id, signal)
 }
 
 //+ CoverBox：封面容器，维持 aspect-ratio；图片 onError 渲染兜底 UI，容器尺寸不受图片加载影响
@@ -204,7 +201,7 @@ const FeedCard = ({
 
   //+ 点赞/取消点赞（阻止冒泡，不触发卡片跳转）
   //+ 性能优化：请求锁(liking flag) + AbortController 丢弃过期 + API 失败回滚乐观值
-  const handleLikeClick = async (e: any) => {
+  const handleLikeClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (liking) return
     //+ 操作冷却
@@ -229,9 +226,9 @@ const FeedCard = ({
       const { isLiked, likeCount } = await toggleLikeByType(item, ac.signal)
       setLocalLiked(isLiked)
       setLocalLikeCount(likeCount)
-    } catch (err: any) {
+    } catch (err) {
       //+ AbortError：被主动丢弃，不回滚（最新 pending 已在 store/UI 侧处理）
-      if (err?.name === 'AbortError') return
+      if (err instanceof Error && err.name === 'AbortError') return
       //+ 失败回滚乐观值
       setLocalLiked(oldLiked)
       setLocalLikeCount(oldCount)
@@ -248,7 +245,7 @@ const FeedCard = ({
 
   //+ 收藏/取消收藏（右上角；阻止冒泡）
   //+ 性能优化：请求锁(faving flag) + AbortController 丢弃过期 + API 失败回滚乐观值
-  const handleFavClick = async (e: any) => {
+  const handleFavClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (faving) return
     //+ 操作冷却
@@ -265,8 +262,8 @@ const FeedCard = ({
       onToggleFavorite?.(item, newFav)
       const { isFavorited } = await toggleFavoriteByType(item, ac.signal)
       setLocalFav(isFavorited)
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       setLocalFav(oldFav)
     } finally {
       if (favAbortRef.current === ac) {
@@ -279,12 +276,12 @@ const FeedCard = ({
     }
   }
 
-  //+ 点击跳转详情（note→NoteDetail, guide→GuideDetail）
+  //+ 点击跳转详情（note→NoteDetail, guide→GuideDetail），走 src/router 包装（自动 H5 别名 + query encode）
   const handleClick = () => {
-    const pagePath = item.type === 'guide'
-      ? '/pages/GuideDetail/index'
-      : '/pages/NoteDetail/index'
-    Taro.navigateTo({ url: `${pagePath}?id=${item.id}&type=${item.type}` })
+    routerNavigateTo(item.type === 'guide' ? 'GUIDE_DETAIL' : 'NOTE_DETAIL', {
+      id: item.id,
+      type: item.type
+    })
   }
 
   return (

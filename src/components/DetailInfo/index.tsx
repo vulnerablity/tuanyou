@@ -3,10 +3,10 @@
 import { useMemo } from 'react'
 import Taro from '@tarojs/taro'
 import { RichText } from '@tarojs/components'
-import Avatar from '../Avatar'
-import Button from '../Button'
 import { normalizeDetailHtml } from '@/utils/html'
 import '@/components/MarkdownEditor/index.less'
+import Avatar from '../Avatar'
+import Button from '../Button'
 import './index.less'
 
 export interface DetailInfoActionProps {
@@ -22,32 +22,44 @@ export interface DetailInfoActionProps {
   followLoading?: boolean
 }
 
+//+ 详情数据最小结构（由页面透传 Note/Guide 详情，组件只消费以下字段）
+interface DetailInfoData {
+  title?: string
+  content?: string
+  avatar?: string
+  author?: {
+    id?: string
+    nickname?: string
+    avatar?: string
+  }
+  publishTime?: string
+  tags?: string[]
+}
+
 export interface DetailInfoProps {
-  detail?: any
+  detail?: DetailInfoData
   actions?: DetailInfoActionProps
 }
 
-const DetailInfo: React.FC<DetailInfoProps> = ({ detail, actions }) => {
+const DetailInfo = ({ detail, actions }: DetailInfoProps) => {
   const {
     title,
     content,
     avatar,
     author,
     publishTime,
-    tags
+    tags,
   } = detail || {}
 
   const {
- 
     isFollowed = false,
     isSelf = false,
     authorId,
     onToggleFollow,
     followLoading = false,
-    
   } = actions || {}
 
-  // 作者信息（保证 author?.id 存在，用于关注）
+  //+ 作者信息（保证 author?.id 存在，用于关注）
   const effectiveAuthorId = authorId || author?.id
   const nickname = author?.nickname || ''
   const avatarUrl = avatar || author?.avatar || ''
@@ -55,30 +67,28 @@ const DetailInfo: React.FC<DetailInfoProps> = ({ detail, actions }) => {
   const contentHtml = useMemo(() => normalizeDetailHtml(content), [content])
   const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
-  
-
-  // 关注
+  //+ 关注
   const handleFollowClick = () => {
     if (isSelf || !effectiveAuthorId) return
     onToggleFollow?.(effectiveAuthorId, !isFollowed)
   }
 
   return (
-    <div className="detail-info">
+    <div className='detail-info'>
       {/* 标题 */}
-      <p className="info-title">
+      <p className='info-title'>
         {title}
       </p>
       {/* 头像+昵称+时间+关注 */}
-      <div className="info-header">
-        <div className="info-header-left">
+      <div className='info-header'>
+        <div className='info-header-left'>
           {/* 头像 */}
-          <Avatar url={avatarUrl} size="small" />
-          <div className="info-header-left-content">
+          <Avatar url={avatarUrl} size='small' />
+          <div className='info-header-left-content'>
             {/* 昵称 */}
-            <span className="nickname">{nickname}</span>
+            <span className='nickname'>{nickname}</span>
             {/* 时间 */}
-            <span className="publish-time">{publishTime?.split('T')[0] || ''}</span>
+            <span className='publish-time'>{publishTime?.split('T')[0] || ''}</span>
           </div>
         </div>
         {/* 关注按钮：非本人显示 */}
@@ -93,23 +103,23 @@ const DetailInfo: React.FC<DetailInfoProps> = ({ detail, actions }) => {
         )}
       </div>
       {/* 内容 - Markdown 渲染 */}
-      <div className="info-content md-content">
+      <div className='info-content md-content'>
         {isH5 ? (
+          //+ markdown 已由 useMarkdownRender 消毒，H5 端需注入 HTML 渲染富文本
+          // eslint-disable-next-line react/no-danger
           <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
         ) : (
           <RichText nodes={contentHtml} />
         )}
       </div>
       {/* 标签 */}
-      <div className="info-tags">
-        {tags?.map((tag: string) => (
-          <span key={tag} className="tag" onClick={() => { }}>
-            <span className="tag-icon">#</span>{tag}
+      <div className='info-tags'>
+        {tags?.map((tag) => (
+          <span key={tag} className='tag'>
+            <span className='tag-icon'>#</span>{tag}
           </span>
         ))}
       </div>
-
-
     </div>
   )
 }

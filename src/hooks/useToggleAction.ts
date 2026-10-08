@@ -2,32 +2,33 @@
 //+ 抽取自 NoteDetail/ActivityDetail 的 promiseRef + cooldownRef 模式
 //+ 提供：请求锁（防狂点）、AbortController（丢弃过期请求）、操作冷却（防接口响应极快时串行狂点）
 //+ 适用于：关注/粉丝列表、收藏列表、点赞列表等列表页的 toggle 操作
+//+ 契约：apiFn resolve 即成功（业务错误已由 request 层抛 ApiError），data 为解包后的业务数据
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 //+ 操作冷却时间：800ms 内重复点击直接拦截
 const COOLDOWN_MS = 800
 
-interface ToggleResult {
-  /** 请求是否成功（业务码 0/200） */
+interface ToggleResult<T = unknown> {
+  /** 请求是否成功（resolve 即成功） */
   ok: boolean
   /** 接口返回的数据（成功时），失败时为 undefined */
-  data?: any
+  data?: T
   /** 是否被 AbortController 主动取消（不计入业务错误） */
   wasAborted: boolean
   /** 错误消息（失败且非 abort 时） */
   error?: string
 }
 
-interface UseToggleActionOptions {
+interface UseToggleActionOptions<T = unknown> {
   /**
    * 实际的 API 调用函数
    * 接收 AbortSignal，用于 abort 过期请求
-   * 返回统一响应结构 { code, message, data }
+   * 返回解包后的业务数据 Promise（业务错误经 request 层抛出）
    */
-  apiFn: (id: string, signal: AbortSignal) => Promise<{ code: number; message?: string; data?: any }>
+  apiFn: (id: string, signal: AbortSignal) => Promise<T>
 }
 
-export function useToggleAction(options: UseToggleActionOptions) {
+export function useToggleAction<T = unknown>(options: UseToggleActionOptions<T>) {
   const { apiFn } = options
   //+ 请求锁：key = resKey，value = AbortController
   //+ 作用1：has(key) 即请求中，拦截重复点击；作用2：abort 上一个同资源请求
@@ -49,7 +50,7 @@ export function useToggleAction(options: UseToggleActionOptions) {
 
   //+ 执行 toggle 操作
   //+ resKey：资源唯一标识，如 `follow:${id}`；id：传给 apiFn 的参数
-  const toggle = useCallback(async (resKey: string, id: string): Promise<ToggleResult> => {
+  const toggle = useCallback(async (resKey: string, id: string): Promise<ToggleResult<T>> => {
     //+ 冷却期内直接拦截
     const cd = cooldownRef.current.get(resKey)
     if (cd && Date.now() < cd) {
@@ -57,8 +58,8 @@ export function useToggleAction(options: UseToggleActionOptions) {
     }
 
     //+ abort 上一个同资源请求（快速交替点击场景）
-    const prev = controllerRef.current.get(resKey)
-    if (prev) prev.abort()
+    const prevController = controllerRef.current.get(resKey)
+    if (prevController) prevController.abort()
 
     //+ 新建 AbortController 并登记 + 设置 loading
     const controller = new AbortController()
@@ -67,15 +68,16 @@ export function useToggleAction(options: UseToggleActionOptions) {
 
     let wasAborted = false
     try {
-      const res = await apiFn(id, controller.signal)
-      const ok = res.code === 0 || res.code === 200
-      return { ok, data: res.data, wasAborted: false, error: ok ? undefined : res.message }
-    } catch (err: any) {
-      if (err?.name === 'AbortError' || controller.signal.aborted) {
+      const data = await apiFn(id, controller.signal)
+      return { ok: true, data, wasAborted: false }
+    } catch (err) {
+      const aborted = (err instanceof Error && err.name === 'AbortError') || controller.signal.aborted
+      if (aborted) {
         wasAborted = true
         return { ok: false, wasAborted: true }
       }
-      return { ok: false, wasAborted: false, error: err?.message || '网络错误' }
+      const msg = err instanceof Error ? err.message : '网络错误'
+      return { ok: false, wasAborted: false, error: msg }
     } finally {
       if (controllerRef.current.get(resKey) === controller) {
         controllerRef.current.delete(resKey)

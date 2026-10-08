@@ -1,6 +1,7 @@
 //+ 用户模块Mock数据和路由
 //+ 用户分两类：member=普通会员，leader=领队
 import { randomInt, randomItem, successResponse, errorResponse } from './utils'
+import type { MockHandler, MockData } from './utils'
 
 //+ 昵称前缀和后缀（会员）
 const memberNicknamePrefixes = ['山林', '背包', '追风', '游侠', '行者', '旅人', '行者', '背包客', '探索', '自由']
@@ -88,27 +89,39 @@ function generateCode(): string {
   return String(randomInt(100000, 999999))
 }
 
+//+ 关注状态内存存储（key=userId，value=是否已关注）
+const FOLLOW_STORE_KEY = '__followed_users__'
+function getFollowStore(): Record<string, boolean> {
+  const g = globalThis as Record<string, unknown>
+  const store = g[FOLLOW_STORE_KEY]
+  return (store && typeof store === 'object' ? (store as Record<string, boolean>) : {})
+}
+function setFollowStore(store: Record<string, boolean>) {
+  ;(globalThis as Record<string, unknown>)[FOLLOW_STORE_KEY] = store
+}
+
 //+ Mock路由映射：用户模块
-export const userMockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const userMockRoutes: Record<string, MockHandler> = {
   //+ 健康检查
   'GET /api/v1/health': () => successResponse({}),
 
   //+ ========== 认证模块 ==========
 
   //+ 发送验证码
-  'POST /api/v1/auth/send-code': (data) => {
-    const { phone, scene } = data || {}
+  'POST /api/v1/auth/send-code': (data?: MockData) => {
+    const phone = String(data?.phone || '')
+    const scene = String(data?.scene || '')
     if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
       return errorResponse('手机号格式无效', 400)
     }
-    if (!['register', 'login', 'reset-password'].includes(scene)) {
+    if (!['register', 'login', 'reset-password', 'change-phone', 'cancel-account'].includes(scene)) {
       return errorResponse('scene 参数不合法', 400)
     }
 
-    //+ 检查频率限制：60秒内不可重复发送
+    //+ 检查频率限制：4分钟内不可重复发送
     const existing = codeStore[phone]
     if (existing && Date.now() - existing.expires < 4 * 60 * 1000) {
-      return errorResponse('发送频率超限，请60秒后重试', 429)
+      return errorResponse('发送频率超限，请稍后重试', 429)
     }
 
     const code = generateCode()
@@ -119,13 +132,16 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
       verified: false
     }
 
-    console.log(`[Mock] 验证码已发送 → phone: ${phone}, code: ${code}, scene: ${scene}`)
+    //+ 开发联调：控制台打印验证码（warn 保留，便于短信验证码登录流程测试；不阻断逻辑）
+    console.warn(`[Mock] 验证码已发送 → phone: ${phone}, code: ${code}, scene: ${scene}`)
     return successResponse({ message: '验证码已发送' })
   },
 
   //+ 用户登录（密码登录 + 验证码登录）
-  'POST /api/v1/auth/login': (data) => {
-    const { phone, password: _password, code, type } = data || {}
+  'POST /api/v1/auth/login': (data?: MockData) => {
+    const phone = String(data?.phone || '')
+    const code = String(data?.code || '')
+    const type = String(data?.type || '')
     //+ 从会员+领队中查找
     const user = [...mockUsers, ...mockLeaders].find(u => u.phone === phone)
 
@@ -160,7 +176,7 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
       })
     }
 
-    //+ 密码登录（默认）
+    //+ 密码登录（默认）：Mock 任意非空密码均可登录，便于联调
     if (user && data?.password) {
       return successResponse({
         token: 'mock-jwt-token-' + Date.now(),
@@ -177,8 +193,12 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
   },
 
   //+ 用户注册
-  'POST /api/v1/auth/register': (data) => {
-    const { phone, code, nickname, password, confirmPassword } = data || {}
+  'POST /api/v1/auth/register': (data?: MockData) => {
+    const phone = String(data?.phone || '')
+    const code = String(data?.code || '')
+    const nickname = String(data?.nickname || '')
+    const password = String(data?.password || '')
+    const confirmPassword = String(data?.confirmPassword || '')
 
     if (!phone || !code || !nickname || !password || !confirmPassword) {
       return errorResponse('注册信息不完整')
@@ -200,7 +220,7 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
     }
     stored.verified = true
 
-    //+ 检查手机号是否已注册
+    //+ 检查手机号是否已注册（真实 push 进 mockUsers，登录态立即可用）
     if ([...mockUsers, ...mockLeaders].find(u => u.phone === phone)) {
       return errorResponse('该手机号已注册')
     }
@@ -232,8 +252,11 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
   },
 
   //+ 重置密码
-  'POST /api/v1/auth/reset-password': (data) => {
-    const { phone, code, newPassword, confirmPassword } = data || {}
+  'POST /api/v1/auth/reset-password': (data?: MockData) => {
+    const phone = String(data?.phone || '')
+    const code = String(data?.code || '')
+    const newPassword = String(data?.newPassword || '')
+    const confirmPassword = String(data?.confirmPassword || '')
 
     if (!phone || !code || !newPassword || !confirmPassword) {
       return errorResponse('请填写完整信息')
@@ -281,21 +304,18 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
   },
 
   //+ 更新用户资料
-  'PUT /api/v1/user/profile': (data) => ({
+  'PUT /api/v1/user/profile': (data?: MockData) => ({
     code: 0,
     message: '成功',
-    data: {
-      ...mockUsers[0],
-      ...data
-    }
+    data: { ...mockUsers[0], ...(data || {}) }
   }),
 
   //+ 更新用户设置
   'PUT /api/v1/user/settings': () => successResponse({}),
 
   //+ 获取指定用户公开资料
-  'GET /api/v1/users/:userId': (_, url) => {
-    const userId = (url as string).split('/').pop() || '1'
+  'GET /api/v1/users/:userId': (_data, url) => {
+    const userId = (url || '').split('/').pop() || '1'
     const user = [...mockUsers, ...mockLeaders].find(u => u.id === userId)
     if (user) {
       return successResponse({
@@ -312,16 +332,15 @@ export const userMockRoutes: Record<string, (data?: any, url?: string) => any> =
   //+ ========== 关注模块 ==========
 
   //+ 关注/取消关注（切换式，返回最新关注状态 & 对方粉丝数变化）
-  'POST /api/v1/members/:id/follow': (_, url) => {
-    const id = (url as string).split('/')[2] || '1'
+  'POST /api/v1/members/:id/follow': (_data, url) => {
+    const id = (url || '').split('/')[2] || '1'
     const user = [...mockUsers, ...mockLeaders].find(u => u.id === id)
     if (!user) return errorResponse('用户不存在')
-    // 本地临时 map 存每个用户的关注状态
-    const FOLLOW_STORE_KEY = '__followed_users__'
-    const store: Record<string, boolean> = (globalThis as any)[FOLLOW_STORE_KEY] || {}
+    //+ 本地 map 存每个用户的关注状态，切换后持久化
+    const store = getFollowStore()
     const prev = !!store[id]
     store[id] = !prev
-    ;(globalThis as any)[FOLLOW_STORE_KEY] = store
+    setFollowStore(store)
     return successResponse({
       memberId: id,
       isFollowed: store[id],

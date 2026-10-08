@@ -1,15 +1,15 @@
 //+ 用户资料卡弹窗组件
 //+ 场景：关注列表/粉丝列表/评论列表/活动详情页等任何"点击头像"入口
 //+ 调用方传入 visible + userId，组件内部拉取 GET /personal/member/{id} 并渲染
-//+ 关注按钮接入 toggleProfileFollowAPI（POST /personal/follow/{id}，个人中心关注接口）
+//+ 关注按钮接入 toggleFollow（POST /personal/follow/{id}，个人中心关注接口）
 //+ 已注销（status=2）/已禁用（status=0）用户：显示 StatusBadge 角标 + 隐藏关注按钮
 //+ 资料卡用 NutUI Popup（position="center"），关闭按钮在右上角
-import { Popup, Avatar, Button, Ellipsis, Toast } from '@nutui/nutui-react'
+import { Popup, Avatar, Button, Ellipsis } from '@nutui/nutui-react'
 import { Close } from '@nutui/icons-react'
 import Taro from '@tarojs/taro'
 import { useEffect, useState, useCallback } from 'react'
-import { getUserDetailAPI } from '@/apis/user'
-import { toggleProfileFollowAPI } from '@/apis/profile'
+import { getUserDetail } from '@/apis/user'
+import { toggleFollow } from '@/apis/profile'
 import { useToggleAction } from '@/hooks/useToggleAction'
 import StatusBadge from '@/components/StatusBadge'
 import type { UserDetail } from '@/types'
@@ -32,7 +32,7 @@ const UserCardModal = ({ visible, userId, onClose }: UserCardModalProps) => {
 
   //+ Toggle 操作通用 Hook：防狂点 + abort + 冷却 + 按钮 loading
   const { toggle, isLoading } = useToggleAction({
-    apiFn: useCallback((id: string, signal: AbortSignal) => toggleProfileFollowAPI(id, signal), [])
+    apiFn: useCallback((id: string, signal: AbortSignal) => toggleFollow(id, signal), [])
   })
 
   //+ visible + userId 变化时拉取用户详情
@@ -44,13 +44,11 @@ const UserCardModal = ({ visible, userId, onClose }: UserCardModalProps) => {
     let cancelled = false
     const controller = new AbortController()
     setLoading(true)
-    getUserDetailAPI(userId, controller.signal)
+    getUserDetail(userId, controller.signal)
       .then(res => {
         if (cancelled) return
-        if (res.code === 0 || res.code === 200) {
-          setDetail(res.data)
-          setIsFollowed(!!res.data.isFollowed)
-        }
+        setDetail(res)
+        setIsFollowed(!!res.isFollowed)
       })
       .catch(() => {
         //+ abort 不提示；其他错误由响应拦截器统一处理

@@ -3,9 +3,9 @@
 //+ 页面侧使用：dispatch(uploadImage({filePath,type})) → useSelector 读 lastImageUrl 等写回本地 form
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import {
-  uploadImageAPI,
-  uploadImagesAPI,
-  uploadVideoAPI
+  uploadImage as uploadImageApi,
+  uploadImages as uploadImagesApi,
+  uploadVideo as uploadVideoApi
 } from '@/apis/upload'
 import type { UploadType } from '@/types/upload'
 
@@ -47,21 +47,12 @@ export interface UploadImageParams {
   type?: UploadType
 }
 
+//+ 上传单张图片，解包契约返回 { url }，thunk 直接吐出 url 字符串（与旧行为一致）
 export const uploadImage = createAsyncThunk(
   'upload/uploadImage',
-  async (params: UploadImageParams, { rejectWithValue }) => {
-    try {
-      const res = await uploadImageAPI(params.filePath, params.type)
-      if (res.code === 0 || res.code === 200) return res.data.url
-      return rejectWithValue(res.message || '图片上传失败')
-    } catch (err: any) {
-      //+ 业务错误数据对象 {code,message} 优先透传 message；其他类型走兜底
-      const msg =
-        (err && typeof err === 'object' && err.message) ||
-        err?.toString?.() ||
-        '网络错误'
-      return rejectWithValue(msg)
-    }
+  async (params: UploadImageParams) => {
+    const { url } = await uploadImageApi(params.filePath, params.type)
+    return url
   }
 )
 
@@ -72,24 +63,16 @@ export interface UploadImagesParams {
   maxCount?: number
 }
 
+//+ 上传批量图片，解包契约返回 { urls }，thunk 直接吐出 urls 数组（与旧行为一致）
 export const uploadImages = createAsyncThunk(
   'upload/uploadImages',
-  async (params: UploadImagesParams, { rejectWithValue }) => {
-    try {
-      const res = await uploadImagesAPI(
-        params.filePaths,
-        params.type,
-        params.maxCount ?? 5
-      )
-      if (res.code === 0 || res.code === 200) return res.data.urls
-      return rejectWithValue(res.message || '图片上传失败')
-    } catch (err: any) {
-      const msg =
-        (err && typeof err === 'object' && err.message) ||
-        err?.toString?.() ||
-        '网络错误'
-      return rejectWithValue(msg)
-    }
+  async (params: UploadImagesParams) => {
+    const { urls } = await uploadImagesApi(
+      params.filePaths,
+      params.type,
+      params.maxCount ?? 5
+    )
+    return urls
   }
 )
 
@@ -104,20 +87,11 @@ export interface UploadVideoResult {
   coverUrl: string
 }
 
+//+ 上传单个视频，解包契约返回 { videoUrl, coverUrl }
 export const uploadVideo = createAsyncThunk(
   'upload/uploadVideo',
-  async (params: UploadVideoParams, { rejectWithValue }) => {
-    try {
-      const res = await uploadVideoAPI(params.filePath, params.type)
-      if (res.code === 0 || res.code === 200) return res.data as UploadVideoResult
-      return rejectWithValue(res.message || '视频上传失败')
-    } catch (err: any) {
-      const msg =
-        (err && typeof err === 'object' && err.message) ||
-        err?.toString?.() ||
-        '网络错误'
-      return rejectWithValue(msg)
-    }
+  async (params: UploadVideoParams) => {
+    return await uploadVideoApi(params.filePath, params.type)
   }
 )
 
@@ -165,7 +139,7 @@ const uploadSlice = createSlice({
       })
       .addCase(uploadImage.rejected, (state, action) => {
         state.imageStatus = 'error'
-        state.error = (action.payload as string) || '图片上传失败'
+        state.error = action.error.message ?? '图片上传失败'
       })
       // ---- 批量图片 ----
       .addCase(uploadImages.pending, (state) => {
@@ -179,7 +153,7 @@ const uploadSlice = createSlice({
       })
       .addCase(uploadImages.rejected, (state, action) => {
         state.imagesStatus = 'error'
-        state.error = (action.payload as string) || '图片上传失败'
+        state.error = action.error.message ?? '图片上传失败'
       })
       // ---- 视频 ----
       .addCase(uploadVideo.pending, (state) => {
@@ -195,7 +169,7 @@ const uploadSlice = createSlice({
       })
       .addCase(uploadVideo.rejected, (state, action) => {
         state.videoStatus = 'error'
-        state.error = (action.payload as string) || '视频上传失败'
+        state.error = action.error.message ?? '视频上传失败'
       })
   }
 })

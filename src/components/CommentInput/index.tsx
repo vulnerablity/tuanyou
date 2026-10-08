@@ -42,7 +42,8 @@ export interface CommentInputSendPayload {
 }
 
 export interface CommentInputProps {
-  detail?: any
+  //+ 详情数据（由页面透传，本组件当前不直接消费；保留字段以兼容现有调用点）
+  detail?: unknown
   actions?: CommentInputActionProps
   /** 回复目标：传入时打开 Popup 进入"回复模式"；传 null 时关闭回复模式并回到一级评论模式 */
   replyTarget?: CommentInputReplyTarget | null
@@ -52,12 +53,15 @@ export interface CommentInputProps {
   onSendComment?: (payload: CommentInputSendPayload) => PromiseLike<void> | void
 }
 
-const CommentInput: React.FC<CommentInputProps> = ({
+//+ 图标点击动作类型（点赞 / 收藏）
+type IconAction = 'like' | 'favorite'
+
+const CommentInput = ({
   actions,
   replyTarget,
   onCancelReply,
   onSendComment,
-}) => {
+}: CommentInputProps) => {
   const {
     isLiked = false,
     likeCount = 0,
@@ -117,12 +121,12 @@ const CommentInput: React.FC<CommentInputProps> = ({
         replyToId: replyTarget?.replyToId ?? null,
         replyToName: replyTarget?.replyToName ?? null,
       })
-    } catch (e: any) {
+    } catch (e) {
       //+ 失败时父组件处理回滚，这里仅保留已输入内容方便重发
       //+ code=2001 后端违禁词，单独提示；其他保持"评论失败"
-      const code = e?.code
-      if (code === 2001) {
-        Toast.show({ content: e?.message || '内容包含违规词汇', duration: 1 })
+      const err = (e ?? {}) as { code?: number; message?: string }
+      if (err.code === 2001) {
+        Toast.show({ content: err.message || '内容包含违规词汇', duration: 1 })
       } else {
         Toast.show({ content: '评论失败', duration: 1 })
       }
@@ -139,18 +143,16 @@ const CommentInput: React.FC<CommentInputProps> = ({
   }
 
   // ---------- 交互：点赞/收藏/转发 ----------
-  const handleIconClick = (e: any, action: string) => {
+  //+ 事件对象只需 stopPropagation，用最小结构类型兼容 NutUI IconFont 的事件签名
+  interface IconClickEvent {
+    stopPropagation: () => void
+  }
+  const handleIconClick = (e: IconClickEvent, action: IconAction) => {
     e.stopPropagation()
-    switch (action) {
-      case 'like':
-        onToggleLike?.(!isLiked)
-        break
-      case 'favorite':
-        onToggleFavorite?.(!isFavorited)
-        break
-      // case 'share':
-      //   Toast.show({ content: '禁止转发', duration: 1 })
-      //   break
+    if (action === 'like') {
+      onToggleLike?.(!isLiked)
+    } else {
+      onToggleFavorite?.(!isFavorited)
     }
   }
 
@@ -161,11 +163,23 @@ const CommentInput: React.FC<CommentInputProps> = ({
         {/* 无效输入框 */}
         <input placeholder='写评论...' className='comment-input' readOnly />
         {/* 点赞 */}
-        <IconFont name={isLiked ? 'likefill' : 'like'} fontClassName='iconfont' classPrefix='icon' className={isLiked ? 'like-active' : ''} onClick={(e) => handleIconClick(e, 'like')}><span className='like-count'>{likeCount}</span></IconFont>
+        <IconFont
+          name={isLiked ? 'likefill' : 'like'}
+          fontClassName='iconfont'
+          classPrefix='icon'
+          className={isLiked ? 'like-active' : ''}
+          onClick={(e) => handleIconClick(e, 'like')}
+        >
+          <span className='like-count'>{likeCount}</span>
+        </IconFont>
         {/* 收藏 */}
-        <IconFont name={isFavorited ? 'shoucangfill' : 'shoucang'} fontClassName='iconfont' classPrefix='icon' className={isFavorited ? 'favorite-active' : ''} onClick={(e) => handleIconClick(e, 'favorite')} />
-        {/* 转发 */}
-        {/* <IconFont name='zhuanfa' fontClassName='iconfont' classPrefix='icon' onClick={(e) => handleIconClick(e, 'share')} /> */}
+        <IconFont
+          name={isFavorited ? 'shoucangfill' : 'shoucang'}
+          fontClassName='iconfont'
+          classPrefix='icon'
+          className={isFavorited ? 'favorite-active' : ''}
+          onClick={(e) => handleIconClick(e as MouseEvent, 'favorite')}
+        />
       </Cell>
 
       <Popup
@@ -176,7 +190,12 @@ const CommentInput: React.FC<CommentInputProps> = ({
         position='bottom'
         closeable={isReplyMode}
         closeIconPosition='top-right'
-        title={isReplyMode &&(<div className='reply-to-name'><div className='reply'>回复</div><div className='name'>@{replyTarget?.replyToName || ''}</div></div>  )}
+        title={isReplyMode && (
+          <div className='reply-to-name'>
+            <div className='reply'>回复</div>
+            <div className='name'>@{replyTarget?.replyToName || ''}</div>
+          </div>
+        )}
       >
         {/* key 强制重建 TextArea：每次 Popup 打开时用新 key 重新挂载，确保清空 NutUI 内部缓存 */}
         <Form key={visible ? 'open' : 'closed'}>
@@ -187,7 +206,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
               autoSize
               ref={textareaRef}
               placeholder={placeholder}
-              onChange={(val) => setTextareaValue(val as string)}
+              onChange={(val) => setTextareaValue(val)}
               value={textareaValue}
             />
           </Form.Item>

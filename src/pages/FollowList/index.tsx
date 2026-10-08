@@ -11,11 +11,23 @@ import UserCardModal from '@/components/UserCardModal'
 import { usePagedList } from '@/hooks/usePagedList'
 import { useToggleAction } from '@/hooks/useToggleAction'
 import { fetchFollowList } from '@/store/modules/profile'
-import { toggleProfileFollowAPI } from '@/apis/profile'
+import { toggleFollow } from '@/apis/profile'
 import type { FollowItem, UserPublic, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
 import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
+
+//+ 每页条数
+const PAGE_SIZE = 10
+
+//+ 失败时返回的空分页（rejected 动作无 payload；list 类型与 usePagedList 项类型一致）
+const emptyPageResult = <T,>(page: number, size: number): PageResult<T> => ({
+  list: [],
+  total: 0,
+  page,
+  size,
+  total_page: 0
+})
 
 //+ 将 FollowItem 转换为 UserPublic（供组件渲染使用）
 //+ 后端用 followeeId/followerId 标识关系，前端统一用 id
@@ -40,12 +52,14 @@ const FollowList = () => {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const paged = usePagedList<UserPublic>({
-    size: 10,
+    size: PAGE_SIZE,
     fetcher: useCallback(
       async ({ page, size }) => {
         const action = await dispatch(fetchFollowList({ page, size }))
-        const payload: PageResult<FollowItem> | undefined = (action as any)?.payload
-        if (!payload) return { code: -1, message: '加载失败', data: { list: [], total: 0, page, size, total_page: 0 } }
+        if (!fetchFollowList.fulfilled.match(action)) {
+          return { code: -1, message: '加载失败', data: emptyPageResult<UserPublic>(page, size) }
+        }
+        const payload = action.payload
         return {
           code: 0,
           data: {
@@ -63,7 +77,7 @@ const FollowList = () => {
 
   //+ Toggle 操作通用 Hook：请求锁 + AbortController + 800ms 冷却 + loading 状态
   const { toggle, isLoading } = useToggleAction({
-    apiFn: useCallback((id: string, signal: AbortSignal) => toggleProfileFollowAPI(id, signal), [])
+    apiFn: useCallback((id: string, signal: AbortSignal) => toggleFollow(id, signal), [])
   })
 
   //+ 页面显示时加载第一页（实时刷新）

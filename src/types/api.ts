@@ -51,7 +51,7 @@ export interface ProfileInfo {
 }
 
 //+ 编辑个人信息请求参数（PUT /personal body）
-export interface ProfileUpdate {
+export type ProfileUpdate = {
   avatar: string
   nickname: string
   bio: string
@@ -61,10 +61,25 @@ export interface ProfileUpdate {
 //+ 统一响应数据结构
 //+ 注：请求封装层（utils/request）也有同名 ResponseData<T>，二者结构一致；
 //+     如需在调用方与 request.ts 共用此结构，可直接 import ApiResponse 并重命名为 ResponseData。
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   code: number
   message: string
   data: T
+}
+
+//+ 登录/注册成功返回的会员基本信息（POST /auth/login、POST /auth/register data.member 结构）
+export interface LoginMember {
+  id: string
+  nickname: string
+  phone: string
+  avatar: string
+  role: string
+}
+
+//+ 登录/注册成功响应（POST /auth/login、POST /auth/register data 结构）
+export interface LoginResult {
+  token: string
+  member: LoginMember
 }
 
 // ========== 评论模块协议域 ==========

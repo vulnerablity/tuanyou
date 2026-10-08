@@ -1,4 +1,7 @@
 //+ 路由常量定义
+import Taro from '@tarojs/taro'
+import { getToken } from '@/utils/token'
+
 export const ROUTE_PATHS = {
   LOGIN: '/pages/Login/index',
   REGISTER: '/pages/Register/index',
@@ -22,7 +25,11 @@ export const ROUTE_PATHS = {
   FOLLOWER_LIST: '/pages/FollowerList/index',
   FAVORITE: '/pages/Favorite/index',
   LIKE: '/pages/Like/index',
-  SETTINGS: '/pages/Settings/index'
+  SETTINGS: '/pages/Settings/index',
+  //+ 账号管理子页（仅页面内跳转，无 H5 别名；buildNavigateUrl 自动回退到原路径，与原直调行为一致）
+  CHANGE_PASSWORD: '/pages/ChangePassword/index',
+  CHANGE_PHONE: '/pages/ChangePhone/index',
+  CANCEL_ACCOUNT: '/pages/CancelAccount/index'
 } as const
 
 //+ H5端路由别名
@@ -43,9 +50,6 @@ export const AUTH_REQUIRED_ROUTES: RouteKey[] = []
 
 //+ 白名单路由（无需登录即可访问）
 export const PUBLIC_ROUTES: RouteKey[] = ['LOGIN', 'REGISTER', 'FORGOT_PASSWORD', 'LOGOUT']
-
-import Taro from '@tarojs/taro'
-import { getToken } from '@/utils/token'
 
 //+ 判断是否已登录
 export function isAuthenticated(): boolean {
@@ -70,7 +74,7 @@ export function getCurrentPageFullPath(): string {
   try {
     const pages = Taro.getCurrentPages()
     if (!pages || pages.length === 0) return ROUTE_PATHS.HOME
-    const last = pages[pages.length - 1] as any
+    const last = pages[pages.length - 1] as { route?: string; $taroPath?: string; options?: Record<string, string>; $taroParams?: Record<string, string> }
     const route: string = last?.route || last?.$taroPath || ''
     const options: Record<string, string> = last?.options || last?.$taroParams || {}
     const params = Object.keys(options)
@@ -88,16 +92,32 @@ export function requiresAuth(routeKey: RouteKey): boolean {
   return AUTH_REQUIRED_ROUTES.includes(routeKey)
 }
 
+//+ 拼接导航 URL：H5 端跳别名路径，其他端跳原路径；可选 params 自动 encode 拼 query
+function buildNavigateUrl(routeKey: RouteKey, params?: Record<string, string | number>): string {
+  let path: string = ROUTE_PATHS[routeKey]
+  //+ H5 端使用 ROUTE_ALIAS 别名路径（如 /login），其他端保持原始页面路径
+  if (process.env.TARO_ENV === 'h5') {
+    const alias = (ROUTE_ALIAS as Record<string, string>)[routeKey]
+    if (alias) path = alias
+  }
+  if (params && Object.keys(params).length > 0) {
+    const qs = Object.keys(params)
+      .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(String(params[k]))}`)
+      .join('&')
+    if (qs) return `${path}?${qs}`
+  }
+  return path
+}
+
 //+ 导航到指定页面（保留当前页面）
-export function routerNavigateTo(routeKey: RouteKey): Promise<TaroGeneral.CallbackResult> {
-  const url: string = ROUTE_PATHS[routeKey]
-  return Taro.navigateTo({ url })
+//+ 可选第二参 params：自动 encodeURIComponent 拼到 query（如 { id: 1 } → ?id=1）
+export function routerNavigateTo(routeKey: RouteKey, params?: Record<string, string | number>): Promise<TaroGeneral.CallbackResult> {
+  return Taro.navigateTo({ url: buildNavigateUrl(routeKey, params) })
 }
 
 //+ 重定向到指定页面（关闭当前页面）
-export function routerRedirectTo(routeKey: RouteKey): Promise<TaroGeneral.CallbackResult> {
-  const url: string = ROUTE_PATHS[routeKey]
-  return Taro.redirectTo({ url })
+export function routerRedirectTo(routeKey: RouteKey, params?: Record<string, string | number>): Promise<TaroGeneral.CallbackResult> {
+  return Taro.redirectTo({ url: buildNavigateUrl(routeKey, params) })
 }
 
 //+ 跳转到 tabBar 页面
@@ -107,9 +127,8 @@ export function routerSwitchTab(routeKey: RouteKey): Promise<TaroGeneral.Callbac
 }
 
 //+ 关闭所有页面，打开到应用内的某个页面
-export function routerReLaunch(routeKey: RouteKey): Promise<TaroGeneral.CallbackResult> {
-  const url: string = ROUTE_PATHS[routeKey]
-  return Taro.reLaunch({ url })
+export function routerReLaunch(routeKey: RouteKey, params?: Record<string, string | number>): Promise<TaroGeneral.CallbackResult> {
+  return Taro.reLaunch({ url: buildNavigateUrl(routeKey, params) })
 }
 
 //+ 返回上一页

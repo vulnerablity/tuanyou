@@ -11,11 +11,11 @@ import SearchHistory from '@/components/SearchHistory'
 import { useAuthGuard } from '@/components/AuthRoute'
 import type { FeedItem, ActivityListItem } from '@/types'
 import {
-  getHotKeywordsAPI,
-  searchContentAPI,
-  searchActivitiesAPI
+  getHotKeywords,
+  searchContent as searchContentApi,
+  searchActivities as searchActivitiesApi
 } from '@/apis/search'
-import { routerNavigateBack, routerReLaunch } from '@/router'
+import { routerNavigateBack, routerReLaunch, routerNavigateTo } from '@/router'
 import './index.less'
 
 const PAGE_SIZE = 10
@@ -58,10 +58,8 @@ const Search = () => {
   //+ 获取热门搜索关键词
   const loadHotKeywords = useCallback(async () => {
     try {
-      const res = await getHotKeywordsAPI()
-      if (res.code === 0 || res.code === 200) {
-        setHotKeywords(res.data || [])
-      }
+      const res = await getHotKeywords()
+      setHotKeywords(res || [])
     } catch (_err) {
       //+ 失败时保留空数组，不阻塞UI
     }
@@ -71,13 +69,11 @@ const Search = () => {
   const searchContent = useCallback(async (kw: string, page: number = 1, append: boolean = false) => {
     setContentLoading(true)
     try {
-      const res = await searchContentAPI({ keyword: kw, page, size: PAGE_SIZE })
-      if (res.code === 0 || res.code === 200) {
-        const { list = [], page: respPage = 1, total_page = 0 } = res.data || {}
-        setContentList(append ? [...contentList, ...list] : list)
-        setContentPage(respPage)
-        setContentHasMore(respPage < (total_page ?? respPage))
-      }
+      const res = await searchContentApi({ keyword: kw, page, size: PAGE_SIZE })
+      const { list = [], page: respPage = 1, total_page = 0 } = res
+      setContentList(append ? [...contentList, ...list] : list)
+      setContentPage(respPage)
+      setContentHasMore(respPage < (total_page ?? respPage))
     } catch (_err) {
       if (!append) {
         setContentList([])
@@ -91,13 +87,11 @@ const Search = () => {
   const searchActivities = useCallback(async (kw: string, page: number = 1, append: boolean = false) => {
     setActivityLoading(true)
     try {
-      const res = await searchActivitiesAPI({ keyword: kw, page, size: PAGE_SIZE })
-      if (res.code === 0 || res.code === 200) {
-        const { list = [], page: respPage = 1, total_page = 0 } = res.data || {}
-        setActivityList(append ? [...activityList, ...list] : list)
-        setActivityPage(respPage)
-        setActivityHasMore(respPage < (total_page ?? respPage))
-      }
+      const res = await searchActivitiesApi({ keyword: kw, page, size: PAGE_SIZE })
+      const { list = [], page: respPage = 1, total_page = 0 } = res
+      setActivityList(append ? [...activityList, ...list] : list)
+      setActivityPage(respPage)
+      setActivityHasMore(respPage < (total_page ?? respPage))
     } catch (_err) {
       if (!append) {
         setActivityList([])
@@ -178,9 +172,9 @@ const Search = () => {
     searchActivities(keyword, activityPage + 1, true)
   }
 
-  //+ 活动卡片点击跳转详情
+  //+ 活动卡片点击跳转详情（走 router 包装，带 id 参数）
   const handleActivityClick = (activity: ActivityListItem) => {
-    Taro.navigateTo({ url: `/pages/ActivityDetail/index?id=${activity.id}` })
+    routerNavigateTo('ACTIVITY_DETAIL', { id: activity.id })
   }
 
   //+ 容器级滚动监听：距底 50px 触发当前 Tab 的加载更多
@@ -228,19 +222,20 @@ const Search = () => {
   }, [loadHotKeywords])
 
   return (
-    <div className="g-search-page">
+    <div className='g-search-page'>
       {/* 头部：返回 + 搜索框 + 搜索按钮 */}
-      <div className="g-search-header">
-        <div className="g-search-back" onClick={handleBack}>
-          <ArrowLeft className="g-search-back-icon" />
+      <div className='g-search-header'>
+        <div className='g-search-back' onClick={handleBack}>
+          <ArrowLeft className='g-search-back-icon' />
         </div>
-        <div className="g-search-bar-wrapper" onKeyDown={(e: React.KeyboardEvent) => {
+        <div className='g-search-bar-wrapper' onKeyDown={(e: React.KeyboardEvent) => {
           if (e.key === 'Enter') handleSearch()
-        }}>
+        }}
+        >
           <NutSearchBar
-            className="g-search-bar"
-            shape="round"
-            placeholder="搜索笔记、攻略、活动"
+            className='g-search-bar'
+            shape='round'
+            placeholder='搜索笔记、攻略、活动'
             maxLength={SEARCH_MAX_LENGTH}
             value={keyword}
             onChange={(v) => setKeywordSafe(v)}
@@ -259,7 +254,7 @@ const Search = () => {
 
       {/* 主内容区 */}
       {/* 统一滚动容器：flex:1 + overflow-y:auto，外层 100vh 布局下 onScroll 生效 */}
-      <div className="g-search-body" ref={scrollRef} onScroll={handleScroll}>
+      <div className='g-search-body' ref={scrollRef} onScroll={handleScroll}>
         {!searched ? (
           //+ 未搜索：显示搜索历史 + 热门搜索
           <>
@@ -267,13 +262,13 @@ const Search = () => {
               refreshKey={historyRefreshKey}
               onKeywordClick={handleKeywordClick}
             />
-            <div className="g-search-hot">
-              <div className="g-search-hot-title">热门搜索</div>
-              <div className="g-search-hot-tags">
+            <div className='g-search-hot'>
+              <div className='g-search-hot-title'>热门搜索</div>
+              <div className='g-search-hot-tags'>
                 {hotKeywords.map((kw, idx) => (
                   <div
                     key={`${kw}-${idx}`}
-                    className="g-search-hot-tag"
+                    className='g-search-hot-tag'
                     onClick={() => handleKeywordClick(kw)}
                   >
                     {kw}
@@ -284,23 +279,23 @@ const Search = () => {
           </>
         ) : (
           //+ 已搜索：显示Tab + 搜索结果
-          <div className="g-search-result">
+          <div className='g-search-result'>
             {/* Tab切换：内容 / 活动，显示搜索结果数量 */}
             <Tabs
-              className="g-search-tabs"
+              className='g-search-tabs'
               value={activeTab}
               onChange={(v) => setActiveTab(v as 'content' | 'activity')}
             >
-              <Tabs.TabPane title="内容" value="content" />
-              <Tabs.TabPane title="活动" value="activity" />
+              <Tabs.TabPane title='内容' value='content' />
+              <Tabs.TabPane title='活动' value='activity' />
             </Tabs>
 
             {/* 搜索结果列表 */}
-            <div className="g-search-result-body">
+            <div className='g-search-result-body'>
               {activeTab === 'content' ? (
                 contentList.length === 0 && !contentLoading ? (
-                  <div className="g-search-empty">
-                    <Empty description="没有找到相关笔记" />
+                  <div className='g-search-empty'>
+                    <Empty description='没有找到相关笔记' />
                   </div>
                 ) : (
                   <PostWaterfall
@@ -308,18 +303,18 @@ const Search = () => {
                     loading={contentLoading}
                     hasMore={contentHasMore}
                     onLoadMore={handleLoadMoreContent}
-                    emptyText="没有找到相关笔记"
+                    emptyText='没有找到相关笔记'
                     onItemClick={() => {}}
                     onToggleLike={() => {}}
                   />
                 )
               ) : (
                 activityList.length === 0 && !activityLoading ? (
-                  <div className="g-search-empty">
-                    <Empty description="没有找到相关活动" />
+                  <div className='g-search-empty'>
+                    <Empty description='没有找到相关活动' />
                   </div>
                 ) : (
-                  <div className="g-search-activity-list">
+                  <div className='g-search-activity-list'>
                     {activityList.map((activity) => (
                       <ActivityCard
                         key={activity.id}
@@ -331,12 +326,12 @@ const Search = () => {
                     ))}
                     {/* 加载更多 */}
                     {activityHasMore && (
-                      <div className="g-search-load-more" onClick={handleLoadMoreActivity}>
+                      <div className='g-search-load-more' onClick={handleLoadMoreActivity}>
                         {activityLoading ? '加载中...' : '加载更多'}
                       </div>
                     )}
                     {!activityHasMore && activityList.length > 0 && (
-                      <div className="g-search-no-more">已加载全部</div>
+                      <div className='g-search-no-more'>已加载全部</div>
                     )}
                   </div>
                 )

@@ -1,12 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import Taro from '@tarojs/taro'
+import { useMarkdownInsert } from '@/hooks/useMarkdownInsert'
+import type { CursorPos } from '@/types/markdown'
 import Toolbar from './Toolbar'
 import TabBar from './TabBar'
 import EditView from './EditView'
+import type { TextareaHandle } from './EditView'
 import Preview from './Preview'
 import WordCount from './WordCount'
-import { useMarkdownInsert } from '@/hooks/useMarkdownInsert'
-import type { CursorPos } from '@/types/markdown'
 import './index.less'
 
 export interface MarkdownEditorProps {
@@ -23,17 +24,17 @@ export interface MarkdownEditorProps {
   placeholder?: string
 }
 
-const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
+function MarkdownEditor({
   value,
   onChange,
   maxLength = 2000,
   minHeight = '320px',
   readOnly = false,
   onWordCountChange
-}) => {
+}: MarkdownEditorProps) {
   const [mode, setMode] = useState<'edit' | 'preview'>('edit')
   const [cursor, setCursor] = useState<CursorPos>({ start: 0, end: 0 })
-  const textareaRefRef = useRef<React.RefObject<any> | null>(null)
+  const textareaRefRef = useRef<React.RefObject<TextareaHandle> | null>(null)
   const selSyncRef = useRef<((s: number, e: number) => void) | null>(null)
   const [selToken, setSelToken] = useState(0)
   const [warned, setWarned] = useState(false)
@@ -68,7 +69,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     selSyncRef.current = cb
   }, [])
 
-  const onTextareaRef = useCallback((ref: React.RefObject<any>) => {
+  const onTextareaRef = useCallback((ref: React.RefObject<TextareaHandle>) => {
     textareaRefRef.current = ref
   }, [])
 
@@ -80,10 +81,10 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   }, [])
 
   const focus = useCallback(() => {
-    const ref = textareaRefRef.current?.current as any
-    if (!ref) return
-    const realEl = (ref.nativeElement || ref.querySelector?.('textarea') || ref) as HTMLTextAreaElement | null
-    realEl?.focus?.()
+    const handle = textareaRefRef.current?.current
+    if (!handle) return
+    const realEl = handle.nativeElement || handle.querySelector?.('textarea') || handle
+    ;(realEl as HTMLElement | null)?.focus?.()
   }, [])
 
   const { insert, handleKeyDown } = useMarkdownInsert({
@@ -98,7 +99,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const actualMode: 'edit' | 'preview' = readOnly ? 'preview' : mode
 
   return (
-    <div className="md-editor">
+    <div className='md-editor'>
       {/* 只读模式下不显示工具栏（无编辑意义） */}
       {!readOnly && (
         <Toolbar onAction={insert} disabled={actualMode !== 'edit'} />

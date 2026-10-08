@@ -1,13 +1,24 @@
-import { Tabbar ,ActionSheet } from '@nutui/nutui-react'
+import { Tabbar, ActionSheet } from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
 import { useEffect, useState } from 'react'
 import Taro from '@tarojs/taro'
 import { useSelector } from 'react-redux'
+import { getMemberInfo } from '@/apis/user'
+import { routerNavigateTo, routerSwitchTab } from '@/router'
 import type { RootState } from '@/store'
-import { getMemberInfoAPI } from '@/apis/user'
 //+ 阿里 iconfont 字符图标样式
 import '@/assets/iconfont.css'
 import './index.less'
+
+//+ ActionSheet 发布动作选项（NutUI options 为索引签名类型，用 type 别名以获得隐式索引签名兼容性）
+type PublishOption = { name: string }
+
+//+ 发布动作面板选项（模块级常量，避免每次渲染重建）
+const PUBLISH_OPTIONS: PublishOption[] = [
+  { name: '发笔记' },
+  { name: '写攻略' },
+  { name: '发起活动' }
+]
 
 /** 路由页面名 → Tab 索引 映射
  *  用页面文件名（路径倒数第二段，小写）做匹配 */
@@ -74,43 +85,31 @@ const TabList = () => {
 
 
   const [isVisible, setIsVisible] = useState(false)
+  //+ tab 切换：0/1/3/4 为 tabBar 页走 switchTab；2 为中间"+"打开发布面板
   const tabNavigate = (index: number) => {
     if (index === 0) {
-      Taro.switchTab({ url: '/pages/Home/index' })
+      routerSwitchTab('HOME')
     } else if (index === 1) {
-      Taro.switchTab({ url: '/pages/Activity/index' })
-    }else if(index===2){
+      routerSwitchTab('ACTIVITY_LIST')
+    } else if (index === 2) {
       setIsVisible(true)
-    }else if (index === 3) {
-      Taro.switchTab({ url: '/pages/Message/index' })
+    } else if (index === 3) {
+      routerSwitchTab('MESSAGE')
     } else if (index === 4) {
-      Taro.switchTab({ url: '/pages/Profile/index' })
+      routerSwitchTab('PROFILE')
     }
     setCurrentIndex(index)
   }
 
-  const options=[
-    {
-      name:'发笔记'
-    },
-    {
-      name: '写攻略',
-
-    },
-    {
-      name: '发起活动'
-
-    }
-  ]
-  const handleSelect=async (item:any)=>{
+  const handleSelect = async (item: { name: string | boolean }) => {
     setIsVisible(false)
     // 根据 option name 跳转到对应的发布页
     switch (item.name) {
       case '发笔记':
-        Taro.navigateTo({ url: '/pages/PublishNote/index' })
+        routerNavigateTo('PUBLISH_NOTE')
         break
       case '写攻略':
-        Taro.navigateTo({ url: '/pages/PublishGuide/index' })
+        routerNavigateTo('PUBLISH_GUIDE')
         break
       case '发起活动':
         //+ 实时调用通用接口 /member/info 判断角色，不依赖本地可能过期的 store
@@ -125,19 +124,14 @@ const TabList = () => {
   const handlePublishActivity = async () => {
     Taro.showLoading({ title: '判断中...', mask: true })
     try {
-      const res = await getMemberInfoAPI()
+      const res = await getMemberInfo()
       Taro.hideLoading()
-      if (res.code === 0 || res.code === 200) {
-        const role = res.data?.role
-        if (role === '领队') {
-          Taro.navigateTo({ url: '/pages/PublishActivity/index' })
-        } else {
-          Taro.showToast({ title: '仅领队可发布活动', icon: 'none' })
-        }
+      if (res.role === '领队') {
+        routerNavigateTo('PUBLISH_ACTIVITY')
       } else {
-        Taro.showToast({ title: res.message || '获取用户信息失败', icon: 'none' })
+        Taro.showToast({ title: '仅领队可发布活动', icon: 'none' })
       }
-    } catch (err) {
+    } catch {
       Taro.hideLoading()
       Taro.showToast({ title: '网络异常，请重试', icon: 'none' })
     }
@@ -164,29 +158,33 @@ const TabList = () => {
 
   return (
     <div className='tab-container '>
-      <Tabbar value={currentIndex} fixed={true} activeColor="#428a46 !important" inactiveColor="#bfbfbf !important" onSwitch={tabNavigate}>
-        <Tabbar.Item title="社区" icon={
-          <IconFont name="community" fontClassName="iconfont" classPrefix="icon" />
-        }/>
-        <Tabbar.Item title="活动" icon={
-          <IconFont name="activity" fontClassName="iconfont" classPrefix="icon" />
-        } />
-        <Tabbar.Item className="publish" title="+"  />
-        <Tabbar.Item title="消息" icon={
-          <IconFont name="message" fontClassName="iconfont" classPrefix="icon" />
-        } value={messageBadge} max={99} />
-        <Tabbar.Item title="我的" icon={
-          <IconFont name="wode" fontClassName="iconfont" classPrefix="icon" />
-        } />
+      <Tabbar value={currentIndex} fixed activeColor='#428a46 !important' inactiveColor='#bfbfbf !important' onSwitch={tabNavigate}>
+        <Tabbar.Item title='社区' icon={
+          <IconFont name='community' fontClassName='iconfont' classPrefix='icon' />
+        }
+        />
+        <Tabbar.Item title='活动' icon={
+          <IconFont name='activity' fontClassName='iconfont' classPrefix='icon' />
+        }
+        />
+        <Tabbar.Item className='publish' title='+'  />
+        <Tabbar.Item title='消息' icon={
+          <IconFont name='message' fontClassName='iconfont' classPrefix='icon' />
+        } value={messageBadge} max={99}
+        />
+        <Tabbar.Item title='我的' icon={
+          <IconFont name='wode' fontClassName='iconfont' classPrefix='icon' />
+        }
+        />
       </Tabbar>
       {/* 发布动作面板 */}
       <ActionSheet
         className='action-sheet'
         visible={isVisible}
-        cancelText="取消"
-        options={options}
+        cancelText='取消'
+        options={PUBLISH_OPTIONS}
         onSelect={handleSelect}
-        onCancel={()=>{setIsVisible(false)}}
+        onCancel={() => { setIsVisible(false) }}
 
       />
          </div>

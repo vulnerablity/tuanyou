@@ -1,9 +1,11 @@
 //+ 社区首页Mock数据和路由
 //+ 包含轮播（slides）和Feed流（feed）接口
-import { randomInt, randomItem, createPageResponse, successResponse } from './utils'
+import type { FeedItem, SlideItem } from '@/types'
+import { randomInt, randomItem, createPageResponse, successResponse, toNumber } from './utils'
+import type { MockHandler, MockData } from './utils'
 
 //+ 轮播数据（从笔记、攻略、活动三张表查询is_slide=1的内容）
-export const mockSlides = [
+export const mockSlides: SlideItem[] = [
   //图片后面都变成16比9的图片
   {
     id: '1',
@@ -64,7 +66,7 @@ const noteTitles = [
 ]
 
 //+ 生成Feed数据
-function generateFeedItem(id: string, type: 'note' | 'guide') {
+function generateFeedItem(id: string, type: 'note' | 'guide'): FeedItem {
   const nickname = randomItem(nicknames)
   const cat = randomItem(categoryList)
 
@@ -98,7 +100,7 @@ function generateFeedItem(id: string, type: 'note' | 'guide') {
 
 //+ 生成所有Feed数据
 let feedId = 1
-export const mockFeed: ReturnType<typeof generateFeedItem>[] = []
+export const mockFeed: FeedItem[] = []
 
 //+ 生成笔记（含图片和视频）
 for (let i = 0; i < 30; i++) {
@@ -111,23 +113,21 @@ for (let i = 0; i < 25; i++) {
 }
 
 //+ Mock路由映射：首页模块
-export const homeMockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const homeMockRoutes: Record<string, MockHandler> = {
   //+ 获取首页轮播
   'GET /api/v1/slides': () => successResponse(mockSlides),
 
   //+ 获取Feed流列表
-  'GET /api/v1/feed': (data) => {
-    const page = data?.page || 1
-    const size = data?.size || 10
+  'GET /api/v1/feed': (data?: MockData) => {
+    const page = toNumber(data?.page, 1)
+    const size = toNumber(data?.size, 10)
 
     let filteredFeed = [...mockFeed]
 
     //+ 根据分类筛选：category 为 0/未传/'全部' 时不筛选，其余按数字 ID 精确匹配
-    //+ 修复：原逻辑 category===0 时会进入分支，filter(item.category===0) 把所有数据过滤掉
-    //+       导致首屏 list 为空、total=0、total_page=0、hasMore=false，触底加载永不触发
     const category = data?.category
-    const categoryId = Number(category)
-    if (category !== undefined && category !== null && category !== '' && !Number.isNaN(categoryId) && categoryId > 0) {
+    const categoryId = toNumber(category, 0)
+    if (category !== undefined && category !== null && category !== '' && categoryId > 0) {
       filteredFeed = filteredFeed.filter(item => item.category === categoryId)
     }
 

@@ -6,12 +6,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import Taro, { useDidShow, useDidHide } from '@tarojs/taro'
 import { Video } from '@tarojs/components'
-import { Button, TextArea, Input, Picker, Tabs } from '@nutui/nutui-react'
+import { Button, Input, Picker, Tabs } from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import RichEditor from '@/components/RichEditor'
 import { htmlToText, isHtmlEmpty } from '@/utils/html'
-import { createNoteAPI } from '@/apis/note'
+import { createNote } from '@/apis/note'
 import { fetchTags } from '@/store/modules/tag'
 import {
   uploadImages,
@@ -24,6 +24,7 @@ import {
 import { CATEGORY_MAP } from '@/types'
 import type { RootState, AppDispatch } from '@/store'
 import { useAuthGuard } from '@/components/AuthRoute'
+import { routerNavigateBack, routerRedirectTo } from '@/router'
 import './index.less'
 
 //+ 最大图片数量
@@ -34,6 +35,9 @@ const MAX_TAGS = 3
 //+ 标题/内容长度限制
 const MAX_TITLE = 50
 const MAX_CONTENT = 2000
+
+//+ NutUI Picker onConfirm 第二参（选中值数组）结构类型，避免 any
+type PickerConfirmValue = (string | number | null)[]
 
 //+ 媒体类型：图片 或 视频（互斥）
 type MediaType = 'image' | 'video'
@@ -188,7 +192,7 @@ const PublishNote = () => {
   }
 
   //+ 分类 Picker 确认
-  const handleCategoryConfirm = (_options: any, value: any[]) => {
+  const handleCategoryConfirm = (_options: unknown, value: PickerConfirmValue) => {
     updateField('category', Number(value[0]))
     setCategoryPickerVisible(false)
   }
@@ -264,7 +268,7 @@ const PublishNote = () => {
       const submitImages: string[] =
         mediaType === 'video' ? (videoCoverUrl ? [videoCoverUrl] : []) : [...form.images]
 
-      const res = await createNoteAPI({
+      await createNote({
         title: form.title.trim(),
         content: form.noteContent,
         images: submitImages,
@@ -273,53 +277,52 @@ const PublishNote = () => {
         tags: form.tags
       })
 
-      if (res.code === 0 || res.code === 200) {
-        Taro.showToast({ title: '发布成功', icon: 'success' })
+      Taro.showToast({ title: '发布成功', icon: 'success' })
         setTimeout(() => {
           //+ 发布成功后清空上传缓存
           dispatch(resetUpload())
-          //+ 三级降级返回：优先 navigateBack，其次 window.history.back()，最后 redirectTo 首页
+          //+ 三级降级返回：优先 routerNavigateBack，其次 window.history.back()，最后 redirectTo 首页
           const pages = Taro.getCurrentPages()
           if (pages.length > 1) {
-            Taro.navigateBack({ delta: 1 }).catch(() => {
+            routerNavigateBack(1).catch(() => {
               if (typeof window !== 'undefined' && window.history.length > 1) {
                 window.history.back()
               } else {
-                Taro.redirectTo({ url: '/pages/Home/index' })
+                routerRedirectTo('HOME')
               }
             })
           } else {
             if (typeof window !== 'undefined' && window.history.length > 1) {
               window.history.back()
             } else {
-              Taro.redirectTo({ url: '/pages/Home/index' })
+              routerRedirectTo('HOME')
             }
           }
         }, 1500)
-      } else {
-        Taro.showToast({ title: res.message || '发布失败，请重试', icon: 'none' })
-      }
-    } catch (err: any) {
-      Taro.showToast({ title: err?.message || '发布失败，请重试', icon: 'none' })
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '发布失败，请重试'
+      Taro.showToast({ title: msg, icon: 'none' })
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="publish-note-page">
-      <HeaderNavBar title="发布笔记" backPageNum={1} fixed={false} cancel={true} />
+    <div className='publish-note-page'>
+      <HeaderNavBar title='发布笔记' backPageNum={1} fixed={false} cancel />
 
-      <div className="form-wrapper">
+      <div className='form-wrapper'>
         <Tabs
-                  value={activeTab}
-                  onChange={(v) => {
-                    if (v === mediaType) {
-                      setActiveTab(v as string)
+          value={activeTab}
+          onChange={(v) => {
+                    const next = String(v)
+                    if (next === mediaType) {
+                      setActiveTab(next)
                       return
                     }
-                    setMediaType(v as MediaType)
-                    if (v === 'image') {
+                    setMediaType(next as MediaType)
+                    if (next === 'image') {
                       updateField('videoUrl', '')
                       setVideoCoverUrl('')
                       dispatch(resetUploadVideo())
@@ -327,34 +330,34 @@ const PublishNote = () => {
                       updateField('images', [])
                       dispatch(resetUploadImages())
                     }
-                    setActiveTab(v as string)
+                    setActiveTab(next)
                   }}
-                  activeColor="#428a46"
-                  className="media-type-switch"
-                >
-                  <Tabs.TabPane title="图片" value={'image'} />
-                  <Tabs.TabPane title="视频" value={'video'} />
+          activeColor='#428a46'
+          className='media-type-switch'
+        >
+                  <Tabs.TabPane title='图片' value='image' />
+                  <Tabs.TabPane title='视频' value='video' />
                 </Tabs>
 
         {/* 图片上传区（图片模式） */}
         {mediaType === 'image' && (
-          <div className="images-section">
-            <div className="section-label">
+          <div className='images-section'>
+            <div className='section-label'>
               添加图片（{form.images.length}/{MAX_IMAGES}）
             </div>
-            <div className="image-grid">
+            <div className='image-grid'>
               {form.images.map((url, index) => (
-                <div key={index} className="image-item">
+                <div key={index} className='image-item'>
                   <img src={url} alt={`图片${index + 1}`} />
-                  <div className="image-remove" onClick={() => handleRemoveImage(index)}>×</div>
+                  <div className='image-remove' onClick={() => handleRemoveImage(index)}>×</div>
                 </div>
               ))}
               {form.images.length < MAX_IMAGES && (
-                <div className="image-add" onClick={handleUploadImages}>
+                <div className='image-add' onClick={handleUploadImages}>
                   {uploadState.imagesStatus === 'loading' ? (
-                    <span className="uploading-text">上传中...</span>
+                    <span className='uploading-text'>上传中...</span>
                   ) : (
-                    <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
+                    <IconFont name='xiangji' fontClassName='iconfont' classPrefix='icon' />
                   )}
                 </div>
               )}
@@ -364,22 +367,22 @@ const PublishNote = () => {
 
         {/* 视频上传区（视频模式，限1个） */}
         {mediaType === 'video' && (
-          <div className="video-section">
-            <div className="section-label">
+          <div className='video-section'>
+            <div className='section-label'>
               添加视频（{form.videoUrl ? 1 : 0}/1）
             </div>
-            <div className="video-grid">
+            <div className='video-grid'>
               {form.videoUrl ? (
-                <div className="video-item">
-                  <Video src={form.videoUrl} className="video-preview" controls muted />
-                  <div className="image-remove" onClick={handleRemoveVideo}>×</div>
+                <div className='video-item'>
+                  <Video src={form.videoUrl} className='video-preview' controls muted />
+                  <div className='image-remove' onClick={handleRemoveVideo}>×</div>
                 </div>
               ) : (
-                <div className="video-add" onClick={handleUploadVideo}>
+                <div className='video-add' onClick={handleUploadVideo}>
                   {uploadState.videoStatus === 'loading' ? (
-                    <span className="uploading-text">上传中...</span>
+                    <span className='uploading-text'>上传中...</span>
                   ) : (
-                    <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
+                    <IconFont name='xiangji' fontClassName='iconfont' classPrefix='icon' />
                   )}
                 </div>
               )}
@@ -388,28 +391,28 @@ const PublishNote = () => {
         )}
 
         {/* 标题 */}
-        <div className="field-section">
-          <div className="field-label">标题</div>
+        <div className='field-section'>
+          <div className='field-label'>标题</div>
           <Input
-            className="field-input"
-            type="text"
-            placeholder="给你的笔记起个名字"
+            className='field-input'
+            type='text'
+            placeholder='给你的笔记起个名字'
             value={form.title}
             maxLength={MAX_TITLE}
             onChange={(v) => updateField('title', v)}
           />
-          <span className="field-count">{form.title.length}/{MAX_TITLE}</span>
+          <span className='field-count'>{form.title.length}/{MAX_TITLE}</span>
         </div>
 
         {/* 分类 - 使用 NutUI Picker */}
-        <div className="field-section" onClick={() => setCategoryPickerVisible(true)}>
-          <div className="field-label">分类</div>
+        <div className='field-section' onClick={() => setCategoryPickerVisible(true)}>
+          <div className='field-label'>分类</div>
           <div className={`field-picker-display ${!form.category ? 'placeholder' : ''}`}>
             {form.category ? CATEGORY_MAP[form.category] : '选择分类'}
           </div>
           <Picker
             visible={categoryPickerVisible}
-            title="选择分类"
+            title='选择分类'
             options={CATEGORY_OPTIONS}
             value={form.category ? [String(form.category)] : [String(CATEGORY_OPTIONS[0][0].value)]}
             onConfirm={handleCategoryConfirm}
@@ -421,42 +424,42 @@ const PublishNote = () => {
 
 
         {/* 笔记内容（所见即所得富文本） */}
-        <div className="field-section content column note-section">
-          <div className="field-label note-title">
+        <div className='field-section content column note-section'>
+          <div className='field-label note-title'>
             笔记内容
           </div>
           <RichEditor
             value={form.noteContent}
             onChange={(v) => updateField('noteContent', v)}
             maxLength={MAX_CONTENT}
-            minHeight="400px"
+            minHeight='400px'
           />
         </div>
 
         {/* 标签 - 与分类无关，始终展示所有可选标签，点击切换选中 */}
-        <div className="field-section column">
-          <div className="section-label">
+        <div className='field-section column'>
+          <div className='section-label'>
             添加标签（{form.tags.length}/{MAX_TAGS}）
           </div>
-          <div className="tag-list">
+          <div className='tag-list'>
             {tagLoading && tagOptions.length === 0 ? (
-              <span className="tag-loading">加载标签中...</span>
+              <span className='tag-loading'>加载标签中...</span>
             ) : tagOptions.map(tag => (
               <span
                 key={tag}
                 className={`tag ${form.tags.includes(tag) ? 'tag-active' : ''}`}
                 onClick={() => handleTagToggle(tag)}
               >
-                <span className="tag-icon">#</span>{tag}
+                <span className='tag-icon'>#</span>{tag}
               </span>
             ))}
           </div>
         </div>
 
            {/* 底部固定提交按钮 */}
-      <div className="submit-bar">
+      <div className='submit-bar'>
         <Button
-          type="primary"
+          type='primary'
           block
           loading={submitting}
           disabled={submitting}

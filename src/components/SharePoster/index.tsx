@@ -20,14 +20,13 @@ export interface SharePosterProps {
 
 }
 
-const SharePoster: React.FC<SharePosterProps> = ({
+function SharePoster({
   visible,
   onClose,
   activityTitle,
   activityCover,
   shareUrl,
-  
-}) => {
+}: SharePosterProps) {
   const [posterDataUrl, setPosterDataUrl] = useState('')
   const [generating, setGenerating] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -92,7 +91,7 @@ const SharePoster: React.FC<SharePosterProps> = ({
         //+ 这里延迟释放，等 canvas 合成完毕
         setTimeout(() => URL.revokeObjectURL(objectUrl), 5000)
       }
-    } catch (err: any) {
+    } catch {
       //+ 路径2：fetch 失败兜底，直接用原 URL + crossOrigin 加载
       //+ 同样加时间戳破坏 Chrome 缓存，避免脏缓存报错
       const cacheBuster = src.includes('?')
@@ -165,8 +164,8 @@ const SharePoster: React.FC<SharePosterProps> = ({
       let coverImg: HTMLImageElement | null = null
       try {
         coverImg = await loadImage(activityCover)
-      } catch (err: any) {
-        console.warn('[SharePoster] 封面图加载失败:', err?.message)
+      } catch (err) {
+        console.warn('[SharePoster] 封面图加载失败:', err instanceof Error ? err.message : err)
       }
       const qrImg = await loadImage(qrDataUrl)
 
@@ -192,9 +191,9 @@ const SharePoster: React.FC<SharePosterProps> = ({
           const dx = (750 - dw) / 2
           const dy = 0
           ctx.drawImage(coverImg, dx, dy, dw, dh)
-        } catch (err: any) {
+        } catch (err) {
           //+ drawImage 失败兜底：背景留灰，不阻塞后续绘制
-          console.warn('[SharePoster] drawImage 封面图失败:', err?.message)
+          console.warn('[SharePoster] drawImage 封面图失败:', err instanceof Error ? err.message : err)
         }
       }
 
@@ -236,16 +235,16 @@ const SharePoster: React.FC<SharePosterProps> = ({
       let dataUrl: string
       try {
         dataUrl = canvas.toDataURL('image/png')
-      } catch (err: any) {
-        throw new Error('图片导出失败：' + (err?.message || '未知错误'))
+      } catch (err) {
+        throw new Error('图片导出失败：' + (err instanceof Error ? err.message : '未知错误'))
       }
       if (!dataUrl || dataUrl.length < 100) {
         throw new Error('海报生成失败：导出图片为空')
       }
       setPosterDataUrl(dataUrl)
-    } catch (err: any) {
+    } catch (err) {
       console.error('[SharePoster] 生成失败:', err)
-      setErrorMsg(err?.message || '海报生成失败')
+      setErrorMsg(err instanceof Error ? err.message : '海报生成失败')
     } finally {
       setGenerating(false)
     }

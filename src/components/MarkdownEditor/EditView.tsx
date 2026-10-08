@@ -4,6 +4,13 @@ import Taro from '@tarojs/taro'
 import { useTextareaCursor } from '@/hooks/useTextareaCursor'
 import type { CursorPos } from '@/types/markdown'
 
+//+ NutUI TextArea 透传 ref 的结构（H5 下可能是组件包裹层，需穿透 nativeElement/querySelector 取原生 textarea）
+export interface TextareaHandle {
+  nativeElement?: HTMLElement
+  querySelector?: (selector: string) => Element | null
+  focus?: () => void
+}
+
 export interface EditViewProps {
   value: string
   onChange: (v: string) => void
@@ -16,12 +23,15 @@ export interface EditViewProps {
   onSelectionChangeSync?: (cb: (s: number, e: number) => void) => void
   onKeyDown?: (e: React.KeyboardEvent) => void
   /** 暴露 textarea ref 给父组件（useMarkdownInsert 光标调整需要） */
-  onTextareaRef?: (ref: React.RefObject<any>) => void
+  onTextareaRef?: (ref: React.RefObject<TextareaHandle>) => void
 }
 
 const isWeb = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
-const EditView: React.FC<EditViewProps> = ({
+//+ 光标事件结构（与 useTextareaCursor.extractFromEvent 入参对齐，结构化鸭型）
+type CursorEvent = Parameters<ReturnType<typeof useTextareaCursor>['extractFromEvent']>[0]
+
+function EditView({
   value,
   onChange,
   onCursorChange,
@@ -32,8 +42,9 @@ const EditView: React.FC<EditViewProps> = ({
   onSelectionChangeSync,
   onKeyDown,
   onTextareaRef
-}) => {
-  const textareaRef = useRef<any>(null)
+}: EditViewProps) {
+  //+ NutUI TextArea 包裹层 ref：类型为结构化 TextareaHandle，绑定 JSX 时做一次边界断言（组件库 ref 类型不精确）
+  const textareaRef = useRef<TextareaHandle>(null)
   // 小程序端 selection-start/selection-end props
   const [selStart, setSelStart] = useState<number>(-1)
   const [selEnd, setSelEnd] = useState<number>(-1)
@@ -69,13 +80,14 @@ const EditView: React.FC<EditViewProps> = ({
   })()
 
   return (
-    <div className="md-edit-view" style={{ minHeight: h }}>
+    <div className='md-edit-view' style={{ minHeight: h }}>
       <TextArea
-        ref={textareaRef as any}
-        className="md-textarea"
+        //+ NutUI TextArea ref 类型与其真实结构（带 nativeElement 的包裹层）不匹配，边界断言一次
+        ref={textareaRef as unknown as React.RefObject<HTMLTextAreaElement>}
+        className='md-textarea'
         style={{ minHeight: h, fontFamily: 'inherit' }}
         value={value}
-        placeholder={'支持标题/粗体/斜体/列表/引用等格式，可点击上方工具栏一键插入~'}
+        placeholder='支持标题/粗体/斜体/列表/引用等格式，可点击上方工具栏一键插入~'
         maxLength={maxLength || 999999}
         rows={10}
         showCount={false}
@@ -88,22 +100,20 @@ const EditView: React.FC<EditViewProps> = ({
               ...(selStart >= 0 ? { selectionStart: selStart } : {}),
               ...(selEnd >= 0 ? { selectionEnd: selEnd } : {}),
             })}
-        onInput={(e: any) => {
-          if (isWeb) {
-            onCursorChange(extractFromEvent(e))
-          }
+        onInput={(e) => {
+          if (isWeb) onCursorChange(extractFromEvent(e as CursorEvent))
         }}
-        onClick={(e: any) => {
-          if (isWeb) onCursorChange(extractFromEvent(e))
+        onClick={(e) => {
+          if (isWeb) onCursorChange(extractFromEvent(e as CursorEvent))
         }}
-        onKeyUp={(e: any) => {
-          if (isWeb) onCursorChange(extractFromEvent(e))
+        onKeyUp={(e) => {
+          if (isWeb) onCursorChange(extractFromEvent(e as CursorEvent))
         }}
         // 选区变化：仅小程序端需要；H5 端没有这个 DOM 事件，传了会触发 React unknown-event-handler 警告
         {...(isWeb
           ? {}
           : {
-              onSelectionChange: (e: any) => onCursorChange(extractFromEvent(e)),
+              onSelectionChange: (e: CursorEvent) => onCursorChange(extractFromEvent(e)),
             })}
         // H5 键盘快捷键
         {...(isWeb && onKeyDown ? { onKeyDown } : {})}

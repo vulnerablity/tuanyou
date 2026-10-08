@@ -1,12 +1,13 @@
 //+ 退出登录页面
 import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
-import { logout } from '@/store/modules/user'
-import { goToLogin } from '@/router'
 import Taro from '@tarojs/taro'
+import { logout } from '@/store/modules/user'
+import type { AppDispatch } from '@/store'
+import { goToLogin } from '@/router'
 
 const Logout = () => {
-  const dispatch = useDispatch()
+  const dispatch: AppDispatch = useDispatch<AppDispatch>()
 
   useEffect(() => {
     //+ 执行退出登录

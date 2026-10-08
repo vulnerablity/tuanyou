@@ -2,7 +2,6 @@
 //+ 布局：左侧圆形图标盒子（浅绿背景+绿色图标）→ 右侧内容+时间+展开/收起
 //+ 未读：浅绿色背景 + 右上角绿色实心小圆点
 //+ 删除：外层 SwipeAction 包裹，左滑露出红色删除按钮
-import { useState } from 'react'
 import { IconFont } from '@nutui/icons-react'
 import { Ellipsis } from '@nutui/nutui-react'
 import '@/assets/iconfont.css'
@@ -19,10 +18,6 @@ interface SystemMessageItemProps {
 }
 
 const SystemMessageItem = ({ item, onMarkRead, onDelete, swipeOpen, onSwipeOpen }: SystemMessageItemProps) => {
-  // const [expanded, setExpanded] = useState(false)
-  // const [rows, setRows] = useState(2)
-  
-
   const tryMarkRead = () => {
     if (!item.read) {
       onMarkRead?.(item.id)
@@ -57,23 +52,10 @@ const SystemMessageItem = ({ item, onMarkRead, onDelete, swipeOpen, onSwipeOpen 
         </div>
 
         <div className='message-item-body'>
-          <Ellipsis className={`message-item-content`} content={item.content} rows={2} expandText='展开' collapseText='收起' />
-           
+          <Ellipsis className='message-item-content' content={item.content} rows={2} expandText='展开' collapseText='收起' />
 
           <div className='message-item-time-row'>
             <span className='message-item-time'>{formatMessageTime(item.createdAt)}</span>
-            {/* {rows >=2 && (
-              <span
-                className='message-item-expand-btn'
-                onClick={(e) => {
-                  e.stopPropagation()
-                  tryMarkRead()
-                  setExpanded(!expanded)
-                }}
-              >
-                {expanded ? '收起' : '展开'}
-              </span>
-            )} */}
           </div>
         </div>
 

@@ -42,6 +42,8 @@ export type {
   ProfileInfo,
   ProfileUpdate,
   ApiResponse,
+  LoginMember,
+  LoginResult,
   CommentUserDTO,
   CommentDTO,
   CommentListResult,

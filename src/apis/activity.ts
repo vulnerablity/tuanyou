@@ -1,35 +1,41 @@
-//+ 活动API接口封装（与 OpenAPI 文档对齐）
-import { get, post, del } from '@/utils/request'
-import type { ActivityListResult } from '@/types'
+//+ 活动API接口封装（与 OpenAPI 文档对齐；统一解包返回 data）
+import { apiGet, apiPost, apiDelete } from '@/utils/request'
+import type { Activity, ActivityBanner, ActivityListResult, ActivityListItem } from '@/types'
 
-//+ 获取活动Banner（首页活动入口轮播）
-export function getActivityBannersAPI() {
-  return get('/activities/banners')
-}
-
-//+ 获取活动列表
+//+ 活动列表查询参数（GET /activities）
 //+ category 不传=全部，传中文字符串（徒步/露营/骑行/登山/跑步/攀岩/溯溪）
 //+ date 不传=全部日期，传 YYYY-MM-DD 按活动开始日期筛选
-export function getActivityListAPI(params: {
+export type ActivityQueryParams = {
   category?: string
   date?: string
   page: number
   size: number
-}) {
-  return get<ActivityListResult>('/activities', params)
 }
 
-//+ 兼容旧命名（部分代码可能引用 getActivitiesAPI）
-export const getActivitiesAPI = getActivityListAPI
-
-//+ 获取活动详情
-export function getActivityDetailAPI(id: string) {
-  return get(`/activities/${id}`)
+//+ 报名切换响应（POST /activities/{id}/signup data）
+export type ToggleActivitySignupResult = {
+  isJoined: boolean
+  currentPeople: number
 }
 
-//+ 创建活动（仅领队，与 API 文档 POST /activities 对齐）
+//+ GET /activities/banners 获取活动Banner（活动页轮播入口）
+export function getActivityBanners(): Promise<ActivityBanner[]> {
+  return apiGet<ActivityBanner[]>('/activities/banners')
+}
+
+//+ GET /activities 获取活动列表
+export function getActivityList(params: ActivityQueryParams): Promise<ActivityListResult> {
+  return apiGet<ActivityListResult>('/activities', params)
+}
+
+//+ GET /activities/{id} 获取活动详情
+export function getActivityDetail(id: string): Promise<Activity> {
+  return apiGet<Activity>(`/activities/${id}`)
+}
+
+//+ POST /activities 创建活动（仅领队，与 API 文档 POST /activities 对齐）
 //+ 字段使用 category（非 activityType），signUpStart/signUpEnd 由后端自动计算
-export function createActivityAPI(params: {
+export function createActivity(params: {
   title: string
   category: string
   coverImg: string
@@ -40,22 +46,22 @@ export function createActivityAPI(params: {
   maxPeople: number
   difficulty: string
   activityContent: string
-  wechatQR:string
-}) {
-  return post('/activities', params)
+  wechatQR: string
+}): Promise<Activity> {
+  return apiPost<Activity>('/activities', params)
 }
 
-//+ 报名/取消报名，返回 { isJoined, currentPeople }
-export function toggleActivitySignupAPI(id: string, signal?: AbortSignal | null) {
-  return post(`/activities/${id}/signup`, undefined, undefined, signal)
+//+ POST /activities/{id}/signup 报名/取消报名（切换式），返回最新报名状态与人数
+export function toggleActivitySignup(id: string, signal?: AbortSignal | null): Promise<ToggleActivitySignupResult> {
+  return apiPost<ToggleActivitySignupResult>(`/activities/${id}/signup`, undefined, signal)
 }
 
-//+ 删除活动（领队）
-export function deleteActivityAPI(id: string) {
-  return del(`/activities/${id}`)
+//+ DELETE /activities/{id} 删除活动（领队）
+export function deleteActivity(id: string): Promise<void> {
+  return apiDelete<void>(`/activities/${id}`)
 }
 
-//+ 获取我的活动
-export function getMyActivitiesAPI() {
-  return get('/user/activities')
+//+ GET /user/activities 获取我的活动
+export function getMyActivities(): Promise<ActivityListItem[]> {
+  return apiGet<ActivityListItem[]>('/user/activities')
 }

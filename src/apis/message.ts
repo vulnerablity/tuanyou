@@ -1,4 +1,4 @@
-//+ 消息模块API接口封装
+//+ 消息模块API接口封装（统一解包返回 data；后端 DTO → 前端实体适配在本层完成）
 //+ 对齐 docs/默认模块.md 接口文档：
 //+   GET    /messages/interactions          获取互动消息列表（分页）
 //+   GET    /messages/system                获取系统通知列表（分页）
@@ -11,7 +11,7 @@
 //+           → 前端 InteractionMessage / SystemMessage 实体
 //+           由 normalizeInteraction / normalizeSystem 在本层完成转换
 //+           store 与页面只感知前端实体
-import { get, post, put, del, type ResponseData } from '@/utils/request'
+import { apiGet, apiPost, apiPut, apiDelete } from '@/utils/request'
 import type {
   InteractionMessage,
   SystemMessage,
@@ -24,11 +24,9 @@ import type {
 } from '@/types'
 
 //+ 互动消息类型关键词映射（从 content 文本中推导 type 字段）
-//+ 优先级：comment > favorite > follow > like > 默认 like
 //+ 判断互动消息类型：以 m.comment 是否为 null 为准（后端权威字段）
 //+ - comment != null → 'comment'（评论/回复消息，有回复功能）
 //+ - comment == null → 按 content 文本判断其他类型（赞/收藏/关注）
-//+ 不再仅靠 content 文本判断，避免"赞了你的评论"被误判为 comment 类型
 function deriveInteractionType(m: MessageDTO): InteractionMessage['type'] {
   if (m.comment != null) return 'comment'
   const content = m.content || ''
@@ -46,7 +44,6 @@ function extractTargetTitle(content: string): string {
 
 //+ 适配器：后端 MessageDTO → 前端 InteractionMessage 实体
 //+ sender 为 null 时使用默认占位（互动消息理论上 sender 不为 null，做兜底）
-//+ 评论类消息：解析 m.comment.replies 映射到 item.replies，replyCount 取 replies.length
 function normalizeInteraction(m: MessageDTO): InteractionMessage {
   const sender = m.sender || { id: '', nickname: '匿名用户', avatar: '' }
   //+ 解析评论回复列表：后端 comment.replies → 前端 { id, sender, content }
@@ -94,56 +91,39 @@ function normalizeSystem(m: MessageDTO): SystemMessage {
   }
 }
 
-//+ 获取互动消息列表（分页）
-export async function getInteractionsAPI(params: {
-  page: number
-  size: number
-}): Promise<ResponseData<PageResult<InteractionMessage>>> {
-  const res = await get<MessageListResult>('/messages/interactions', params)
-  const normalized: PageResult<InteractionMessage> = {
-    ...res.data,
-    list: res.data.list.map(normalizeInteraction)
-  }
-  return { ...res, data: normalized }
+//+ GET /messages/interactions 获取互动消息列表（分页）
+export async function getInteractions(params: { page: number; size: number }): Promise<PageResult<InteractionMessage>> {
+  const res = await apiGet<MessageListResult>('/messages/interactions', params)
+  return { ...res, list: res.list.map(normalizeInteraction) }
 }
 
-//+ 获取系统通知列表（分页）
-export async function getSystemMessagesAPI(params: {
-  page: number
-  size: number
-}): Promise<ResponseData<PageResult<SystemMessage>>> {
-  const res = await get<MessageListResult>('/messages/system', params)
-  const normalized: PageResult<SystemMessage> = {
-    ...res.data,
-    list: res.data.list.map(normalizeSystem)
-  }
-  return { ...res, data: normalized }
+//+ GET /messages/system 获取系统通知列表（分页）
+export async function getSystemMessages(params: { page: number; size: number }): Promise<PageResult<SystemMessage>> {
+  const res = await apiGet<MessageListResult>('/messages/system', params)
+  return { ...res, list: res.list.map(normalizeSystem) }
 }
 
-//+ 获取未读消息数
-export function getUnreadCountAPI(): Promise<ResponseData<UnreadCountResult>> {
-  return get<UnreadCountResult>('/messages/unread-count')
+//+ GET /messages/unread-count 获取未读消息数
+export function getUnreadCount(): Promise<UnreadCountResult> {
+  return apiGet<UnreadCountResult>('/messages/unread-count')
 }
 
-//+ 标记单条消息已读
-export function markMessageReadAPI(id: string): Promise<ResponseData<Record<string, never>>> {
-  return put(`/messages/${id}/read`)
+//+ PUT /messages/{id}/read 标记单条消息已读
+export function markMessageRead(id: string): Promise<void> {
+  return apiPut<void>(`/messages/${id}/read`)
 }
 
-//+ 标记全部消息已读
-export function markAllMessagesReadAPI(): Promise<ResponseData<MarkAllReadResult>> {
-  return put<MarkAllReadResult>('/messages/read-all')
+//+ PUT /messages/read-all 标记全部消息已读
+export function markAllMessagesRead(): Promise<MarkAllReadResult> {
+  return apiPut<MarkAllReadResult>('/messages/read-all')
 }
 
-//+ 回复互动消息（评论回复）
-export function replyInteractionAPI(
-  id: string,
-  content: string
-): Promise<ResponseData<MessageReplyResult>> {
-  return post<MessageReplyResult>(`/messages/interactions/${id}/reply`, { content })
+//+ POST /messages/interactions/{id}/reply 回复互动消息（评论回复）
+export function replyInteraction(id: string, content: string): Promise<MessageReplyResult> {
+  return apiPost<MessageReplyResult>(`/messages/interactions/${id}/reply`, { content })
 }
 
-//+ 删除消息
-export function deleteMessageAPI(id: string): Promise<ResponseData<Record<string, never>>> {
-  return del(`/messages/${id}`)
+//+ DELETE /messages/{id} 删除消息
+export function deleteMessage(id: string): Promise<void> {
+  return apiDelete<void>(`/messages/${id}`)
 }

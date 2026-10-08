@@ -36,7 +36,7 @@ export interface RichEditorProps {
 
 const isWeb = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
-const RichEditor: React.FC<RichEditorProps> = ({
+function RichEditor({
   value = '',
   onChange,
   maxLength,
@@ -44,7 +44,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
   readOnly = false,
   placeholder,
   autoFocus = false,
-}) => {
+}: RichEditorProps) {
   //+ contenteditable 容器 ref
   const editableRef = useRef<HTMLDivElement>(null)
   //+ 回调 ref（避免 stale closure）
@@ -265,22 +265,22 @@ const RichEditor: React.FC<RichEditorProps> = ({
 
   if (!isWeb) {
     return (
-      <div className="md-editor-fallback" style={{ minHeight: minHeightStr, padding: '12px 16px' }}>
+      <div className='md-editor-fallback' style={{ minHeight: minHeightStr, padding: '12px 16px' }}>
         富文本编辑器当前仅支持 H5 / App 端，小程序端请在发布内容页面以纯文本方式编辑。
       </div>
     )
   }
 
   return (
-    <div className="md-editor md-rich-editor">
+    <div className='md-editor md-rich-editor'>
       {/* 自定义工具栏（只读时不展示） */}
       {!readOnly && (
         <div
-          className="we-toolbar"
-          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+          className='we-toolbar'
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         >
           <button
-            type="button"
+            type='button'
             className={`we-tb-btn${activeStates.bold ? ' we-tb-active' : ''}`}
             onMouseDown={(e) => { e.preventDefault(); saveSelection() }}
             onTouchStart={handleToolbarTouchStart}
@@ -289,7 +289,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
             {ICON_BOLD}
           </button>
           <button
-            type="button"
+            type='button'
             className={`we-tb-btn${activeStates.italic ? ' we-tb-active' : ''}`}
             onMouseDown={(e) => { e.preventDefault(); saveSelection() }}
             onTouchStart={handleToolbarTouchStart}
@@ -298,7 +298,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
             {ICON_ITALIC}
           </button>
           <button
-            type="button"
+            type='button'
             className={`we-tb-btn${activeStates.underline ? ' we-tb-active' : ''}`}
             onMouseDown={(e) => { e.preventDefault(); saveSelection() }}
             onTouchStart={handleToolbarTouchStart}
@@ -307,7 +307,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
             {ICON_UNDERLINE}
           </button>
           <button
-            type="button"
+            type='button'
             className={`we-tb-btn${activeStates.strikeThrough ? ' we-tb-active' : ''}`}
             onMouseDown={(e) => { e.preventDefault(); saveSelection() }}
             onTouchStart={handleToolbarTouchStart}
@@ -316,7 +316,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
             {ICON_STRIKE}
           </button>
           <button
-            type="button"
+            type='button'
             className={`we-tb-btn${activeStates.blockTag === 'h1' ? ' we-tb-active' : ''}`}
             onMouseDown={(e) => { e.preventDefault(); saveSelection() }}
             onTouchStart={handleToolbarTouchStart}
@@ -325,7 +325,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
             {ICON_H1}
           </button>
           <button
-            type="button"
+            type='button'
             className={`we-tb-btn${activeStates.blockTag === 'h2' ? ' we-tb-active' : ''}`}
             onMouseDown={(e) => { e.preventDefault(); saveSelection() }}
             onTouchStart={handleToolbarTouchStart}
@@ -334,7 +334,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
             {ICON_H2}
           </button>
           <button
-            type="button"
+            type='button'
             className={`we-tb-btn${activeStates.blockTag === 'h3' ? ' we-tb-active' : ''}`}
             onMouseDown={(e) => { e.preventDefault(); saveSelection() }}
             onTouchStart={handleToolbarTouchStart}
@@ -343,7 +343,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
             {ICON_H3}
           </button>
           <button
-            type="button"
+            type='button'
             className={`we-tb-btn${activeStates.insertUnorderedList ? ' we-tb-active' : ''}`}
             onMouseDown={(e) => { e.preventDefault(); saveSelection() }}
             onTouchStart={handleToolbarTouchStart}
@@ -352,7 +352,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
             {ICON_UNORDERED_LIST}
           </button>
           <button
-            type="button"
+            type='button'
             className={`we-tb-btn${activeStates.insertOrderedList ? ' we-tb-active' : ''}`}
             onMouseDown={(e) => { e.preventDefault(); saveSelection() }}
             onTouchStart={handleToolbarTouchStart}
@@ -366,7 +366,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
       {/* contenteditable 编辑区 */}
       <div
         ref={editableRef}
-        className="we-editor-area"
+        className='we-editor-area'
         contentEditable={!readOnly}
         suppressContentEditableWarning
         data-placeholder={placeholder || '输入内容...'}
@@ -382,7 +382,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
       />
 
       {/* 字数统计 */}
-      <div className="md-wordcount" style={{ color: maxLength && textLen > maxLength ? '#ee0a24' : undefined }}>
+      <div className='md-wordcount' style={{ color: maxLength && textLen > maxLength ? '#ee0a24' : undefined }}>
         {textLen}{maxLength ? `/${maxLength}` : ''}
       </div>
     </div>

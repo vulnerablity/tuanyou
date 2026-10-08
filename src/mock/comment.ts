@@ -2,9 +2,10 @@
 //+ 对齐 docs/默认模块.md：POST/GET /comments、POST /comments/like/:id、DELETE /comments/:id、GET /comments/replies/:id
 //+ 数据格式为后端 DTO（user/replyToNickname/replyCount），由 apis/comment.ts 适配器转换为前端 Comment 实体
 //+ 可变缓存：支持发表/点赞/删除后状态持久（页面内多次请求结果一致）
-import { randomInt, randomItem, successResponse, errorResponse, createPageResponse } from './utils'
-import { mockUsers } from './user'
 import type { CommentDTO } from '@/types'
+import { randomInt, randomItem, successResponse, errorResponse, createPageResponse, toNumber } from './utils'
+import type { MockHandler, MockData } from './utils'
+import { mockUsers } from './user'
 
 //+ 目标类型常量（与 types/api.ts COMMENT_TARGET_TYPE 一致）
 const NOTE = 1
@@ -209,9 +210,9 @@ function findCommentAnywhere(id: string): { comment: MockCommentDTO; parent: Moc
 }
 
 //+ 评论模块Mock路由映射
-export const commentMockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const commentMockRoutes: Record<string, MockHandler> = {
   //+ 发表评论
-  'POST /api/v1/comments': (data) => {
+  'POST /api/v1/comments': (data?: MockData) => {
     const targetType = Number(data?.targetType)
     if (targetType !== NOTE && targetType !== GUIDE) {
       return errorResponse('参数错误：targetType 非 1/2', 2001)
@@ -266,14 +267,14 @@ export const commentMockRoutes: Record<string, (data?: any, url?: string) => any
   },
 
   //+ 获取一级评论列表（分页）
-  'GET /api/v1/comments': (data) => {
+  'GET /api/v1/comments': (data?: MockData) => {
     const targetType = Number(data?.targetType)
     if (targetType !== NOTE && targetType !== GUIDE) {
       return errorResponse('参数错误：targetType 非 1/2', 2001)
     }
     const targetId = String(data?.targetId ?? '')
-    const page = Number(data?.page) || 1
-    const size = Math.min(Number(data?.size) || 15, 100)
+    const page = toNumber(data?.page, 1)
+    const size = Math.min(toNumber(data?.size, 15), 100)
 
     const list = getOrCreate(targetType, targetId)
     //+ 简化展示规则：按热度排序后分页（前2条即热评）
@@ -283,8 +284,8 @@ export const commentMockRoutes: Record<string, (data?: any, url?: string) => any
   },
 
   //+ 点赞 / 取消点赞评论（切换式）
-  'POST /api/v1/comments/like/:id': (_, url) => {
-    const id = (url as string).split('/').pop() || ''
+  'POST /api/v1/comments/like/:id': (_data, url: string) => {
+    const id = (url || '').split('/').pop() || ''
     const found = findCommentAnywhere(id)
     if (!found) return errorResponse('评论不存在', 404)
     const c = found.comment
@@ -294,8 +295,8 @@ export const commentMockRoutes: Record<string, (data?: any, url?: string) => any
   },
 
   //+ 删除评论（一级连带二级，二级仅自身）
-  'DELETE /api/v1/comments/:id': (_, url) => {
-    const id = (url as string).split('/').pop() || ''
+  'DELETE /api/v1/comments/:id': (_data, url: string) => {
+    const id = (url || '').split('/').pop() || ''
     let removed = false
     for (const list of commentCache.values()) {
       //+ 尝试删除一级
@@ -323,10 +324,10 @@ export const commentMockRoutes: Record<string, (data?: any, url?: string) => any
   },
 
   //+ 获取二级评论列表（加载更多，分页）
-  'GET /api/v1/comments/replies/:id': (data, url) => {
-    const parentId = (url as string).split('/').pop() || ''
-    const page = Number(data?.page) || 1
-    const size = Math.min(Number(data?.size) || 10, 100)
+  'GET /api/v1/comments/replies/:id': (data?: MockData, url?: string) => {
+    const parentId = (url || '').split('/').pop() || ''
+    const page = toNumber(data?.page, 1)
+    const size = Math.min(toNumber(data?.size, 10), 100)
 
     //+ 找到一级评论
     let parent: MockCommentDTO | null = null

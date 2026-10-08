@@ -1,15 +1,16 @@
 //+ 编辑资料页（从个人中心进入）
-//+ Q4 链路开发：fetchProfileInfo 获取初始值，fetchUpdateProfile 保存
+//+ 链路：useDidShow → fetchProfileInfo 取初始值；保存 → fetchUpdateProfile；图片 → store upload thunk
 import { useState, useCallback } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { Button, Input, TextArea, Loading } from '@nutui/nutui-react'
 import { useDispatch } from 'react-redux'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import Avatar from '@/components/Avatar'
-import { uploadImageAPI } from '@/apis/upload'
+import { uploadImage } from '@/store/modules/upload'
 import { fetchProfileInfo, fetchUpdateProfile } from '@/store/modules/profile'
-import type { ProfileInfo, ProfileUpdate } from '@/types'
+import type { ProfileUpdate } from '@/types'
 import type { AppDispatch } from '@/store'
+import { routerNavigateBack } from '@/router'
 import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
@@ -38,13 +39,13 @@ const EditProfile = () => {
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  //+ Q4：页面首次进入/显示时，拉取 profile info（真实 thunk 接口）作为初始值
+  //+ 页面首次进入/显示时，拉取 profile info（真实 thunk 接口）作为初始值
   const loadProfile = useCallback(async () => {
     setLoading(true)
     try {
       const action = await dispatch(fetchProfileInfo())
-      const info: ProfileInfo | undefined = (action as any)?.payload
-      if (info) {
+      if (fetchProfileInfo.fulfilled.match(action) && action.payload) {
+        const info = action.payload
         setForm({
           avatar: info.avatar || '',
           bgImg: info.bgImg || '',
@@ -68,18 +69,28 @@ const EditProfile = () => {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  //+ 选择本地图片并上传：成功返回图片 url，失败返回 null
+  const chooseAndUpload = async (type: 'avatar' | 'bg'): Promise<string | null> => {
+    const chooseRes = await Taro.chooseImage({ count: 1, sizeType: ['compressed'] })
+    const filePath = chooseRes.tempFilePaths[0]
+    Taro.showLoading({ title: '上传中...' })
+    //+ 走 store upload thunk，fulfilled 时 payload 即上传后的 url（已解包）
+    const result = await dispatch(uploadImage({ filePath, type }))
+    Taro.hideLoading()
+    if (uploadImage.fulfilled.match(result) && result.payload) {
+      return result.payload
+    }
+    return null
+  }
+
   //+ 选择并上传头像
   const handleChangeAvatar = async () => {
     try {
-      const chooseRes = await Taro.chooseImage({ count: 1, sizeType: ['compressed'] })
-      const filePath = chooseRes.tempFilePaths[0]
-      Taro.showLoading({ title: '上传中...' })
-      const res = await uploadImageAPI(filePath, 'avatar')
-      Taro.hideLoading()
-      if (res.code === 0 || res.code === 200) {
-        updateField('avatar', res.data.url)
+      const url = await chooseAndUpload('avatar')
+      if (url) {
+        updateField('avatar', url)
       } else {
-        Taro.showToast({ title: res.message || '上传失败', icon: 'none' })
+        Taro.showToast({ title: '上传失败', icon: 'none' })
       }
     } catch (err) {
       Taro.hideLoading()
@@ -91,15 +102,11 @@ const EditProfile = () => {
   //+ 选择并上传背景图
   const handleChangeBgImg = async () => {
     try {
-      const chooseRes = await Taro.chooseImage({ count: 1, sizeType: ['compressed'] })
-      const filePath = chooseRes.tempFilePaths[0]
-      Taro.showLoading({ title: '上传中...' })
-      const res = await uploadImageAPI(filePath, 'bg')
-      Taro.hideLoading()
-      if (res.code === 0 || res.code === 200) {
-        updateField('bgImg', res.data.url)
+      const url = await chooseAndUpload('bg')
+      if (url) {
+        updateField('bgImg', url)
       } else {
-        Taro.showToast({ title: res.message || '上传失败', icon: 'none' })
+        Taro.showToast({ title: '上传失败', icon: 'none' })
       }
     } catch (err) {
       Taro.hideLoading()
@@ -108,7 +115,7 @@ const EditProfile = () => {
     }
   }
 
-  //+ Q4：保存表单（对接 fetchUpdateProfile thunk → 真实接口）
+  //+ 保存表单（对接 fetchUpdateProfile thunk → 真实接口）
   const handleSave = async () => {
     if (submitting) return
 
@@ -133,15 +140,14 @@ const EditProfile = () => {
         bio: form.signature.trim()
       }
       const action = await dispatch(fetchUpdateProfile(params))
-      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
-      if (ok) {
+      if (fetchUpdateProfile.fulfilled.match(action)) {
         Taro.showToast({ title: '保存成功', icon: 'success' })
         setTimeout(() => {
-          Taro.navigateBack({ delta: 1 })
+          routerNavigateBack()
         }, 800)
       } else {
         Taro.showToast({
-          title: (action as any)?.payload || '保存失败',
+          title: action.error?.message || '保存失败',
           icon: 'none'
         })
       }
@@ -154,73 +160,73 @@ const EditProfile = () => {
   }
 
   return (
-    <div className="edit-profile-page">
+    <div className='edit-profile-page'>
       {/* 头部导航栏 */}
       <HeaderNavBar
-        title="编辑资料"
+        title='编辑资料'
         fixed={false}
-        cancel={true}
+        cancel
       />
 
       {loading ? (
-        <div className="edit-profile-loading"><Loading>加载中...</Loading></div>
+        <div className='edit-profile-loading'><Loading>加载中...</Loading></div>
       ) : (
-        <div className="form-wrapper">
+        <div className='form-wrapper'>
           {/* 头像模块 */}
-          <div className="avatar-section">
-            <div className="section-label">头像</div>
-            <div className="avatar-upload" onClick={handleChangeAvatar}>
-              <Avatar url={form.avatar} size="80" />
+          <div className='avatar-section'>
+            <div className='section-label'>头像</div>
+            <div className='avatar-upload' onClick={handleChangeAvatar}>
+              <Avatar url={form.avatar} size='80' />
             </div>
           </div>
 
           {/* 背景图模块 */}
-          <div className="bg-section">
-            <div className="section-label">背景图</div>
-            <div className="bg-preview" onClick={handleChangeBgImg}>
+          <div className='bg-section'>
+            <div className='section-label'>背景图</div>
+            <div className='bg-preview' onClick={handleChangeBgImg}>
               {form.bgImg ? (
-                <img src={form.bgImg} alt="背景图" />
+                <img src={form.bgImg} alt='背景图' />
               ) : (
-                <div className="bg-placeholder">
-                  <span className="placeholder-text">点击选择背景图</span>
+                <div className='bg-placeholder'>
+                  <span className='placeholder-text'>点击选择背景图</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* 昵称输入 */}
-          <div className="form-section">
-            <div className="form-label">昵称</div>
+          <div className='form-section'>
+            <div className='form-label'>昵称</div>
             <Input
-              className="form-input"
-              type="text"
-              placeholder="请输入昵称"
+              className='form-input'
+              type='text'
+              placeholder='请输入昵称'
               value={form.nickname}
               maxLength={MAX_NICKNAME}
               onChange={(v) => updateField('nickname', v)}
             />
-            <span className="form-count">{form.nickname.length}/{MAX_NICKNAME}</span>
+            <span className='form-count'>{form.nickname.length}/{MAX_NICKNAME}</span>
           </div>
 
           {/* 签名输入 */}
-          <div className="form-section column">
-            <div className="form-label">签名</div>
+          <div className='form-section column'>
+            <div className='form-label'>签名</div>
             <TextArea
-              className="form-textarea"
-              placeholder="介绍一下自己吧"
+              className='form-textarea'
+              placeholder='介绍一下自己吧'
               value={form.signature}
               onChange={(v) => updateField('signature', v)}
               maxLength={MAX_SIGNATURE}
               rows={1}
               showCount={false}
             />
-            <span className="form-count right">{form.signature.length}/{MAX_SIGNATURE}</span>
+            <span className='form-count right'>{form.signature.length}/{MAX_SIGNATURE}</span>
           </div>
 
           {/* 底部保存按钮 */}
-          <div className="submit-bar">
+          <div className='submit-bar'>
             <Button
-              type="primary"
+              type='primary'
               block
               loading={submitting}
               disabled={submitting}

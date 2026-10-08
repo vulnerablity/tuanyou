@@ -19,9 +19,7 @@ import type { RootState, AppDispatch } from '@/store'
 import {
   fetchUnreadCount,
   showToast,
-  hideToast,
   clearToastCooldown,
-  setShowNewMessageTip,
   updateUnreadFromSSE,
   handleSSEEvent,
   SSE_EVENT,
@@ -72,15 +70,15 @@ export function useSSE() {
   const handleSSEMessageRef = useRef<typeof handleSSEMessage>(() => {})
 
   //+ 处理 SSE 消息（对齐推送顺序：先消息事件，再 unread）
-  const handleSSEMessage = useCallback((event: SSEEventName, data: Record<string, any>) => {
+  const handleSSEMessage = useCallback((event: SSEEventName, data: Record<string, unknown>) => {
     console.log('[useSSE] 处理事件:', event, data)
     //+ unread 事件：直接更新未读数
     if (event === SSE_EVENT.UNREAD) {
       if (data && typeof data.total === 'number') {
         dispatch(updateUnreadFromSSE({
           total: data.total,
-          interactions: data.interactions ?? 0,
-          system: data.system ?? 0
+          interactions: Number(data.interactions ?? 0),
+          system: Number(data.system ?? 0)
         }))
         console.log('[useSSE] unread 事件已更新 store')
       }
@@ -97,7 +95,7 @@ export function useSSE() {
 
     if (!onMessagePage) {
       //+ 场景1：非消息页 → 弹出全局弹窗
-      const content = data.content || '收到一条新消息'
+      const content = String(data.content || '收到一条新消息')
       console.log('[useSSE] 非消息页，准备弹窗:', content)
       dispatch(showToast({ content, tab }))
       //+ 防抖冷却：3 秒后允许下次弹窗

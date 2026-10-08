@@ -1,5 +1,6 @@
 //+ 系统配置Mock数据（分类列表、排序列表等）
 import { successResponse } from './utils'
+import type { MockHandler } from './utils'
 
 //+ 分类列表（后端返回）
 export const mockCategories = [
@@ -32,7 +33,7 @@ export const mockTypes = [
 ]
 
 //+ Mock路由映射：配置模块
-export const configMockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const configMockRoutes: Record<string, MockHandler> = {
   //+ 获取分类列表
   'GET /api/v1/config/categories': () => successResponse(mockCategories),
 

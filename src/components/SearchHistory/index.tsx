@@ -5,9 +5,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import Taro from '@tarojs/taro'
 import { ArrowDown, ArrowUp, Close } from '@nutui/icons-react'
 import {
-  getSearchHistoryAPI,
-  clearSearchHistoryAPI,
-  deleteSearchHistoryItemAPI,
+  getSearchHistory,
+  clearSearchHistory,
+  deleteSearchHistoryItem,
   type SearchHistoryItem,
 } from '@/apis/search'
 import './index.less'
@@ -21,7 +21,7 @@ export interface SearchHistoryProps {
   refreshKey?: number
 }
 
-const SearchHistory: React.FC<SearchHistoryProps> = ({ onKeywordClick, refreshKey = 0 }) => {
+function SearchHistory({ onKeywordClick, refreshKey = 0 }: SearchHistoryProps) {
   const [history, setHistory] = useState<SearchHistoryItem[]>([])
   const [expanded, setExpanded] = useState(false)
   const [editMode, setEditMode] = useState(false)
@@ -30,10 +30,8 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onKeywordClick, refreshKe
   //+ 拉取历史记录
   const loadHistory = useCallback(async () => {
     try {
-      const res = await getSearchHistoryAPI()
-      if (res.code === 0 || res.code === 200) {
-        setHistory(res.data || [])
-      }
+      const res = await getSearchHistory()
+      setHistory(res || [])
     } catch (_err) {
       //+ 失败不阻塞
     }
@@ -63,7 +61,7 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onKeywordClick, refreshKe
     //+ 乐观删除
     setHistory((prev) => prev.filter((h) => h.id !== id))
     try {
-      await deleteSearchHistoryItemAPI(id)
+      await deleteSearchHistoryItem(id)
     } catch (_err) {
       //+ 失败回滚
       loadHistory()
@@ -75,7 +73,7 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onKeywordClick, refreshKe
   const handleClearAll = async () => {
     setShowClearModal(false)
     try {
-      await clearSearchHistoryAPI()
+      await clearSearchHistory()
       setHistory([])
       setEditMode(false)
       Taro.showToast?.({ title: '已清空', icon: 'none', duration: 1000 })
@@ -93,36 +91,36 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onKeywordClick, refreshKe
   if (!hasHistory) return null
 
   return (
-    <div className="sh-wrap">
+    <div className='sh-wrap'>
       {/* 第一行：标题 + 右侧操作 */}
-      <div className="sh-header">
-        <span className="sh-title">历史记录</span>
-        <div className="sh-actions">
+      <div className='sh-header'>
+        <span className='sh-title'>历史记录</span>
+        <div className='sh-actions'>
           {!editMode ? (
             //+ 正常态：展开/收起 + 删除图标
             <>
               {showExpandToggle && (
                 <>
-                  <span className="sh-toggle" onClick={() => setExpanded(!expanded)}>
+                  <span className='sh-toggle' onClick={() => setExpanded(!expanded)}>
                     {expanded ? '收起' : '展开'}
                     {expanded
-                      ? <ArrowUp className="sh-arrow-icon" />
-                      : <ArrowDown className="sh-arrow-icon" />}
+                      ? <ArrowUp className='sh-arrow-icon' />
+                      : <ArrowDown className='sh-arrow-icon' />}
                   </span>
-                  <span className="sh-divider">|</span>
+                  <span className='sh-divider'>|</span>
                 </>
               )}
-              <span className="sh-delete-icon iconfont icon-shanchu" onClick={() => setEditMode(true)}/>
+              <span className='sh-delete-icon iconfont icon-shanchu' onClick={() => setEditMode(true)} />
               
             </>
           ) : (
             //+ 编辑模式：全部清除 | 完成
             <>
-              <span className="sh-clear-all" onClick={() => setShowClearModal(true)}>
+              <span className='sh-clear-all' onClick={() => setShowClearModal(true)}>
                 全部清除
               </span>
-              <span className="sh-divider">|</span>
-              <span className="sh-done" onClick={handleExitEdit}>
+              <span className='sh-divider'>|</span>
+              <span className='sh-done' onClick={handleExitEdit}>
                 完成
               </span>
             </>
@@ -135,19 +133,19 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onKeywordClick, refreshKe
         {visibleHistory.map((item) => (
           <div
             key={item.id}
-            className="sh-tag"
+            className='sh-tag'
             onClick={() => handleKeywordClick(item.keyword)}
           >
-            <span className="sh-tag-text">{item.keyword}</span>
+            <span className='sh-tag-text'>{item.keyword}</span>
             {editMode && (
               <span
-                className="sh-tag-del"
+                className='sh-tag-del'
                 onClick={(e) => {
                   e.stopPropagation()
                   handleDeleteItem(item.id)
                 }}
               >
-                <Close className="sh-tag-del-icon" />
+                <Close className='sh-tag-del-icon' />
               </span>
             )}
           </div>
@@ -156,16 +154,16 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onKeywordClick, refreshKe
 
       {/* 全部清除确认弹窗 */}
       {showClearModal && (
-        <div className="sh-modal" onClick={() => setShowClearModal(false)}>
-          <div className="sh-modal-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="sh-modal-text">
+        <div className='sh-modal' onClick={() => setShowClearModal(false)}>
+          <div className='sh-modal-panel' onClick={(e) => e.stopPropagation()}>
+            <div className='sh-modal-text'>
               历史记录清除后无法恢复，是否删除全部记录
             </div>
-            <div className="sh-modal-actions">
-              <span className="sh-modal-cancel" onClick={() => setShowClearModal(false)}>
+            <div className='sh-modal-actions'>
+              <span className='sh-modal-cancel' onClick={() => setShowClearModal(false)}>
                 取消
               </span>
-              <span className="sh-modal-delete" onClick={handleClearAll}>
+              <span className='sh-modal-delete' onClick={handleClearAll}>
                 删除
               </span>
             </div>

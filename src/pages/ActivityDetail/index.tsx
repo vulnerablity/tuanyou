@@ -22,13 +22,16 @@ import HeaderNavBar from '@/components/HeaderNavBar'
 import Avatar from '@/components/Avatar'
 import UserCardModal from '@/components/UserCardModal'
 import ParticipantsModal from '@/components/ParticipantsModal'
-//+ 懒加载 SharePoster：避免其静态依赖 qrcode 库未安装时拖垮整个 ActivityDetail
-//+ 仅在用户点击"分享海报"时才加载，未点击不会触发 qrcode 模块解析
-const SharePoster = lazy(() => import('@/components/SharePoster'))
-import { requireAuth } from '@/router'
+import { requireAuth, routerNavigateBack, routerSwitchTab } from '@/router'
 import { normalizeDetailHtml } from '@/utils/html'
 import '@/components/MarkdownEditor/index.less'
 import './index.less'
+//+ 懒加载 SharePoster：避免其静态依赖 qrcode 库未安装时拖垮整个 ActivityDetail
+//+ 仅在用户点击"分享海报"时才加载，未点击不会触发 qrcode 模块解析
+const SharePoster = lazy(() => import('@/components/SharePoster'))
+
+//+ 操作冷却时间：800ms 内重复点击直接拦截
+const COOLDOWN_MS = 800
 
 
 
@@ -49,7 +52,6 @@ const ActivityDetail = () => {
   //+ promise.abort() → RTK signal → API request abort；cooldown 防接口响应极快时串行狂点
   const promiseRef = useRef<Map<string, { abort: () => void }>>(new Map())
   const cooldownRef = useRef<Map<string, number>>(new Map())
-  const COOLDOWN_MS = 800
 
   //+ 关注/取关发起人（统一走 profile/toggleProfileFollow，POST /personal/follow/{id}）
   //+ leaderFollowed 初值由后端 leader.isFollowed 同步（见下方 useEffect），本地 state 管理后续切换
@@ -146,8 +148,7 @@ const ActivityDetail = () => {
     let wasAborted = false
     try {
       const res = await promise
-      wasAborted = res.payload === 'aborted'
-      if (res.meta.requestStatus === 'fulfilled') {
+      if (fetchToggleSignup.fulfilled.match(res)) {
         Taro.showToast({
           title: wasJoined ? '已取消报名' : '报名成功',
           icon: 'success'
@@ -155,8 +156,7 @@ const ActivityDetail = () => {
         //+ 报名成功（!wasJoined → isJoined=true）：后端返回 wechatQR，弹卡片提示用户长按保存进群
         //+ Toast 提示后 800ms 弹层（让用户先看到"报名成功"toast，再展示二维码卡片）
         if (!wasJoined) {
-          const payload = res.payload as { isJoined?: boolean; wechatQR?: string } | undefined
-          const qr = payload?.wechatQR
+          const qr = res.payload.wechatQR
           if (qr) {
             setTimeout(() => {
               setSignupQRCode(qr)
@@ -166,10 +166,13 @@ const ActivityDetail = () => {
         }
         //+ 报名成功后重新拉取详情，更新 members 列表等全部字段（文档3.4节推荐方式）
         dispatch(fetchActivityDetail(activityId))
-      } else if (!wasAborted) {
-        const payload = res.payload as string | undefined
-        const errorMsg = payload || '操作失败，请重试'
-        Taro.showToast({ title: errorMsg, icon: 'none' })
+      } else {
+        //+ 拒绝（含 AbortController 主动取消）：abort 不计入业务错误
+        wasAborted = res.error?.name === 'AbortError'
+        if (!wasAborted) {
+          const errorMsg = res.error?.message || '操作失败，请重试'
+          Taro.showToast({ title: errorMsg, icon: 'none' })
+        }
       }
     } finally {
       if (promiseRef.current.get(resKey) === promise) {
@@ -236,15 +239,17 @@ const ActivityDetail = () => {
     let wasAborted = false
     try {
       const action = await promise
-      wasAborted = (action as any)?.payload === 'aborted'
-      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
-      if (ok) {
-        const finalIsFollowed = (action as any)?.payload?.isFollowed ?? !prev
+      if (toggleProfileFollow.fulfilled.match(action)) {
+        const finalIsFollowed = action.payload.isFollowed ?? !prev
         setLeaderFollowed(finalIsFollowed)
         Taro.showToast({ title: finalIsFollowed ? '关注成功' : '已取消关注', icon: 'success' })
-      } else if (!wasAborted) {
-        setLeaderFollowed(prev) // 回滚
-        Taro.showToast({ title: (action as any)?.payload || '操作失败', icon: 'none' })
+      } else {
+        //+ 拒绝（含 AbortController 主动取消）：abort 不计入业务错误
+        wasAborted = action.error?.name === 'AbortError'
+        if (!wasAborted) {
+          setLeaderFollowed(prev) // 回滚
+          Taro.showToast({ title: action.error?.message || '操作失败', icon: 'none' })
+        }
       }
     } catch (err) {
       if (!wasAborted) {
@@ -307,18 +312,17 @@ const ActivityDetail = () => {
     setDeleteLoading(true)
     try {
       const action = await dispatch(deleteActivity(activityId))
-      const ok = (action as any)?.meta?.requestStatus === 'fulfilled'
-      if (ok) {
+      if (deleteActivity.fulfilled.match(action)) {
         Taro.showToast({ title: '删除成功', icon: 'success' })
         setDeleteVisible(false)
-        //+ 删除成功后返回上一页
+        //+ 删除成功后返回上一页；失败兜底回首页 tab
         setTimeout(() => {
-          Taro.navigateBack({ delta: 1 }).catch(() => {
-            Taro.switchTab({ url: '/pages/Home/index' })
+          routerNavigateBack(1).catch(() => {
+            routerSwitchTab('HOME')
           })
         }, 500)
       } else {
-        Taro.showToast({ title: (action as any)?.payload || '删除失败', icon: 'none' })
+        Taro.showToast({ title: action.error?.message || '删除失败', icon: 'none' })
       }
     } catch (err) {
       console.warn('[ActivityDetail] 删除失败:', err)
@@ -430,6 +434,8 @@ const ActivityDetail = () => {
           <span className='section-title'>活动介绍</span>
           <div className='intro-content md-content'>
             {isH5 ? (
+              //+ markdown 已由 useMarkdownRender 消毒，H5 端需注入 HTML 渲染富文本
+              // eslint-disable-next-line react/no-danger
               <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
             ) : (
               <RichText nodes={contentHtml} />

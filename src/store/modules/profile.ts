@@ -4,19 +4,19 @@
 //+ 关注/粉丝/收藏/点赞/活动等列表仅 dispatch 取 payload，由页面本地 useState 管理
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import {
-  getProfileInfoAPI,
-  updateProfileInfoAPI,
-  getProfileNotesAPI,
-  getProfileStrategysAPI,
-  getProfileFollowAPI,
-  getProfileFansAPI,
-  getFavoriteNotesAPI,
-  getFavoriteStrategysAPI,
-  getLikedNotesAPI,
-  getLikedStrategysAPI,
-  getPublishActivityAPI,
-  getJoinActivityAPI,
-  toggleProfileFollowAPI
+  getProfileInfo,
+  updateProfileInfo,
+  getProfileNotes,
+  getProfileStrategys,
+  getProfileFollow,
+  getProfileFans,
+  getFavoriteNotes,
+  getFavoriteStrategys,
+  getLikedNotes,
+  getLikedStrategys,
+  getPublishActivity,
+  getJoinActivity,
+  toggleFollow as toggleProfileFollowApi
 } from '@/apis/profile'
 import type {
   ProfileInfo,
@@ -55,7 +55,7 @@ export interface ProfileState {
 }
 
 //+ 列表分片初始状态
-const initialListState: ProfileListState<any> = {
+const initialListState: ProfileListState<ProfilePostItem> = {
   list: [],
   loading: false,
   hasMore: true,
@@ -74,56 +74,31 @@ const initialState: ProfileState = {
   strategys: { ...initialListState }
 }
 
-//+ 通用分页 thunk 工厂：统一处理 code 校验与错误透传
+//+ 通用分页 thunk 工厂：apis 已解包，成功直接返回 PageResult，失败由请求层抛 ApiError 自动 reject
 //+ 返回 PageResult<T>，供 dispatch 后 res.payload 取用
 const createPageThunk = <T>(
   typePrefix: string,
-  apiFn: (params: PageParams) => Promise<{ code: number; message: string; data: PageResult<T> }>,
-  errorMsg: string
+  apiFn: (params: PageParams) => Promise<PageResult<T>>
 ) => createAsyncThunk(
   typePrefix,
-  async (params: PageParams, { rejectWithValue }) => {
-    try {
-      const res = await apiFn(params)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue(res.message || errorMsg)
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (params: PageParams) => {
+    return await apiFn(params)
   }
 )
 
 //+ 获取主页信息
 export const fetchProfileInfo = createAsyncThunk(
   'profile/fetchProfileInfo',
-  async (_, { rejectWithValue }) => {
-    try {
-      const res = await getProfileInfoAPI()
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue(res.message || '获取主页信息失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async () => {
+    return await getProfileInfo()
   }
 )
 
 //+ 编辑个人信息
 export const fetchUpdateProfile = createAsyncThunk(
   'profile/fetchUpdateProfile',
-  async (params: ProfileUpdate, { rejectWithValue }) => {
-    try {
-      const res = await updateProfileInfoAPI(params)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue(res.message || '更新个人信息失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (params: ProfileUpdate) => {
+    return await updateProfileInfo(params)
   }
 )
 
@@ -133,88 +108,70 @@ export const fetchUpdateProfile = createAsyncThunk(
 //+ signal 透传：支持 AbortController 丢弃过期请求
 export const toggleProfileFollow = createAsyncThunk(
   'profile/toggleFollow',
-  async (followeeId: string, { rejectWithValue, signal }) => {
-    try {
-      const res = await toggleProfileFollowAPI(followeeId, signal)
-      if (res.code === 0 || res.code === 200) {
-        return { userId: followeeId, isFollowed: !!res.data?.isFollowed }
-      }
-      return rejectWithValue(res.message || '操作失败')
-    } catch (error: any) {
-      if (error?.name === 'AbortError') return rejectWithValue('aborted')
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (followeeId: string, { signal }) => {
+    const data = await toggleProfileFollowApi(followeeId, signal)
+    return { userId: followeeId, isFollowed: data.isFollowed }
   }
 )
 
 //+ 获取笔记列表（累积分页，存 store 供 Content 页共享）
 export const fetchProfileNotes = createPageThunk<ProfilePostItem>(
   'profile/fetchProfileNotes',
-  getProfileNotesAPI,
-  '获取笔记列表失败'
+  getProfileNotes
 )
 
 //+ 获取攻略列表（累积分页，存 store 供 Content 页共享）
 export const fetchProfileStrategys = createPageThunk<ProfilePostItem>(
   'profile/fetchProfileStrategys',
-  getProfileStrategysAPI,
-  '获取攻略列表失败'
+  getProfileStrategys
 )
 
 //+ 获取关注列表
 export const fetchFollowList = createPageThunk<FollowItem>(
   'profile/fetchFollowList',
-  getProfileFollowAPI,
-  '获取关注列表失败'
+  getProfileFollow
 )
 
 //+ 获取粉丝列表
 export const fetchFansList = createPageThunk<FanItem>(
   'profile/fetchFansList',
-  getProfileFansAPI,
-  '获取粉丝列表失败'
+  getProfileFans
 )
 
 //+ 获取收藏笔记列表
 export const fetchFavoriteNotes = createPageThunk<ProfilePostItem>(
   'profile/fetchFavoriteNotes',
-  getFavoriteNotesAPI,
-  '获取收藏笔记失败'
+  getFavoriteNotes
 )
 
 //+ 获取收藏攻略列表
 export const fetchFavoriteStrategys = createPageThunk<ProfilePostItem>(
   'profile/fetchFavoriteStrategys',
-  getFavoriteStrategysAPI,
-  '获取收藏攻略失败'
+  getFavoriteStrategys
 )
 
 //+ 获取点赞笔记列表
 export const fetchLikedNotes = createPageThunk<ProfilePostItem>(
   'profile/fetchLikedNotes',
-  getLikedNotesAPI,
-  '获取点赞笔记失败'
+  getLikedNotes
 )
 
 //+ 获取点赞攻略列表
 export const fetchLikedStrategys = createPageThunk<ProfilePostItem>(
   'profile/fetchLikedStrategys',
-  getLikedStrategysAPI,
-  '获取点赞攻略失败'
+  getLikedStrategys
 )
 
 //+ 获取发布活动列表
 export const fetchPublishActivity = createPageThunk<ActivityListItem>(
   'profile/fetchPublishActivity',
-  getPublishActivityAPI,
-  '获取发布活动失败'
+  getPublishActivity
 )
 
 //+ 获取参加活动列表
 export const fetchJoinActivity = createPageThunk<ActivityListItem>(
   'profile/fetchJoinActivity',
-  getJoinActivityAPI,
-  '获取参加活动失败'
+  getJoinActivity
 )
 
 //+ 更新列表分片状态（fulfilled）
@@ -260,7 +217,7 @@ const profileSlice = createSlice({
       })
       .addCase(fetchProfileInfo.rejected, (state, action) => {
         state.infoLoading = false
-        state.infoError = action.payload as string
+        state.infoError = action.error.message ?? '网络错误'
       })
       //+ 编辑个人信息成功后更新 info（merge 而非 replace）
       //+ 避免 PUT 接口返回字段不完整（如缺少 publishCount/followCount/fansCount）时丢字段
@@ -277,7 +234,7 @@ const profileSlice = createSlice({
       })
       .addCase(fetchProfileNotes.rejected, (state, action) => {
         state.notes.loading = false
-        state.notes.error = action.payload as string
+        state.notes.error = action.error.message ?? '网络错误'
       })
       //+ 攻略列表（累积）
       .addCase(fetchProfileStrategys.pending, (state) => {
@@ -289,7 +246,7 @@ const profileSlice = createSlice({
       })
       .addCase(fetchProfileStrategys.rejected, (state, action) => {
         state.strategys.loading = false
-        state.strategys.error = action.payload as string
+        state.strategys.error = action.error.message ?? '网络错误'
       })
       //+ 关注/粉丝/收藏/点赞/活动等列表仅 dispatch 取 payload，不持久化到 store（页面本地管理）
   }

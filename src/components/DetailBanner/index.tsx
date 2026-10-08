@@ -30,7 +30,7 @@ const DetailBanner = (props: DetailBannerProps) => {
   // 统一外层 16:9 盒子
   const renderContent = () => {
     if (contentItems.length === 0) {
-      return <div className="banner-empty">暂无内容</div>
+      return <div className='banner-empty'>暂无内容</div>
     }
 
     if (contentItems.length === 1) {
@@ -45,19 +45,19 @@ const DetailBanner = (props: DetailBannerProps) => {
           controls
           showCenterPlayBtn={false}
           showPlayBtn
-          className="banner-video"
+          className='banner-video'
         />
       ) : (
-        <Image src={item.url} className="banner-single-image" />
+        <Image src={item.url} className='banner-single-image' />
       )
     }
 
     return (
       <Swiper
-        className="banner-swiper"
+        className='banner-swiper'
         loop
         indicator={
-          <Cell className="banner-indicator">
+          <Cell className='banner-indicator'>
             <ConfigProvider theme={indicatorTheme}>
               <Indicator total={contentItems.length} current={currentIndicatorIndex} />
             </ConfigProvider>
@@ -65,9 +65,10 @@ const DetailBanner = (props: DetailBannerProps) => {
         }
         onChange={(index) => setCurrentIndicatorIndex(index)}
       >
+        {/* 图片数组无稳定业务 id，按 url 作 key；同一 url 重复时退化为 index */}
         {contentItems.map((item, index) => (
-          <SwiperItem key={index}>
-            <Image src={item.url} className="banner-image" />
+          <SwiperItem key={item.url || index}>
+            <Image src={item.url} className='banner-image' />
           </SwiperItem>
         ))}
       </Swiper>
@@ -75,8 +76,8 @@ const DetailBanner = (props: DetailBannerProps) => {
   }
 
   return (
-    <div className="detail-banner-wrapper">
-      <div className="detail-banner-content">
+    <div className='detail-banner-wrapper'>
+      <div className='detail-banner-content'>
         {renderContent()}
       </div>
     </div>

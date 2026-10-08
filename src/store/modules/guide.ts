@@ -3,12 +3,12 @@
 //+ 说明：本模块仅承接"已写好的攻略相关代码"，不主动扩展新功能
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import {
-  getGuidesAPI,
-  getGuideDetailAPI,
-  toggleGuideLikeAPI,
-  toggleGuideFavoriteAPI,
-  getGuideCommentsAPI,
-  deleteGuideAPI
+  getGuides,
+  getGuideDetail,
+  toggleGuideLike,
+  toggleGuideFavorite,
+  getGuideComments,
+  deleteGuide as deleteGuideApi
 } from '@/apis/guide'
 import type { Post, PageResult, Comment } from '@/types'
 
@@ -59,106 +59,53 @@ const initialState: GuideState = {
 //+ 获取攻略列表异步Action
 export const fetchGuides = createAsyncThunk(
   'guide/fetchGuides',
-  async (params: GuideQueryParams, { rejectWithValue }) => {
-    try {
-      const res = await getGuidesAPI(params)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取攻略列表失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (params: GuideQueryParams) => {
+    return await getGuides(params)
   }
 )
 
 //+ 获取攻略详情异步Action
 export const fetchGuideDetail = createAsyncThunk(
   'guide/fetchGuideDetail',
-  async (params: GuideDetailQueryParams, { rejectWithValue }) => {
-    try {
-      const res = await getGuideDetailAPI(params.id)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取攻略详情失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (params: GuideDetailQueryParams) => {
+    return await getGuideDetail(params.id)
   }
 )
 
 //+ 攻略点赞/取消点赞
-//+ Pending 阶段做乐观更新（立即翻转 UI），Rejected 回滚，Fulfilled 用后端真实值校准
+//+ Pending 阶段做乐观更新（立即翻转 UI），Rejected 回滚（AbortError 除外），Fulfilled 用后端真实值校准
 export const toggleLike = createAsyncThunk(
   'guide/toggleLike',
-  async (id: string, { rejectWithValue, signal }) => {
-    try {
-      const res = await toggleGuideLikeAPI(id, signal)
-      if (res.code === 0 || res.code === 200) {
-        return { id, ...(res.data || {}) }
-      } else {
-        return rejectWithValue(res.message || '操作失败')
-      }
-    } catch (error: any) {
-      if (error?.name === 'AbortError') return rejectWithValue('aborted')
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (id: string, { signal }) => {
+    const data = await toggleGuideLike(id, signal)
+    return { id, ...data }
   }
 )
 
 //+ 攻略收藏/取消收藏
-//+ Pending 阶段做乐观更新，Rejected 回滚，Fulfilled 用后端真实值校准
+//+ Pending 阶段做乐观更新，Rejected 回滚（AbortError 除外），Fulfilled 用后端真实值校准
 export const toggleFavorite = createAsyncThunk(
   'guide/toggleFavorite',
-  async (id: string, { rejectWithValue, signal }) => {
-    try {
-      const res = await toggleGuideFavoriteAPI(id, signal)
-      if (res.code === 0 || res.code === 200) {
-        return { id, ...(res.data || {}) }
-      } else {
-        return rejectWithValue(res.message || '操作失败')
-      }
-    } catch (error: any) {
-      if (error?.name === 'AbortError') return rejectWithValue('aborted')
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (id: string, { signal }) => {
+    const data = await toggleGuideFavorite(id, signal)
+    return { id, ...data }
   }
 )
 
 //+ 获取攻略评论列表异步Action
 export const fetchGuideComments = createAsyncThunk(
   'guide/fetchGuideComments',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      const res = await getGuideCommentsAPI(id)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取攻略评论列表失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (id: string) => {
+    return await getGuideComments(id)
   }
 )
 
 //+ 删除攻略异步Action
 export const deleteGuide = createAsyncThunk(
   'guide/deleteGuide',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      const res = await deleteGuideAPI(id)
-      if (res.code === 0 || res.code === 200) {
-        return { id }
-      } else {
-        return rejectWithValue(res.message || '删除攻略失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (id: string) => {
+    await deleteGuideApi(id)
+    return { id }
   }
 )
 
@@ -213,9 +160,9 @@ const guideSlice = createSlice({
       })
       .addCase(fetchGuides.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
-      //+ 点赞：pending 阶段立即乐观翻转 UI，rejected 回滚，fulfilled 用后端值校准
+      //+ 点赞：pending 阶段立即乐观翻转 UI，rejected 回滚（AbortError 除外），fulfilled 用后端值校准
       .addCase(toggleLike.pending, (state, action) => {
         const id = action.meta.arg
         const guide = state.guides.find(g => g.id === id)
@@ -241,7 +188,8 @@ const guideSlice = createSlice({
         }
       })
       .addCase(toggleLike.rejected, (state, action) => {
-        if (action.payload === 'aborted') return
+        //+ AbortController 主动取消：丢弃过期响应，不做回滚
+        if (action.error.name === 'AbortError') return
         const id = action.meta.arg
         const guide = state.guides.find(g => g.id === id)
         if (guide) {
@@ -253,7 +201,7 @@ const guideSlice = createSlice({
           state.guideDetail.likeCount = state.guideDetail.likeCount + (state.guideDetail.isLiked ? 1 : -1)
         }
       })
-      //+ 收藏：pending 乐观翻转，rejected 回滚，fulfilled 校准
+      //+ 收藏：pending 乐观翻转，rejected 回滚（AbortError 除外），fulfilled 校准
       .addCase(toggleFavorite.pending, (state, action) => {
         const id = action.meta.arg
         const guide = state.guides.find(g => g.id === id)
@@ -272,7 +220,8 @@ const guideSlice = createSlice({
         }
       })
       .addCase(toggleFavorite.rejected, (state, action) => {
-        if (action.payload === 'aborted') return
+        //+ AbortController 主动取消：丢弃过期响应，不做回滚
+        if (action.error.name === 'AbortError') return
         const id = action.meta.arg
         const guide = state.guides.find(g => g.id === id)
         if (guide) guide.isFavorited = !guide.isFavorited
@@ -290,7 +239,7 @@ const guideSlice = createSlice({
       })
       .addCase(fetchGuideDetail.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       .addCase(fetchGuideComments.pending, (state) => {
         state.loading = true
@@ -302,7 +251,7 @@ const guideSlice = createSlice({
       })
       .addCase(fetchGuideComments.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ 删除攻略
       .addCase(deleteGuide.fulfilled, (state, action: PayloadAction<{ id: string }>) => {

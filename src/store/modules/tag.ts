@@ -1,7 +1,7 @@
 //+ 标签模块Redux状态管理
 //+ 管理标签列表（发布笔记/攻略时供用户选择）
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import { getTagsAPI } from '@/apis/tag'
+import { getTags } from '@/apis/tag'
 import type { Tag } from '@/types'
 
 //+ 标签状态接口
@@ -21,17 +21,8 @@ const initialState: TagState = {
 //+ 获取标签列表异步Action
 export const fetchTags = createAsyncThunk(
   'tag/fetchTags',
-  async (_, { rejectWithValue }) => {
-    try {
-      const res = await getTagsAPI()
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取标签列表失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async () => {
+    return await getTags()
   }
 )
 
@@ -52,7 +43,7 @@ const tagSlice = createSlice({
       })
       .addCase(fetchTags.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
   }
 })

@@ -13,9 +13,10 @@ import { uploadMockRoutes } from './upload'
 import { searchMockRoutes } from './search'
 import { commentMockRoutes } from './comment'
 import { messageMockRoutes } from './message'
+import type { MockHandler } from './utils'
 
 //+ 合并所有Mock路由
-export const mockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const mockRoutes: Record<string, MockHandler> = {
   ...userMockRoutes,
   ...noteMockRoutes,
   ...guideMockRoutes,

@@ -1,7 +1,27 @@
 //+ Mock通用工具函数
 
+//+ Mock 请求体查询参数（统一类型，替代各处 Record<string, any>）
+export type MockData = Record<string, unknown>
+
+//+ Mock 响应信封（与 utils/request 的 ResponseData 结构一致）
+export interface MockResponse<T = unknown> {
+  code: number
+  message: string
+  data: T
+}
+
+//+ Mock 路由处理器统一签名：data=请求体/查询参数，url=相对路径（用于解析 :id）
+export type MockHandler = (data?: MockData, url?: string) => MockResponse
+
 //+ 生成指定范围内的随机整数
 export const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
+
+//+ 从数组中安全读取 number（空串/undefined/NaN 时返回 fallback）
+export const toNumber = (v: unknown, fallback = 0): number => {
+  if (v === undefined || v === null || v === '') return fallback
+  const n = Number(v)
+  return Number.isNaN(n) ? fallback : n
+}
 
 //+ 从数组中随机选取一项
 export const randomItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]

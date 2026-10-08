@@ -6,14 +6,13 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { Ellipsis } from '@nutui/nutui-react'
-import Taro from '@tarojs/taro'
+import { routerSwitchTab } from '@/router'
 import type { RootState, AppDispatch } from '@/store'
 import {
   hideToast,
   clearToastCooldown,
   setPendingJumpTab
 } from '@/store/modules/message'
-// import logo from '@/assets/logo.png'
 import './index.less'
 
 const AUTO_CLOSE_MS = 4000
@@ -48,7 +47,7 @@ const MessageToast = () => {
     dispatch(setPendingJumpTab(targetTab))
     dispatch(hideToast())
     dispatch(clearToastCooldown())
-    Taro.switchTab({ url: '/pages/Message/index' })
+    routerSwitchTab('MESSAGE')
   }, [toastTab, dispatch])
 
   //+ 点击遮罩关闭
@@ -58,8 +57,6 @@ const MessageToast = () => {
   }, [dispatch])
 
   if (!visible) return null
-
-  console.log('[MessageToast] 渲染弹窗 visible=', visible, 'content=', content, 'tab=', toastTab)
 
   return (
     <div className='message-toast-mask' onClick={handleMaskClick}>

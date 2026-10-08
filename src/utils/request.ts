@@ -1,8 +1,8 @@
-//+ 请求工具封装，基于Taro.request
-
+//+ 请求工具封装，基于 Taro.request
 import Taro from '@tarojs/taro'
-import { getToken, clearToken } from './token'
 import { mockRoutes } from '@/mock'
+import type { ApiResponse } from '@/types'
+import { getToken, clearToken } from './token'
 
 //+ 请求方法类型
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
@@ -11,8 +11,8 @@ type Method = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
 interface RequestConfig {
   url: string
   method?: Method
-  data?: any
-  header?: any
+  data?: Record<string, unknown>
+  header?: Record<string, string>
   timeout?: number
   //+ AbortController.signal：用于主动丢弃过期请求（性能优化）
   //+ 真实请求：调用 requestTask.abort() 释放连接
@@ -20,8 +20,8 @@ interface RequestConfig {
   signal?: AbortSignal | null
 }
 
-//+ 响应数据接口
-export interface ResponseData<T = any> {
+//+ 响应数据接口（统一信封，与 types/api.ts ApiResponse 结构一致，额外带 __fromMock 来源标记）
+export interface ResponseData<T = unknown> {
   code: number
   message: string
   data: T
@@ -29,35 +29,55 @@ export interface ResponseData<T = any> {
   __fromMock?: boolean
 }
 
+//+ 业务错误统一错误对象：code 为后端业务码，message 可直接 Toast 展示
+//+ 由 unwrap / apiXxx 在业务码非 0/200 时抛出，业务层可通过 instanceof ApiError 区分
+export class ApiError extends Error {
+  code: number
+  constructor(code: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.code = code
+  }
+}
+
+//+ 解包统一响应信封：code ∈ {0,200} 返回 data，否则抛 ApiError
+export function unwrap<T>(res: ApiResponse<T>): T {
+  if (res.code === 0 || res.code === 200) return res.data
+  throw new ApiError(res.code, res.message || '请求失败')
+}
+
 //+ 默认请求头
-const defaultHeader = {
+const defaultHeader: Record<string, string> = {
   'content-type': 'application/json',
   'Accept': 'application/json'
 }
 
-//+ 是否启用Mock数据
+//+ 是否启用 Mock 数据
 const isMock = process.env.TARO_APP_USE_MOCK === 'true'
 //+ 是否允许"真实请求失败 → 降级 Mock"：仅开发/测试环境允许
 //+ 生产环境（TARO_APP_ENV=production）一律不降级，让真实错误抛给业务层处理
 //+ 否则后端挂了前端会显示假数据（mockFeed/mockUsers 等），掩盖真实故障
 const allowFallbackToMock = process.env.TARO_APP_ENV !== 'production'
 
+//+ 构造一个 AbortError（与浏览器原生行为一致）
+function createAbortError(): DOMException {
+  return new DOMException('Aborted', 'AbortError')
+}
+
 //+ Mock请求处理函数
-function mockRequest<T = any>(url: string, method: Method, data?: any, signal?: AbortSignal | null): Promise<ResponseData<T>> {
+function mockRequest<T = unknown>(url: string, method: Method, data?: Record<string, unknown>, signal?: AbortSignal | null): Promise<ResponseData<T>> {
   return new Promise((resolve, reject) => {
     //+ AbortController：若 signal 已中止，立即 reject
     if (signal?.aborted) {
-      const err: any = new DOMException('Aborted', 'AbortError')
-      return reject(err)
+      return reject(createAbortError())
     }
     //+ 模拟网络延迟
     const timer = setTimeout(() => {
       //+ 使用 method+url 作为键查找匹配的Mock路由
       const key = `${method} ${url}`
-      console.log('[Mock] 路由查找:', key)
-      
+
       let mockHandler = mockRoutes[key]
-      
+
       //+ 如果没有精确匹配，尝试参数化路由匹配（如 GET /users/:userId）
       if (!mockHandler) {
         for (const [pattern, handler] of Object.entries(mockRoutes)) {
@@ -67,7 +87,7 @@ function mockRequest<T = any>(url: string, method: Method, data?: any, signal?: 
           }
         }
       }
-      
+
       //+ 返回Mock数据或默认错误
       if (mockHandler) {
         const result = mockHandler(data, url)
@@ -78,7 +98,7 @@ function mockRequest<T = any>(url: string, method: Method, data?: any, signal?: 
         resolve({
           code: -1,
           message: '未找到Mock接口',
-          data: null as any,
+          data: null as unknown as T,
           __fromMock: true
         })
       }
@@ -88,8 +108,7 @@ function mockRequest<T = any>(url: string, method: Method, data?: any, signal?: 
     if (signal) {
       const onAbort = () => {
         clearTimeout(timer)
-        const err: any = new DOMException('Aborted', 'AbortError')
-        reject(err)
+        reject(createAbortError())
       }
       signal.addEventListener('abort', onAbort, { once: true })
       //+ 防止回调引用泄漏：timer fire 后移除 abort 监听
@@ -102,29 +121,29 @@ function mockRequest<T = any>(url: string, method: Method, data?: any, signal?: 
 function matchRoute(pattern: string, key: string): boolean {
   const [patternMethod, ...patternPathParts] = pattern.split(' ')
   const [keyMethod, ...keyPathParts] = key.split(' ')
-  
+
   //+ 方法必须匹配
   if (patternMethod !== keyMethod) {
     return false
   }
-  
+
   const patternUrl = patternPathParts.join(' ')
   const keyUrl = keyPathParts.join(' ')
-  
+
   const patternParts = patternUrl.split('/')
   const urlParts = keyUrl.split('/')
-  
+
   if (patternParts.length !== urlParts.length) {
     return false
   }
-  
+
   for (let i = 0; i < patternParts.length; i++) {
     if (patternParts[i].startsWith(':') || patternParts[i] === urlParts[i]) {
       continue
     }
     return false
   }
-  
+
   return true
 }
 
@@ -143,7 +162,7 @@ function requestInterceptor(config: RequestConfig): RequestConfig {
 //+ 响应拦截器：处理错误和数据
 //+ 注意：业务错误（code != 0/200）不再在此处 Toast，由业务层（store/页面）统一处理
 //+       例外：code === 401（token过期/未授权）在此处统一处理 Toast + 跳转登录页
-function responseInterceptor<T = any>(res: any): Promise<ResponseData<T>> {
+function responseInterceptor<T = unknown>(res: { statusCode: number; data: unknown }): Promise<ResponseData<T>> {
   return new Promise((resolve, reject) => {
     if (res.statusCode === 200) {
       const data = res.data as ResponseData<T>
@@ -189,30 +208,28 @@ function responseInterceptor<T = any>(res: any): Promise<ResponseData<T>> {
 
 //+ 发起请求
 //+ 策略：先走真实后端，失败自动降级到 Mock（除非全局开启 Mock）
-export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>> {
+export function request<T = unknown>(config: RequestConfig): Promise<ResponseData<T>> {
   const { url, method = 'GET', data, header, timeout = 30000, signal } = config
-  
+
   //+ 已中止直接拒绝（避免进入真实请求 / mockRequest）
   if (signal?.aborted) {
-    const err: any = new DOMException('Aborted', 'AbortError')
-    return Promise.reject(err)
+    return Promise.reject(createAbortError())
   }
 
   const baseURL = process.env.TARO_APP_API_BASE || ''
   const fullUrl = url.startsWith('http') ? url : `${baseURL}${url}`
-  
+
   //+ 获取相对路径（用于 Mock 查找）：去掉协议和域名部分
   const basePath = baseURL.replace(/^https?:\/\/[^/]+/, '')
-  const relativeUrl = url.startsWith('http') 
-    ? url.replace(/^https?:\/\/[^/]+/, '') 
+  const relativeUrl = url.startsWith('http')
+    ? url.replace(/^https?:\/\/[^/]+/, '')
     : `${basePath}${url}`
-  
+
   //+ 如果全局开启 Mock（TARO_APP_USE_MOCK=true），直接返回 Mock 数据
   if (isMock) {
-    console.log('[Request] 全局 Mock 模式:', method, relativeUrl, data)
     return mockRequest(relativeUrl, method, data, signal)
   }
-  
+
   //+ 否则先尝试真实请求
   const requestConfig = requestInterceptor({
     url: fullUrl,
@@ -223,16 +240,17 @@ export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>
   })
 
   //+ 真实请求：Taro.request 返回 RequestTask，通过 requestTask.abort() 取消
-  let requestTask: any = null
+  let requestTask: { abort?: () => void } | null = null
   //+ abort 监听绑定（Promise 构造外先绑定）
   const realRequest = new Promise<ResponseData<T>>((resolve, reject) => {
     //+ signal 已 abort（极短竞态）
     if (signal?.aborted) {
-      const err: any = new DOMException('Aborted', 'AbortError')
-      return reject(err)
+      return reject(createAbortError())
     }
-    requestTask = Taro.request(requestConfig as any)
-      .then(responseInterceptor)
+    const task = Taro.request(requestConfig as unknown as Parameters<typeof Taro.request>[0]) as unknown as { abort?: () => void } & Promise<unknown>
+    requestTask = task
+    task
+      .then(res => responseInterceptor<T>(res as { statusCode: number; data: unknown }))
       .then(resolve, reject)
 
     if (signal) {
@@ -240,8 +258,7 @@ export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>
         if (requestTask && typeof requestTask.abort === 'function') {
           try { requestTask.abort() } catch (_) { /* ignore */ }
         }
-        const err: any = new DOMException('Aborted', 'AbortError')
-        reject(err)
+        reject(createAbortError())
       }
       signal.addEventListener('abort', onAbort, { once: true })
       //+ 清理监听（超时兜底）
@@ -269,23 +286,66 @@ export function request<T = any>(config: RequestConfig): Promise<ResponseData<T>
     })
 }
 
+//+ ========== 统一解包便捷封装（业务层默认使用） ==========
+//+ 内部 = request + unwrap：成功返回解包后的 data（Promise<T>），业务错误归一为 ApiError 抛出。
+//+ AbortError 与网络错误原样向上抛（供 store/页面做"丢弃过期响应"与"网络错误"区分）。
+async function callApi<T>(exec: () => Promise<ResponseData<T>>): Promise<T> {
+  try {
+    const res = await exec()
+    return unwrap(res)
+  } catch (err) {
+    //+ 业务错误信封 {code, message, data}（responseInterceptor reject）→ 归一为 ApiError
+    if (err && typeof err === 'object' && typeof (err as { code?: unknown }).code === 'number'
+      && typeof (err as { message?: unknown }).message === 'string') {
+      const e = err as { code: number; message: string }
+      throw new ApiError(e.code, e.message)
+    }
+    throw err
+  }
+}
+
+//+ GET 解包请求
+export function apiGet<T>(url: string, params?: Record<string, unknown>, signal?: AbortSignal | null): Promise<T> {
+  return callApi(() => get<T>(url, params, undefined, signal))
+}
+
+//+ POST 解包请求
+export function apiPost<T>(url: string, data?: Record<string, unknown>, signal?: AbortSignal | null): Promise<T> {
+  return callApi(() => post<T>(url, data, undefined, signal))
+}
+
+//+ PUT 解包请求
+export function apiPut<T>(url: string, data?: Record<string, unknown>, signal?: AbortSignal | null): Promise<T> {
+  return callApi(() => put<T>(url, data, undefined, signal))
+}
+
+//+ DELETE 解包请求
+export function apiDelete<T>(url: string, data?: Record<string, unknown>, signal?: AbortSignal | null): Promise<T> {
+  return callApi(() => del<T>(url, data, undefined, signal))
+}
+
+//+ PATCH 解包请求
+export function apiPatch<T>(url: string, data?: Record<string, unknown>, signal?: AbortSignal | null): Promise<T> {
+  return callApi(() => request<T>({ url, method: 'PATCH', data, signal }))
+}
+
 //+ GET请求
-export function get<T = any>(url: string, data?: any, header?: any, signal?: AbortSignal | null): Promise<ResponseData<T>> {
+export function get<T = unknown>(url: string, data?: Record<string, unknown>, header?: Record<string, string>, signal?: AbortSignal | null): Promise<ResponseData<T>> {
   return request({ url, method: 'GET', data, header, signal })
 }
 
 //+ POST请求
-export function post<T = any>(url: string, data?: any, header?: any, signal?: AbortSignal | null): Promise<ResponseData<T>> {
+export function post<T = unknown>(url: string, data?: Record<string, unknown>, header?: Record<string, string>, signal?: AbortSignal | null): Promise<ResponseData<T>> {
   return request({ url, method: 'POST', data, header, signal })
 }
 
 //+ PUT请求
-export function put<T = any>(url: string, data?: any, header?: any, signal?: AbortSignal | null): Promise<ResponseData<T>> {
+export function put<T = unknown>(url: string, data?: Record<string, unknown>, header?: Record<string, string>, signal?: AbortSignal | null): Promise<ResponseData<T>> {
   return request({ url, method: 'PUT', data, header, signal })
 }
 
 //+ DELETE请求
-export function del<T = any>(url: string, data?: any, header?: any, signal?: AbortSignal | null): Promise<ResponseData<T>> {
+export function del<T = unknown>(url: string, data?: Record<string, unknown>, header?: Record<string, string>, signal?: AbortSignal | null): Promise<ResponseData<T>> {
   return request({ url, method: 'DELETE', data, header, signal })
 }
 
@@ -302,8 +362,8 @@ export interface UploadConfig<T> {
   url: string
   filePath: string
   name?: string
-  formData?: Record<string, any>
-  header?: any
+  formData?: Record<string, string>
+  header?: Record<string, string>
   mockFn?: (filePath: string) => ResponseData<T>
   //+ 文件名（H5 fetch+FormData 时使用），不传则根据日期+扩展名推断
   fileNameHint?: string
@@ -321,7 +381,7 @@ function resolveUrl(url: string): { fullUrl: string; relativeUrl: string } {
 }
 
 //+ 组装 Authorization + 自定义 Header；与 requestInterceptor 行为一致，保持单点维护
-function buildAuthHeader(extraHeader?: any): Record<string, string> {
+function buildAuthHeader(extraHeader?: Record<string, string>): Record<string, string> {
   const token = getToken()
   const header: Record<string, string> = { ...(extraHeader || {}) }
   if (token) header.Authorization = `Bearer ${token}`
@@ -330,7 +390,7 @@ function buildAuthHeader(extraHeader?: any): Record<string, string> {
 
 //+ 统一解析上传响应体（statusCode 200 且 JSON 可解析，code=0/200 视为成功）
 //+ 解析失败 / HTTP 错误 → throw Error；业务错误（code 非 0/200）→ reject 响应数据对象
-async function parseUploadResponse<T = any>(
+async function parseUploadResponse<T = unknown>(
   statusCode: number,
   rawData: string,
   _relativeUrl: string
@@ -357,11 +417,12 @@ async function parseUploadResponse<T = any>(
       throw new Error('401 Unauthorized')
     }
     //+ 其他业务错误（如文件过大/格式错误），透传给调用方 reject（不降级 Mock）
-    return Promise.reject(data) as any
-  } catch (parseErr: any) {
+    return Promise.reject(data)
+  } catch (parseErr: unknown) {
+    const err = parseErr as { code?: unknown }
     //+ parseErr 是之前 reject 的业务错误数据对象（带 code/message），直接向上抛
-    if (parseErr && typeof parseErr.code === 'number') {
-      return Promise.reject(parseErr) as any
+    if (err && typeof err.code === 'number') {
+      return Promise.reject(parseErr)
     }
     throw new Error('响应解析失败')
   }
@@ -373,7 +434,7 @@ async function parseUploadResponse<T = any>(
 //+   2. H5 端 + filePath 为 blob:/data: → fetch + FormData（避开 Taro.uploadFile H5 blob 缺陷）
 //+   3. 其他端（小程序） → Taro.uploadFile
 //+   4. 真实上传失败（非业务错误） → 调用 mockFn 降级；若调用方未传 mockFn 则抛出错误
-export async function upload<T = any>(config: UploadConfig<T>): Promise<ResponseData<T>> {
+export async function upload<T = unknown>(config: UploadConfig<T>): Promise<ResponseData<T>> {
   const {
     url,
     filePath,
@@ -389,10 +450,9 @@ export async function upload<T = any>(config: UploadConfig<T>): Promise<Response
 
   //+ 全局 Mock 模式：直接调用 mockFn（上传不走 mockRoutes）
   if (isMock) {
-    console.log('[Upload] Mock 模式:', relativeUrl)
     if (!mockFn) {
-      const err: any = new Error('上传Mock未配置mockFn')
-      err.code = -1
+      const err = new Error('上传Mock未配置mockFn')
+      ;(err as { code?: number }).code = -1
       throw err
     }
     return { ...mockFn(filePath), __fromMock: true }
@@ -442,15 +502,16 @@ export async function upload<T = any>(config: UploadConfig<T>): Promise<Response
       header: authHeader
     })
     return await parseUploadResponse<T>(uploadRes.statusCode, uploadRes.data, relativeUrl)
-  } catch (err: any) {
-    //+ 业务错误（{code, message}）：不降级 Mock，透传
-    if (err && typeof err.code === 'number') {
+  } catch (err: unknown) {
+    const e = err as { code?: unknown }
+    //+ 业务错误（{code, message}）：不降级 Mock，直接向上抛
+    if (e && typeof e.code === 'number') {
       return Promise.reject(err)
     }
     //+ 网络/HTTP/解析错误：若有 mockFn 则降级
     //+ 生产环境禁止降级（与 request 函数保持一致）
     if (mockFn && allowFallbackToMock) {
-      console.warn('[Upload] 真实上传失败，降级 Mock:', relativeUrl, err?.message || err)
+      console.warn('[Upload] 真实上传失败，降级 Mock:', relativeUrl, (err as { message?: string })?.message || err)
       return { ...mockFn(filePath), __fromMock: true }
     }
     throw err
@@ -470,24 +531,23 @@ export interface BatchUploadConfig<T> {
   url: string
   filePaths: string[]
   name?: string
-  formData?: Record<string, any>
-  header?: any
+  formData?: Record<string, string>
+  header?: Record<string, string>
   mockFn?: (filePaths: string[]) => ResponseData<T>
 }
 
 //+ 批量上传：H5 端 fetch + FormData 一次提交多文件
 //+ 非 H5 blob 路径（如小程序临时文件路径）：调用方传 mockFn 的降级路径会触发；未传则 throw 'not-supported'
-export async function uploadBatch<T = any>(config: BatchUploadConfig<T>): Promise<ResponseData<T>> {
+export async function uploadBatch<T = unknown>(config: BatchUploadConfig<T>): Promise<ResponseData<T>> {
   const { url, filePaths, name = 'files', formData, header, mockFn } = config
   const { fullUrl, relativeUrl } = resolveUrl(url)
   const authHeader = buildAuthHeader(header)
 
   //+ 全局 Mock
   if (isMock) {
-    console.log('[Upload] Mock 模式（批量）:', relativeUrl)
     if (!mockFn) {
-      const err: any = new Error('批量上传Mock未配置mockFn')
-      err.code = -1
+      const err = new Error('批量上传Mock未配置mockFn')
+      ;(err as { code?: number }).code = -1
       throw err
     }
     return { ...mockFn(filePaths), __fromMock: true }
@@ -530,11 +590,12 @@ export async function uploadBatch<T = any>(config: BatchUploadConfig<T>): Promis
     })
     const text = await res.text()
     return await parseUploadResponse<T>(res.status, text, relativeUrl)
-  } catch (err: any) {
-    if (err && typeof err.code === 'number') return Promise.reject(err)
+  } catch (err: unknown) {
+    const e = err as { code?: unknown }
+    if (e && typeof e.code === 'number') return Promise.reject(err)
     //+ 生产环境禁止降级（与 request/upload 保持一致）
     if (mockFn && allowFallbackToMock) {
-      console.warn('[Upload] 批量上传失败，降级 Mock:', relativeUrl, err?.message || err)
+      console.warn('[Upload] 批量上传失败，降级 Mock:', relativeUrl, (err as { message?: string })?.message || err)
       return { ...mockFn(filePaths), __fromMock: true }
     }
     throw err

@@ -1,0 +1,1446 @@
+﻿
+> tuyou-web@1.0.0 build:h5:test D:\DOCSTUDY\tuyou-web
+> taro build --type h5 --mode test
+
+👽 Taro v4.2.1
+
+rawEnv {
+  command: 'build',
+  mode: 'test',
+  nodeEnv: 'production',
+  taroEnv: 'h5',
+  appEnv: 'test',
+  appId: '',
+  apiBase: 'http://192.168.10.7:84/api/v1'
+}
+currentEnv {
+  mode: 'test',
+  isDevelopmentMode: false,
+  isTestEnv: true,
+  isProductionEnv: false
+}
+Tips:
+1. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+
+node.exe : 
+所在位置 D:\node\node_global\pnpm.ps1:24 字符: 5
++     & "node$exe"  "$basedir/node_modules/pnpm/bin/pnpm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+● Webpack █████████████████████████  (0%)  
+ 
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ setup (9%) compilation 
+ TaroH5Plugin
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1/1 dependencie
+s 0/1 modules 1 active 
+ babel-loader › src\app.config.ts
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%)  
+ ...babel+c_1eac6b4f74d56d9824aa6759a03148bd\node_modules\babel-loader\lib\ind
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%)  
+ ...1_@_89cbf340f857ffdc72087827ccb42a80\node_modules\@tarojs\taro-loader\lib\
+h5.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1/2 dependencie
+s 0/1 modules 1 active 
+ babel-loader › src\app.config.ts
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 2/38 dependenci
+es 0/2 modules 2 active 
+ babel-loader › src\app.tsx
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 28/38 dependenc
+ies 0/28 modules 3 active 
+ babel-loader › src\pages\CancelAccount\index.tsx
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 28/100 dependen
+cies 0/28 modules 28 active 
+ babel-loader › src\pages\Login\index.tsx
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 307/403 depende
+ncies 0/97 modules 29 active 
+ ...ode_modules\.pnpm\react-dom@18.0.0_react@18.0.0\node_modules\react-dom\ind
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%)  
+ ...postcs_49232297b2a1f75ab9ecb46a68491304\node_modules\postcss-loader\dist\c
+js.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%)  
+ ..._less@4.7_111af591719f051735b2a8c4ecce46f1\node_modules\less-loader\dist\c
+js.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 351/404 depende
+ncies 0/101 modules 42 active 
+ css-loader › postcss-loader › less-loader › src\pages\Settings\index.less
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 351/413 depende
+ncies 0/101 modules 65 active 
+ babel-loader › src\router\index.ts
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 382/439 depende
+ncies 0/121 modules 102 active 
+ babel-loader › src\apis\guide.ts
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 561/824 depende
+ncies 7/200 modules 95 active 
+ babel-loader › src\apis\guide.ts
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 725/824 depende
+ncies 7/360 modules 96 active 
+ babel-loader › src\apis\upload.ts
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 741/826 depende
+ncies 7/376 modules 112 active 
+ css-loader › postcss-loader › less-loader › src\styles\auth.less
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 759/826 depende
+ncies 7/394 modules 130 active 
+ css-loader › postcss-loader › less-loader › src\pages\Content\index.less
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 777/826 depende
+ncies 7/412 modules 148 active 
+ ...fb1897ee94229bd3e6\node_modules\style-loader\dist\runtime\insertStyleEleme
+nt.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 800/833 depende
+ncies 7/432 modules 167 active 
+ ...78d565b93d6615e174dd4c5b62c2330b\node_modules\@nutui\nutui-react\dist\styl
+e.css
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 805/835 depende
+ncies 7/432 modules 168 active 
+ ...a_f2d7a39c47ced1f43b3cfc0ca163e7d5\node_modules\@nutui\nutui-biz\dist\styl
+e.css
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 809/900 depende
+ncies 7/435 modules 176 active 
+ babel-loader › src\apis\comment.ts
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 938/1168 depend
+encies 21/466 modules 162 active 
+ babel-loader › src\apis\comment.ts
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1077/1176 depen
+dencies 24/600 modules 159 active 
+ babel-loader › src\apis\comment.ts
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1100/1176 depen
+dencies 27/617 modules 156 active 
+ css-loader › postcss-loader › src\assets\iconfont.css
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1118/1176 depen
+dencies 27/633 modules 173 active 
+ ...d4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\packages\backtop\ind
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1134/1176 depen
+dencies 27/649 modules 189 active 
+ ...d4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\packages\address\ind
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1152/1176 depen
+dencies 27/667 modules 207 active 
+ ...74dd4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\packages\rate\ind
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1168/1176 depen
+dencies 27/681 modules 223 active 
+ ...4dd4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\packages\popup\ind
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1169/1179 depen
+dencies 28/681 modules 224 active 
+ ...2330b\node_modules\@nutui\nutui-react\dist\es\packages\infiniteloading\ind
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1227/1248 depen
+dencies 29/735 modules 246 active 
+ ...1258da1eb45\node_modules\@tarojs\components\dist\components\taro-canvas-co
+re.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1237/1249 depen
+dencies 29/745 modules 287 active 
+ ...61258da1eb45\node_modules\@tarojs\components\dist\components\taro-input-co
+re.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1245/1252 depen
+dencies 29/753 modules 295 active 
+ ...\.pnpm\@tarojs+runtime@4.2.1\node_modules\@tarojs\runtime\dist\bom\navigat
+or.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1247/1253 depen
+dencies 29/755 modules 296 active 
+ ...odules\.pnpm\@tarojs+runtime@4.2.1\node_modules\@tarojs\runtime\dist\bom\U
+RL.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1259/1284 depen
+dencies 29/758 modules 298 active 
+ ...les\.pnpm\@tarojs+runtime@4.2.1\node_modules\@tarojs\runtime\dist\bom\wind
+ow.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1295/1315 depen
+dencies 32/761 modules 297 active 
+ ...ules\.pnpm\@tarojs+runtime@4.2.1\node_modules\@tarojs\runtime\dist\dom\eve
+nt.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1359/1380 depen
+dencies 35/770 modules 345 active 
+ ...a1eb45\node_modules\@tarojs\components\dist\components\taro-radio-group-co
+re.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1391/1398 depen
+dencies 35/785 modules 351 active 
+ ...1258da1eb45\node_modules\@tarojs\components\dist\components\taro-script-co
+re.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1393/1400 depen
+dencies 35/787 modules 361 active 
+ ...1258da1eb45\node_modules\@tarojs\components\dist\components\taro-switch-co
+re.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1449/1495 depen
+dencies 41/787 modules 356 active 
+ ...a1eb45\node_modules\@tarojs\components\dist\components\taro-swiper-item-co
+re.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1538/1556 depen
+dencies 42/794 modules 418 active 
+ ...ss-loader › postcss-loader › less-loader › src\components\DetailInfo\index
+.less
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1542/1600 depen
+dencies 42/796 modules 425 active 
+ ...8fd11b30e1dfece923bbeaa4c4\node_modules\css-loader\dist\runtime\noSourceMa
+ps.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1784/1969 depen
+dencies 45/1000 modules 427 active 
+ ...-store@1.4.0_react@18.0.0\node_modules\use-sync-external-store\with-select
+or.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1907/1969 depen
+dencies 52/1103 modules 421 active 
+ ...a1eb45\node_modules\@tarojs\components\dist\taro-components\taro-component
+s.css
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1941/1977 depen
+dencies 54/1132 modules 423 active 
+ ...tui+icons-react@3.0.2\node_modules\@nutui\icons-react\dist\es\icons\IconFo
+nt.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1959/1977 depen
+dencies 55/1144 modules 465 active 
+ ...nutui+icons-react@3.0.2\node_modules\@nutui\icons-react\dist\es\icons\Cloc
+kF.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 1962/1978 depen
+dencies 56/1147 modules 466 active 
+ ...@nutui+icons-react@3.0.2\node_modules\@nutui\icons-react\dist\es\icons\Clo
+ck.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 2065/2122 depen
+dencies 57/1155 modules 469 active 
+ ...ui+icons-react@3.0.2\node_modules\@nutui\icons-react\dist\es\icons\Complai
+nt.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 2069/2122 depen
+dencies 57/1155 modules 478 active 
+ ...ui+icons-react@3.0.2\node_modules\@nutui\icons-react\dist\es\icons\Dongdon
+g3.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 2117/2125 depen
+dencies 57/1156 modules 482 active 
+ ...\@nutui+icons-react@3.0.2\node_modules\@nutui\icons-react\dist\es\icons\Ed
+it.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 2144/2149 depen
+dencies 57/1156 modules 537 active 
+ ...\@nutui+icons-react@3.0.2\node_modules\@nutui\icons-react\dist\es\icons\Mo
+re.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 2265/2299 depen
+dencies 57/1157 modules 542 active 
+ ...de_modules\.pnpm\@tarojs+shared@4.2.1\node_modules\@tarojs\shared\dist\ind
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 2513/2518 depen
+dencies 57/1157 modules 603 active 
+ ...icons-react@3.0.2\node_modules\@nutui\icons-react\dist\es\icons\TriangleDo
+wn.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 2557/3067 depen
+dencies 57/1200 modules 662 active 
+ ...node_modules\@nutui\nutui-react\dist\es\packages\checkboxgroup\checkboxgro
+up.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 2800/3070 depen
+dencies 60/1312 modules 659 active 
+ ...node_modules\@nutui\nutui-react\dist\es\packages\checkboxgroup\checkboxgro
+up.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 3010/3070 depen
+dencies 61/1324 modules 659 active 
+ ...b62c2330b\node_modules\@nutui\nutui-react\dist\es\packages\checkbox\checkb
+ox.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 3048/3071 depen
+dencies 62/1331 modules 696 active 
+ ...2330b\node_modules\@nutui\nutui-react\dist\es\packages\resultpage\resultpa
+ge.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 3200/3597 depen
+dencies 63/1346 modules 713 active 
+ ...@tarojs+runtime@4.2.1\node_modules\@tarojs\runtime\dist\dom-external\eleme
+nt.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 3572/3639 depen
+dencies 64/1367 modules 713 active 
+ ...pm\@tarojs+runtime@4.2.1\node_modules\@tarojs\runtime\dist\dom-external\no
+de.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 3650/3660 depen
+dencies 86/1389 modules 712 active 
+ ...-loader › postcss-loader › less-loader › src\components\DetailBanner\index
+.less
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (10%) 0/1 entries 3655/3700 depen
+dencies 88/1391 modules 768 active 
+ ...b62c2330b\node_modules\@nutui\nutui-react\dist\es\types\spec\trendarrow\ta
+ro.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (11%) 0/1 entries 3836/3851 depen
+dencies 129/1403 modules 728 active 
+ ...dd4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\types\spec\toast\ta
+ro.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (11%) 0/1 entries 3847/3851 depen
+dencies 139/1409 modules 789 active 
+ ...74dd4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\types\spec\popup\
+h5.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (12%) 0/1 entries 3849/3882 depen
+dencies 204/1409 modules 766 active 
+ ...d4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\types\spec\layout\ba
+se.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (12%) 0/1 entries 3850/3882 depen
+dencies 224/1410 modules 748 active 
+ ...d4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\types\spec\layout\ta
+ro.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (12%) 0/1 entries 3852/3882 depen
+dencies 244/1412 modules 749 active 
+ ...62c2330b\node_modules\@nutui\nutui-react\dist\es\types\spec\hoverbutton\ta
+ro.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (12%) 0/1 entries 3853/3882 depen
+dencies 248/1413 modules 771 active 
+ ...4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\types\spec\countdown\
+h5.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (12%) 0/1 entries 3876/3882 depen
+dencies 268/1436 modules 775 active 
+ ...d4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\types\spec\checkbox\
+h5.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (12%) 0/1 entries 3880/3882 depen
+dencies 269/1440 modules 794 active 
+ ...dd4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\types\spec\badge\ba
+se.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (13%) 0/1 entries 3880/3882 depen
+dencies 289/1440 modules 779 active 
+ ...d4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\hooks\use-force-upda
+te.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (13%) 0/1 entries 3880/3882 depen
+dencies 320/1440 modules 798 active 
+ ...dd4c5b62c2330b\node_modules\@nutui\nutui-react\dist\es\types\spec\audio\ta
+ro.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (13%) 0/1 entries 3886/3886 depen
+dencies 347/1442 modules 795 active 
+ ...2330b\node_modules\@nutui\nutui-react\dist\es\packages\trendarrow\trendarr
+ow.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (13%) 0/1 entries 3891/3915 depen
+dencies 354/1442 modules 793 active 
+ ...ode_modules\@tarojs\components\lib\react\react-component-lib\createCompone
+nt.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (14%) 0/1 entries 3915/3915 depen
+dencies 364/1442 modules 784 active 
+ ...pm\resolve-pathname@3.0.0\node_modules\resolve-pathname\esm\resolve-pathna
+me.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (14%) 0/1 entries 3915/3917 depen
+dencies 383/1442 modules 790 active 
+ ...de_modules\.pnpm\@tarojs+shared@4.2.1\node_modules\@tarojs\shared\dist\uti
+ls.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (14%) 0/1 entries 3916/3917 depen
+dencies 384/1442 modules 807 active 
+ ...00006a138faf\node_modules\@tarojs\taro-h5\dist\api\canvas\canvasGetImageDa
+ta.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (14%) 0/1 entries 3958/3977 depen
+dencies 410/1443 modules 788 active 
+ ...c309800006a138faf\node_modules\@tarojs\taro-h5\dist\api\device\bluetooth-b
+le.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (14%) 0/1 entries 3965/3982 depen
+dencies 410/1444 modules 796 active 
+ ...3677fc309800006a138faf\node_modules\@tarojs\taro-h5\dist\api\device\keyboa
+rd.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (14%) 0/1 entries 3970/3999 depen
+dencies 419/1444 modules 790 active 
+ ...c03677fc309800006a138faf\node_modules\@tarojs\taro-h5\dist\api\device\moti
+on.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (16%) 0/1 entries 3985/4001 depen
+dencies 634/1449 modules 577 active 
+ ...03677fc309800006a138faf\node_modules\@tarojs\taro-h5\dist\api\device\netwo
+rk.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 0/1 entries 4060/4077 depen
+dencies 660/1461 modules 594 active 
+ ...7fc309800006a138faf\node_modules\@tarojs\taro-h5\dist\api\open-api\authori
+ze.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 0/1 entries 4080/4117 depen
+dencies 660/1463 modules 598 active 
+ ...00006a138faf\node_modules\@tarojs\taro-h5\dist\api\open-api\customer-servi
+ce.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 0/1 entries 4113/4126 depen
+dencies 669/1473 modules 590 active 
+ ...c309800006a138faf\node_modules\@tarojs\taro-h5\dist\api\open-api\device-vo
+ip.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 0/1 entries 4219/4248 depen
+dencies 669/1473 modules 641 active 
+ ...dules\.pnpm\@swc+helpers@0.5.23\node_modules\@swc\helpers\esm\_object_spre
+ad.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 0/1 entries 4229/4250 depen
+dencies 669/1478 modules 648 active 
+ ...2330b\node_modules\@nutui\nutui-react\dist\es\packages\hoverbuttonitem\uti
+ls.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 0/1 entries 4233/4251 depen
+dencies 671/1480 modules 656 active 
+ ...330b\node_modules\@nutui\nutui-react\dist\es\packages\address\elevatorRend
+er.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (17%) 0/1 entries 4331/4373 depen
+dencies 686/1480 modules 663 active 
+ ...30b\node_modules\@nutui\nutui-react\dist\es\packages\pickerview\pickerroll
+er.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (18%) 0/1 entries 4395/4500 depen
+dencies 768/1493 modules 628 active 
+ ...c2330b\node_modules\@nutui\nutui-react\dist\es\utils\should-render-price-r
+aw.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (18%) 0/1 entries 4471/4522 depen
+dencies 809/1509 modules 622 active 
+ ...b\node_modules\.pnpm\swiper@11.1.15\node_modules\swiper\modules\effect-cub
+e.mjs
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (18%) 0/1 entries 4492/4522 depen
+dencies 809/1518 modules 632 active 
+ ...pnpm\@stencil+core@2.22.3\node_modules\@stencil\core\internal\app-data\ind
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (18%) 0/1 entries 4495/4522 depen
+dencies 813/1521 modules 644 active 
+ ...e_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\_isStrictComparab
+le.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (18%) 0/1 entries 4497/4522 depen
+dencies 813/1521 modules 645 active 
+ ...Y\tuyou-web\node_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\ke
+ys.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 0/1 entries 4524/4565 depen
+dencies 840/1527 modules 620 active 
+ ...b45\node_modules\@tarojs\components\lib\react\react-component-lib\utils\ca
+se.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 0/1 entries 4560/4606 depen
+dencies 867/1532 modules 610 active 
+ ...00006a138faf\node_modules\@tarojs\taro-h5\dist\api\wxml\IntersectionObserv
+er.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 0/1 entries 4618/4644 depen
+dencies 875/1556 modules 641 active 
+ ...wc+helpers@0.5.23\node_modules\@swc\helpers\esm\_is_native_reflect_constru
+ct.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 0/1 entries 4621/4646 depen
+dencies 881/1556 modules 650 active 
+ ...modules\.pnpm\swiper@11.1.15\node_modules\swiper\shared\classes-to-selecto
+r.mjs
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (19%) 0/1 entries 4633/4670 depen
+dencies 906/1559 modules 633 active 
+ ...u-web\node_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\_ListCac
+he.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (21%) 0/1 entries 4689/4744 depen
+dencies 1015/1564 modules 545 active 
+ ...@tarojs+runtime@4.2.1_@tarojs+shared@4.2.1\node_modules\@tarojs\api\dist\e
+nv.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (21%) 0/1 entries 4716/4777 depen
+dencies 1033/1574 modules 541 active 
+ ...bba9682d2ad17\node_modules\react-transition-group\esm\TransitionGroupConte
+xt.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (21%) 0/1 entries 4719/4781 depen
+dencies 1033/1577 modules 544 active 
+ ...\node_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\_listCacheCle
+ar.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (21%) 0/1 entries 4747/4786 depen
+dencies 1037/1600 modules 562 active 
+ node_modules\.pnpm\is-mobile@4.0.0\node_modules\is-mobile\index.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (24%) 0/1 entries 4765/4799 depen
+dencies 1282/1606 modules 323 active 
+ ...DY\tuyou-web\node_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\n
+ow.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (24%) 0/1 entries 4771/4804 depen
+dencies 1290/1609 modules 318 active 
+ ....js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (24%) 0/1 entries 4804/4857 depen
+dencies 1297/1622 modules 325 active 
+ ...uyou-web\node_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\_Symb
+ol.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (24%) 0/1 entries 4822/4858 depen
+dencies 1302/1639 modules 336 active 
+ ...u-web\node_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\_getRawT
+ag.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (24%) 0/1 entries 4826/4860 depen
+dencies 1305/1643 modules 338 active 
+ ...esture+core@10.2.20\node_modules\@use-gesture\core\dist\use-gesture-core.e
+sm.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (26%) 0/1 entries 4865/4895 depen
+dencies 1465/1649 modules 184 active 
+ ...ou-web\node_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\_getVal
+ue.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (26%) 0/1 entries 4876/4895 depen
+dencies 1465/1657 modules 192 active 
+ ...node_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\_trimmedEndInd
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (26%) 0/1 entries 4888/4917 depen
+dencies 1490/1665 modules 174 active 
+ ...u-web\node_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\_isKeyab
+le.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (26%) 0/1 entries 4897/4920 depen
+dencies 1490/1674 modules 183 active 
+ ...you-web\node_modules\.pnpm\lodash-es@4.17.21\node_modules\lodash-es\_hashS
+et.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (26%) 0/1 entries 4901/4927 depen
+dencies 1490/1678 modules 188 active 
+ ...esture+core@10.2.20\node_modules\@use-gesture\core\dist\actions-aeda4790.e
+sm.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (26%) 0/1 entries 4921/4937 depen
+dencies 1508/1685 modules 177 active 
+ node_modules\.pnpm\prop-types@15.8.1\node_modules\prop-types\index.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (26%) 0/1 entries 4925/4938 depen
+dencies 1514/1686 modules 172 active 
+ node_modules\.pnpm\ics@3.12.0\node_modules\ics\dist\defaults.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (26%) 0/1 entries 4931/4941 depen
+dencies 1523/1691 modules 165 active 
+ ...eb\node_modules\.pnpm\split-on-first@3.0.0\node_modules\split-on-first\ind
+ex.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (27%) 0/1 entries 4936/4946 depen
+dencies 1546/1692 modules 146 active 
+ node_modules\.pnpm\ics@3.12.0\node_modules\ics\dist\utils\index.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (27%) 0/1 entries 4940/4958 depen
+dencies 1559/1696 modules 137 active 
+ node_modules\.pnpm\ics@3.12.0\node_modules\ics\dist\utils\format-date.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (27%) 0/1 entries 4953/4960 depen
+dencies 1562/1708 modules 145 active 
+ ...npm\@react-spring+types@9.6.1\node_modules\@react-spring\types\interpolati
+on.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (27%) 0/1 entries 4959/4969 depen
+dencies 1568/1709 modules 141 active 
+ ...les\.pnpm\prop-types@15.8.1\node_modules\prop-types\lib\ReactPropTypesSecr
+et.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (27%) 0/1 entries 4966/4970 depen
+dencies 1591/1710 modules 119 active 
+ node_modules\.pnpm\ics@3.12.0\node_modules\ics\dist\utils\set-location.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (27%) 0/1 entries 4967/4970 depen
+dencies 1595/1711 modules 116 active 
+ node_modules\.pnpm\ics@3.12.0\node_modules\ics\dist\utils\fold-line.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (27%) 0/1 entries 4969/4970 depen
+dencies 1606/1713 modules 107 active 
+ node_modules\.pnpm\yup@1.7.1\node_modules\yup\index.esm.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (27%) 0/1 entries 4970/4974 depen
+dencies 1606/1714 modules 108 active 
+ ...DY\tuyou-web\node_modules\.pnpm\runes2@1.1.4\node_modules\runes2\dist\inde
+x.cjs
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (27%) 0/1 entries 4971/4975 depen
+dencies 1607/1715 modules 108 active 
+ ...DY\tuyou-web\node_modules\.pnpm\runes2@1.1.4\node_modules\runes2\dist\inde
+x.cjs
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (27%) 0/1 entries 4990/5005 depen
+dencies 1616/1722 modules 101 active 
+ ...› postcss-loader › less-loader › src\components\CalendarPopup\index.less|0
+|||}}
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (28%) 0/1 entries 5014/5015 depen
+dencies 1669/1731 modules 61 active 
+ node_modules\.pnpm\toposort@2.0.2\node_modules\toposort\index.js
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ building (28%) 0/1 entries 5026/5026 depen
+dencies 1727/1734 modules 7 active 
+ ...s-loader › postcss-loader › less-loader › src\components\SwipeAction\index
+.less
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (70%) finish module graph 
+ InnerGraphPlugin
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (70%)  
+ plugins
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (71%)  
+ dependencies optimization
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (73%)  
+ after chunk graph
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (78%)  
+ chunk modules optimization
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (87%)  
+ module hashing
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (87%)  
+ code generation
+
+- 即将开始启动编译，请稍等~
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (88%)  
+ runtime requirements
+
+- 即将开始启动编译，请稍等~
+(node:13564) [DEP_WEBPACK_TEMPLATE_PATH_PLUGIN_REPLACE_PATH_VARIABLES_HASH] DeprecationWarning: [hash] is now [fullhash
+] (also consider using [chunkhash] or [contenthash], see documentation for details)
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%)  
+ asset processing
+
+- 即将开始启动编译，请稍等~
+(node:13564) [DEP_WEBPACK_TEMPLATE_PATH_PLUGIN_REPLACE_PATH_VARIABLES_HASH] DeprecationWarning: [hash] is now [fullhash
+] (also consider using [chunkhash] or [contenthash], see documentation for details)
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ CssMinimizerPlugin
+
+- 即将开始启动编译，请稍等~
+(node:13564) [DEP_WEBPACK_TEMPLATE_PATH_PLUGIN_REPLACE_PATH_VARIABLES_HASH] DeprecationWarning: [hash] is now [fullhash
+] (also consider using [chunkhash] or [contenthash], see documentation for details)
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ HtmlWebpackPlugin
+
+- 即将开始启动编译，请稍等~
+(node:13564) [DEP_WEBPACK_TEMPLATE_PATH_PLUGIN_REPLACE_PATH_VARIABLES_HASH] DeprecationWarning: [hash] is now [fullhash
+] (also consider using [chunkhash] or [contenthash], see documentation for details)
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ sealing (92%) asset processing 
+ RealContentHashPlugin
+
+- 即将开始启动编译，请稍等~
+(node:13564) [DEP_WEBPACK_TEMPLATE_PATH_PLUGIN_REPLACE_PATH_VARIABLES_HASH] DeprecationWarning: [hash] is now [fullhash
+] (also consider using [chunkhash] or [contenthash], see documentation for details)
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+● Webpack █████████████████████████ emitting (98%)  
+ after emit
+
+- 即将开始启动编译，请稍等~
+(node:13564) [DEP_WEBPACK_TEMPLATE_PATH_PLUGIN_REPLACE_PATH_VARIABLES_HASH] DeprecationWarning: [hash] is now [fullhash
+] (also consider using [chunkhash] or [contenthash], see documentation for details)
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+√ Webpack
+  Compiled successfully in 2.13m
+
+- 即将开始启动编译，请稍等~
+(node:13564) [DEP_WEBPACK_TEMPLATE_PATH_PLUGIN_REPLACE_PATH_VARIABLES_HASH] DeprecationWarning: [hash] is now [fullhash
+] (also consider using [chunkhash] or [contenthash], see documentation for details)
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G
+√ Webpack
+  Compiled successfully in 2.13m
+
+- 即将开始启动编译，请稍等~
+(node:13564) [DEP_WEBPACK_TEMPLATE_PATH_PLUGIN_REPLACE_PATH_VARIABLES_HASH] DeprecationWarning: [hash] is now [fullhash
+] (also consider using [chunkhash] or [contenthash], see documentation for details)
+(Use `node --trace-deprecation ...` to show where the warning was created)
+⚠️ Warnings: 
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61321: Parse error on line 1: 
+...-icon-size-6, calc(6px * var(--nut-scale-icon, var(--nut-scale-f, 1))))) + 8px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61531: Parse error on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) + 8px * ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61698: Parse error on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 8px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61905: Parse error on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) + 1px * ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62026: Parse error on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) + 1px * ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62191: Parse error on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62324: Parse error on line 1: 
+...-icon-size-6, calc(6px * var(--nut-scale-icon, var(--nut-scale-f, 1))))) + 1px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62527: Parse error on line 1: 
+...-icon-size-6, calc(6px * var(--nut-scale-icon, var(--nut-scale-f, 1))))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62704: Parse error on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 1px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62870: Parse error on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 1px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:63080: Parse error on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:69726: Parse error on line 1: 
+var(--nutui-space-gap, calc(8px * var(--nut-scale-f, 1))) * -1
+--------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:114239: Parse error on line 1: 
+...ar(--nutui-quickenter-max-height, calc(256px * var(--nut-scale-f, 1))) + env(sa...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:142380: Parse error on line 1: 
+var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1))) * 7
+------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:142843: Parse error on line 1: 
+... - var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1)))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:143096: Parse error on line 1: 
+... - var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1)))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:143564: Parse error on line 1: 
+var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1))) * 7
+------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:143724: Parse error on line 1: 
+... - var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1)))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:171441: Parse error on line 1: 
+...(--nutui-inputnumber-button-width, calc(28px * var(--nut-scale-f, 1))) + var(--...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:182753: Parse error on line 1: 
+...var(--nutui-indicator-slider-width, calc(8px * var(--nut-scale-f, 1))))
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:185657: Parse error on line 1: 
+...var(--nutui-indicator-slider-width, calc(8px * var(--nut-scale-f, 1))))
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:225549: Parse error on line 1: 
+...ont-size-xs, calc(11px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 2px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:226309: Parse error on line 1: 
+...der-radius, var(--nutui-radius-xxs, calc(2px * var(--nut-scale-f, 1)))) * 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+⚠️  编译警告. 2026/10/8 22:30:43
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61321: Parse error on line 1: 
+...-icon-size-6, calc(6px * var(--nut-scale-icon, var(--nut-scale-f, 1))))) + 8px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61531: Parse error on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) + 8px * ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61698: Parse error on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 8px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61905: Parse error on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) + 1px * ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62026: Parse error on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) + 1px * ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62191: Parse error on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62324: Parse error on line 1: 
+...-icon-size-6, calc(6px * var(--nut-scale-icon, var(--nut-scale-f, 1))))) + 1px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62527: Parse error on line 1: 
+...-icon-size-6, calc(6px * var(--nut-scale-icon, var(--nut-scale-f, 1))))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62704: Parse error on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 1px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62870: Parse error on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 1px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:63080: Parse error on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:69726: Parse error on line 1: 
+var(--nutui-space-gap, calc(8px * var(--nut-scale-f, 1))) * -1
+--------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:114239: Parse error on line 1: 
+...ar(--nutui-quickenter-max-height, calc(256px * var(--nut-scale-f, 1))) + env(sa...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:142380: Parse error on line 1: 
+var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1))) * 7
+------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:142843: Parse error on line 1: 
+... - var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1)))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:143096: Parse error on line 1: 
+... - var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1)))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:143564: Parse error on line 1: 
+var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1))) * 7
+------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:143724: Parse error on line 1: 
+... - var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1)))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:171441: Parse error on line 1: 
+...(--nutui-inputnumber-button-width, calc(28px * var(--nut-scale-f, 1))) + var(--...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:182753: Parse error on line 1: 
+...var(--nutui-indicator-slider-width, calc(8px * var(--nut-scale-f, 1))))
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:185657: Parse error on line 1: 
+...var(--nutui-indicator-slider-width, calc(8px * var(--nut-scale-f, 1))))
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:225549: Parse error on line 1: 
+...ont-size-xs, calc(11px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 2px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+Warning: css/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:226309: Parse error on line 1: 
+...der-radius, var(--nutui-radius-xxs, calc(2px * var(--nut-scale-f, 1)))) * 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got unexpected "RPAREN"
+
+assets by info 3.12 MiB [1m[32m[immutable][39m[22m
+  assets by path [1m[32mjs/*.js[39m[22m 2.57 MiB
+    assets by status [1m[33m978 KiB[39m[22m [1m[33m[big][39m[22m
+      asset [1m[33mjs/419.a4040840.js[39m[22m [1m[33m539 KiB[39m[22m [1m[32m[emitted][39m[22m [1m[32m[immutable][39m[22m [1m[32m[minimized][39m[22m [1m[33m[big][39m[22m
+      asset [1m[33mjs/app.58170740.js[39m[22m [1m[33m439 KiB[39m[22m [1m[32m[emitted][39m[22m [1m[32m[immutable][39m[22m [1m[32m[minimized][39m[22m [1m[33m[big][39m[22m (name: app) 1 related asset
+    + 29 assets
+  assets by path [1m[32mcss/*.css[39m[22m 563 KiB
+    asset [1m[33mcss/app.58170740498c6d5efa89.css[39m[22m [1m[33m396 KiB[39m[22m [1m[32m[emitted][39m[22m [1m[32m[immutable][39m[22m [1m[32m[minimized][39m[22m [1m[33m[big][39m[22m (name: app)
+    asset [1m[32mcss/57.5fab52377aca45e1f891.css[39m[22m 19.3 KiB [1m[32m[emitted][39m[22m [1m[32m[immutable][39m[22m [1m[32m[minimized][39m[22m
+    asset [1m[32mcss/382.43d78296c6437ebc1d6e.css[39m[22m 18.5 KiB [1m[32m[emitted][39m[22m [1m[32m[immutable][39m[22m [1m[32m[minimized][39m[22m
+    asset [1m[32mcss/334.cd009e5ba912e9b5b33f.css[39m[22m 15 KiB [1m[32m[emitted][39m[22m [1m[32m[immutable][39m[22m [1m[32m[minimized][39m[22m
+    asset [1m[32mcss/843.150eca237ff91ec88eb9.css[39m[22m 13.3 KiB [1m[32m[emitted][39m[22m [1m[32m[immutable][39m[22m [1m[32m[minimized][39m[22m
+    + 22 assets
+asset [1m[32mstatic/images/assets/iconfont.svg[39m[22m 40.9 KiB [1m[32m[emitted][39m[22m [from: src/assets/iconfont.svg]
+asset [1m[32mindex.html[39m[22m 1.08 KiB [1m[32m[emitted][39m[22m
+Entrypoint [1mapp[39m[22m [1m[33m[big][39m[22m 943 KiB = [1m[32mjs/497.58170740.js[39m[22m 109 KiB [1m[32mcss/app.58170740498c6d5efa89.css[39m[22m 396 KiB [1m[32mjs/app.58170740.js[39m[22m 439 KiB
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61321: Parse [1m[31merror[39m[22m[1m on line 1: 
+...-icon-size-6, calc(6px * var(--nut-scale-icon, var(--nut-scale-f, 1))))) + 8px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61531: Parse [1m[31merror[39m[22m[1m on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) + 8px * ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61698: Parse [1m[31merror[39m[22m[1m on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 8px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:61905: Parse [1m[31merror[39m[22m[1m on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) + 1px * ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62026: Parse [1m[31merror[39m[22m[1m on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) + 1px * ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62191: Parse [1m[31merror[39m[22m[1m on line 1: 
+...tui-steps-vertical-item-icon-size, calc(20px * var(--nut-scale-f, 1))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62324: Parse [1m[31merror[39m[22m[1m on line 1: 
+...-icon-size-6, calc(6px * var(--nut-scale-icon, var(--nut-scale-f, 1))))) + 1px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62527: Parse [1m[31merror[39m[22m[1m on line 1: 
+...-icon-size-6, calc(6px * var(--nut-scale-icon, var(--nut-scale-f, 1))))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62704: Parse [1m[31merror[39m[22m[1m on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 1px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:62870: Parse [1m[31merror[39m[22m[1m on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 1px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:63080: Parse [1m[31merror[39m[22m[1m on line 1: 
+...font-size-s, calc(12px * var(--nut-scale-font, var(--nut-scale-f, 1))))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:69726: Parse [1m[31merror[39m[22m[1m on line 1: 
+var(--nutui-space-gap, calc(8px * var(--nut-scale-f, 1))) * -1
+--------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:114239: Parse [1m[31merror[39m[22m[1m on line 1: 
+...ar(--nutui-quickenter-max-height, calc(256px * var(--nut-scale-f, 1))) + env(sa...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:142380: Parse [1m[31merror[39m[22m[1m on line 1: 
+var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1))) * 7
+------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:142843: Parse [1m[31merror[39m[22m[1m on line 1: 
+... - var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1)))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:143096: Parse [1m[31merror[39m[22m[1m on line 1: 
+... - var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1)))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:143564: Parse [1m[31merror[39m[22m[1m on line 1: 
+var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1))) * 7
+------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:143724: Parse [1m[31merror[39m[22m[1m on line 1: 
+... - var(--nutui-picker-item-height, calc(36px * var(--nut-scale-f, 1)))) / 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:171441: Parse [1m[31merror[39m[22m[1m on line 1: 
+...(--nutui-inputnumber-button-width, calc(28px * var(--nut-scale-f, 1))) + var(--...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:182753: Parse [1m[31merror[39m[22m[1m on line 1: 
+...var(--nutui-indicator-slider-width, calc(8px * var(--nut-scale-f, 1))))
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:185657: Parse [1m[31merror[39m[22m[1m on line 1: 
+...var(--nutui-indicator-slider-width, calc(8px * var(--nut-scale-f, 1))))
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:225549: Parse [1m[31merror[39m[22m[1m on line 1: 
+...ont-size-xs, calc(11px * var(--nut-scale-font, var(--nut-scale-f, 1))))) + 2px ...
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mcss/app.58170740498c6d5efa89.css[39m[22m
+[1mcss/app.58170740498c6d5efa89.css from Css Minimizer plugin
+postcss-calc: D:\DOCSTUDY\tuyou-web\css\app.58170740498c6d5efa89.css:338:226309: Parse [1m[31merror[39m[22m[1m on line 1: 
+...der-radius, var(--nutui-radius-xxs, calc(2px * var(--nut-scale-f, 1)))) * 2
+------------------------------------------------------------------------^
+Expecting end of input, "ADD", "SUB", "MUL", "DIV", got [1m[31munexpected[39m[22m[1m "RPAREN"[39m[22m
+
+webpack 5.91.0 compiled with [1m[33m23 warnings[39m[22m in 127725 ms
+

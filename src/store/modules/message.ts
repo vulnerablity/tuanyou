@@ -1,20 +1,20 @@
 //+ 消息模块 Redux 状态管理
 //+ 全链路：fetchInteractions / loadMoreInteractions / fetchSystemMessages / loadMoreSystemMessages
 //+         fetchUnreadCount / markMessageRead / markAllMessagesRead / replyInteraction / deleteMessage
-//+         + SSE 推送：showToast / hideToast / showNewMessageTip / setCurrentTab / handleSSEMessage
+//+         + SSE 推送：showToast / hideToast / showNewMessageTip / setCurrentTab / handleSSEEvent
 //+ 设计：store 作为单一数据源，Message 页面通过 useSelector 读取列表和未读数
 //+       未读数由 API 驱动（fetchUnreadCount），标记已读后同步更新
 //+       TabList 依赖 state.message.unreadTotal 显示红点
 //+       SSE 推送不直接刷新列表，只更新未读数 + 弹框/提示条，列表由用户主动行为触发
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import {
-  getInteractionsAPI,
-  getSystemMessagesAPI,
-  getUnreadCountAPI,
-  markMessageReadAPI,
-  markAllMessagesReadAPI,
-  replyInteractionAPI,
-  deleteMessageAPI
+  getInteractions,
+  getSystemMessages,
+  getUnreadCount,
+  markMessageRead as markMessageReadApi,
+  markAllMessagesRead as markAllMessagesReadApi,
+  replyInteraction as replyInteractionApi,
+  deleteMessage as deleteMessageApi
 } from '@/apis/message'
 import type { InteractionMessage, SystemMessage, PageResult, MessageReplyResult } from '@/types'
 
@@ -135,96 +135,56 @@ const initialState: MessageState = {
 //+ 获取互动消息列表（首页，重置列表）
 export const fetchInteractions = createAsyncThunk(
   'message/fetchInteractions',
-  async (args: { page?: number; size?: number }, { rejectWithValue }) => {
-    try {
-      const res = await getInteractionsAPI({
-        page: args.page ?? 1,
-        size: args.size ?? 10
-      })
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue(res.message || '获取互动消息失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (args: { page?: number; size?: number }) => {
+    return await getInteractions({
+      page: args.page ?? 1,
+      size: args.size ?? 10
+    })
   }
 )
 
 //+ 加载更多互动消息（下一页，追加）
 export const loadMoreInteractions = createAsyncThunk(
   'message/loadMoreInteractions',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { getState }) => {
     const state = (getState() as { message: MessageState }).message
     const { interactionPage, interactionSize } = state
-    try {
-      const res = await getInteractionsAPI({
-        page: interactionPage + 1,
-        size: interactionSize
-      })
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue(res.message || '加载更多失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+    return await getInteractions({
+      page: interactionPage + 1,
+      size: interactionSize
+    })
   }
 )
 
 //+ 获取系统通知列表（首页，重置列表）
 export const fetchSystemMessages = createAsyncThunk(
   'message/fetchSystemMessages',
-  async (args: { page?: number; size?: number }, { rejectWithValue }) => {
-    try {
-      const res = await getSystemMessagesAPI({
-        page: args.page ?? 1,
-        size: args.size ?? 10
-      })
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue(res.message || '获取系统通知失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (args: { page?: number; size?: number }) => {
+    return await getSystemMessages({
+      page: args.page ?? 1,
+      size: args.size ?? 10
+    })
   }
 )
 
 //+ 加载更多系统通知（下一页，追加）
 export const loadMoreSystemMessages = createAsyncThunk(
   'message/loadMoreSystemMessages',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { getState }) => {
     const state = (getState() as { message: MessageState }).message
     const { systemPage, systemSize } = state
-    try {
-      const res = await getSystemMessagesAPI({
-        page: systemPage + 1,
-        size: systemSize
-      })
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue(res.message || '加载更多失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+    return await getSystemMessages({
+      page: systemPage + 1,
+      size: systemSize
+    })
   }
 )
 
 //+ 获取未读消息数（app.tsx launch 时调用，Message 页面也可刷新）
 export const fetchUnreadCount = createAsyncThunk(
   'message/fetchUnreadCount',
-  async (_, { rejectWithValue }) => {
-    try {
-      const res = await getUnreadCountAPI()
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      }
-      return rejectWithValue(res.message || '获取未读数失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async () => {
+    return await getUnreadCount()
   }
 )
 
@@ -232,16 +192,9 @@ export const fetchUnreadCount = createAsyncThunk(
 //+ tab: 'interaction' | 'system'，用于更新对应列表的 read 状态和未读数
 export const markMessageRead = createAsyncThunk(
   'message/markMessageRead',
-  async (args: { id: string; tab: MessageTab }, { rejectWithValue }) => {
-    try {
-      const res = await markMessageReadAPI(args.id)
-      if (res.code === 0 || res.code === 200) {
-        return { id: args.id, tab: args.tab }
-      }
-      return rejectWithValue(res.message || '标记已读失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (args: { id: string; tab: MessageTab }) => {
+    await markMessageReadApi(args.id)
+    return { id: args.id, tab: args.tab }
   }
 )
 
@@ -249,34 +202,20 @@ export const markMessageRead = createAsyncThunk(
 //+ tab: 'interaction' | 'system'，用于清空对应 tab 的未读数
 export const markAllMessagesRead = createAsyncThunk(
   'message/markAllMessagesRead',
-  async (args: { tab: MessageTab }, { rejectWithValue }) => {
-    try {
-      const res = await markAllMessagesReadAPI()
-      if (res.code === 0 || res.code === 200) {
-        return { tab: args.tab, updated: (res.data as { updated?: number })?.updated ?? 0 }
-      }
-      return rejectWithValue(res.message || '标记全部已读失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (args: { tab: MessageTab }) => {
+    const data = await markAllMessagesReadApi()
+    return { tab: args.tab, updated: data.updated ?? 0 }
   }
 )
 
 //+ 回复互动消息（评论回复）
-//+ 返回 { id, replyToId, content, sendTime }，用于更新对应消息的 replies 数组
+//+ 返回 { messageId, reply, content }，用于更新对应消息的 replies 数组
 export const replyInteraction = createAsyncThunk(
   'message/replyInteraction',
-  async (args: { id: string; content: string }, { rejectWithValue }) => {
-    try {
-      const res = await replyInteractionAPI(args.id, args.content)
-      if (res.code === 0 || res.code === 200) {
-        //+ 带 args.content 兜底：后端返回的 reply.content 可能因 data 结构不一致而为 undefined
-        return { messageId: args.id, reply: res.data, content: args.content }
-      }
-      return rejectWithValue(res.message || '回复失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (args: { id: string; content: string }) => {
+    //+ 带 args.content 兜底：后端返回的 reply.content 可能因 data 结构不一致而为 undefined
+    const reply = await replyInteractionApi(args.id, args.content)
+    return { messageId: args.id, reply, content: args.content }
   }
 )
 
@@ -284,27 +223,20 @@ export const replyInteraction = createAsyncThunk(
 //+ tab: 'interaction' | 'system'，用于从对应列表中移除 + 同步未读数
 export const deleteMessage = createAsyncThunk(
   'message/deleteMessage',
-  async (args: { id: string; tab: MessageTab }, { rejectWithValue, getState }) => {
+  async (args: { id: string; tab: MessageTab }, { getState }) => {
     const state = (getState() as { message: MessageState }).message
     //+ 记录删除前该消息是否为未读，用于 fulfilled 时同步未读数
     const wasUnread = (() => {
       if (args.tab === 'interaction') {
-        const m = state.interactionList.find(m => m.id === args.id)
+        const m = state.interactionList.find(item => item.id === args.id)
         return m ? !m.read : false
       } else {
-        const m = state.systemList.find(m => m.id === args.id)
+        const m = state.systemList.find(item => item.id === args.id)
         return m ? !m.read : false
       }
     })()
-    try {
-      const res = await deleteMessageAPI(args.id)
-      if (res.code === 0 || res.code === 200) {
-        return { id: args.id, tab: args.tab, wasUnread }
-      }
-      return rejectWithValue(res.message || '删除失败')
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+    await deleteMessageApi(args.id)
+    return { id: args.id, tab: args.tab, wasUnread }
   }
 )
 
@@ -416,7 +348,7 @@ const messageSlice = createSlice({
       })
       .addCase(fetchInteractions.rejected, (state, action) => {
         state.interactionLoading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ 加载更多互动消息
       .addCase(loadMoreInteractions.pending, (state) => {
@@ -432,7 +364,7 @@ const messageSlice = createSlice({
       })
       .addCase(loadMoreInteractions.rejected, (state, action) => {
         state.interactionLoadingMore = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ ==================== 系统通知列表 ====================
       .addCase(fetchSystemMessages.pending, (state) => {
@@ -451,7 +383,7 @@ const messageSlice = createSlice({
       })
       .addCase(fetchSystemMessages.rejected, (state, action) => {
         state.systemLoading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ 加载更多系统通知
       .addCase(loadMoreSystemMessages.pending, (state) => {
@@ -467,7 +399,7 @@ const messageSlice = createSlice({
       })
       .addCase(loadMoreSystemMessages.rejected, (state, action) => {
         state.systemLoadingMore = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ ==================== 未读消息数 ====================
       .addCase(fetchUnreadCount.fulfilled, (state, action: PayloadAction<{ total: number; interactions: number; system: number }>) => {

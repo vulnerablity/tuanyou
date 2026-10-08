@@ -1,4 +1,3 @@
-import React from 'react'
 import type { ToolbarAction, ToolbarButtonItem } from '@/types/markdown'
 import './index.less'
 
@@ -24,9 +23,9 @@ export interface ToolbarProps {
   disabled?: boolean
 }
 
-const Toolbar: React.FC<ToolbarProps> = ({ onAction, disabled }) => {
+function Toolbar({ onAction, disabled }: ToolbarProps) {
   return (
-    <div className="md-toolbar">
+    <div className='md-toolbar'>
       {BUTTONS.map(b => (
         <span
           key={b.key}

@@ -5,11 +5,12 @@
 //+   - activity：标签 + 标题 + 报名时间 + 参与人数
 import { useEffect, useState } from 'react'
 import { Swiper, SwiperItem, Indicator, Cell, ConfigProvider } from '@nutui/nutui-react'
-import Taro from '@tarojs/taro'
-import Tag from '@/components/Tag'
 import { useDispatch, useSelector } from 'react-redux'
-import type { RootState, AppDispatch } from '@/store'
+import type { AppDispatch, RootState } from '@/store'
 import { fetchSlides } from '@/store/modules/home'
+import { routerNavigateTo } from '@/router'
+import type { RouteKey } from '@/router'
+import Tag from '@/components/Tag'
 import type { SlideItem } from '@/types'
 import dayjs from 'dayjs'
 import './index.less'
@@ -18,6 +19,16 @@ import './index.less'
 const indicatorTheme = {
   nutuiIndicatorDotSize: '7px',
   nutuiIndicatorDotActiveSize: '7px',
+}
+
+//+ 兜底占位图（后端 cover 域名不可访问时回退，避免控制台刷屏）
+const FALLBACK_COVER = 'http://192.168.10.7:89/logo.png'
+
+//+ 轮播 type → 详情页路由键
+const TYPE_ROUTE_MAP: Record<SlideItem['type'], RouteKey> = {
+  note: 'NOTE_DETAIL',
+  guide: 'GUIDE_DETAIL',
+  activity: 'ACTIVITY_DETAIL',
 }
 
 //+ 格式化报名时间
@@ -32,19 +43,19 @@ function BottomInfo({ item }: { item: SlideItem }) {
   //+ 仅活动类型显示报名时间和参与人数
   if (item.type !== 'activity') {
     return (
-      <div className="placeholder-box">站位</div>
+      <div className='placeholder-box'>站位</div>
     )
   }
 
   return (
-    <div className="bottom-info">
+    <div className='bottom-info'>
       {item.signUpStart && (
-        <p className="banner-signup">
+        <p className='banner-signup'>
           {formatSignUpTime(item.signUpStart)} 开始报名
         </p>
       )}
       {item.currentPeople !== undefined && item.maxPeople !== undefined && item.maxPeople > 0 && (
-        <p className="banner-people">
+        <p className='banner-people'>
           已报名{item.currentPeople}/{item.maxPeople}人
         </p>
       )}
@@ -72,21 +83,14 @@ const Banner = () => {
 
   //+ 点击轮播项跳转对应详情页（note→笔记详情，guide→攻略详情，activity→活动详情）
   const handleItemClick = (item: SlideItem) => {
-    const routeMap: Record<string, string> = {
-      note: '/pages/NoteDetail/index',
-      guide: '/pages/GuideDetail/index',
-      activity: '/pages/ActivityDetail/index',
-    }
-    const path = routeMap[item.type]
-    if (path) {
-      Taro.navigateTo({ url: `${path}?id=${item.id}&type=${item.type}` })
-    }
+    const routeKey = TYPE_ROUTE_MAP[item.type]
+    routerNavigateTo(routeKey, { id: item.id, type: item.type })
   }
 
   if (slidesLoading) {
     return (
-      <div className="banner-container">
-        <div className="banner-loading">加载中...</div>
+      <div className='banner-container'>
+        <div className='banner-loading'>加载中...</div>
       </div>
     )
   }
@@ -96,13 +100,13 @@ const Banner = () => {
   }
 
   return (
-    <div className="banner-container">
+    <div className='banner-container'>
       <Swiper
-        className="banner-swiper"
+        className='banner-swiper'
         autoPlay={3000}
         loop
         indicator={
-          <Cell className="banner-indicator">
+          <Cell className='banner-indicator'>
             <ConfigProvider theme={indicatorTheme}>
               <Indicator total={slides.length} current={currentIndicatorIndex} />
             </ConfigProvider>
@@ -112,29 +116,28 @@ const Banner = () => {
           setCurrentIndicatorIndex(index)
         }}
       >
-        {slides.map((item,index) => (
-          <SwiperItem key={`${item.id}-${index}`} className="banner-item" onClick={() => handleItemClick(item)}>
-            <div className="banner-content">
-              <div className="banner-bg">
+        {slides.map((item, index) => (
+          <SwiperItem key={`${item.id}-${index}`} className='banner-item' onClick={() => handleItemClick(item)}>
+            <div className='banner-content'>
+              <div className='banner-bg'>
                 <img
-                  src={item.cover || 'http://192.168.10.7:89/logo.png'}
+                  src={item.cover || FALLBACK_COVER}
                   alt={item.title}
-                  className="banner-img"
+                  className='banner-img'
                   onError={(e) => {
                     //+ 后端返回的 cover 域名不可访问时，回退到本地占位图，避免控制台刷屏 ERR_NAME_NOT_RESOLVED
                     const target = e.currentTarget as HTMLImageElement
-                    const fallback = 'http://192.168.10.7:89/logo.png'
-                    if (target.src !== fallback) target.src = fallback
+                    if (target.src !== FALLBACK_COVER) target.src = FALLBACK_COVER
                   }}
                 />
               </div>
-              <div className="banner-overlay"></div>
-              <div className="banner-info">
-                <div className="top-info">
-                  <Tag tagName={item.tag||''} className="banner-tag" />
-                  <h3 className="banner-title">{item.title}</h3>
+              <div className='banner-overlay'></div>
+              <div className='banner-info'>
+                <div className='top-info'>
+                  <Tag tagName={item.tag || ''} className='banner-tag' />
+                  <h3 className='banner-title'>{item.title}</h3>
                 </div>
-                 {BottomInfo({item})}
+                <BottomInfo item={item} />
               </div>
             </div>
           </SwiperItem>

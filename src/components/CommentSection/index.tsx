@@ -84,7 +84,7 @@ function formatCommentTime(raw: string | number): string {
 
 // ==================== 主组件 ====================
 
-const CommentSection = (props: CommentSectionProps) => {
+function CommentSection(props: CommentSectionProps) {
   const {
     initData,
     hasMoreComments,
@@ -104,6 +104,9 @@ const CommentSection = (props: CommentSectionProps) => {
   //+ 正在通过 onLoadMoreReplies 拉取"更多"的 parent 集合
   //+ 用途：拉取期间 replies 会增加，但不应被算到 initialCount（避免拉取的"更多"无法被收起）
   const fetchingRepliesRef = useRef<Set<string>>(new Set())
+  //+ 记录每个 parentId 的初始 replies 数量（后端响应的热度子评论数）
+  //+ 用于区分"初始子评论"（永远显示）和"拉取的更多子评论"（可收起）
+  const initialRepliesCountRef = useRef<Map<string, number>>(new Map())
 
   //+ initData 变化时同步（fetch/loadMore/create/like/delete 后 store 更新 → 同步展示）
   //+ 同时检测：某条一级评论的 replies 数量增加（用户/其他人发二级评论）
@@ -134,9 +137,6 @@ const CommentSection = (props: CommentSectionProps) => {
   //+ 注意：后端响应的初始 replies（热度子评论）永远显示，不受 expandMap 控制
   //+       expandMap 只控制 onLoadMoreReplies 拉取的"更多"是否显示
   const [expandMap, setExpandMap] = useState<Record<string, boolean>>({})
-  //+ 记录每个 parentId 的初始 replies 数量（后端响应的热度子评论数）
-  //+ 用于区分"初始子评论"（永远显示）和"拉取的更多子评论"（可收起）
-  const initialRepliesCountRef = useRef<Map<string, number>>(new Map())
 
   //+ 二级评论加载更多状态：是否加载中 / 是否还有更多（按 parentId 隔离）
   const [repliesLoadingMap, setRepliesLoadingMap] = useState<Record<string, boolean>>({})
@@ -196,7 +196,7 @@ const CommentSection = (props: CommentSectionProps) => {
     setComments(prev => updateOne(prev, c.id, { isLiked: nextLiked, likeCount: nextCount }))
     try {
       await onToggleCommentLike?.(c.id, nextLiked)
-    } catch (e) {
+    } catch {
       //+ 后端失败 → 回滚（store 未更新，initData 不变，本地回滚生效）
       setComments(prev => updateOne(prev, c.id, { isLiked: !nextLiked, likeCount: c.likeCount }))
       Taro.showToast({ title: '点赞失败', icon: 'none' })
@@ -234,7 +234,7 @@ const CommentSection = (props: CommentSectionProps) => {
     Taro.showToast({ title: '删除成功', icon: 'none' })
     try {
       await onDeleteComment?.(id)
-    } catch (e) {
+    } catch {
       Taro.showToast({ title: '删除失败', icon: 'none' })
       //+ 回滚：store 未更新，真实项目此处建议重新拉取列表
     }
@@ -267,7 +267,7 @@ const CommentSection = (props: CommentSectionProps) => {
       try {
         const { hasMore } = await onLoadMoreReplies(parent.id)
         setRepliesHasMoreMap(prev => ({ ...prev, [parent.id]: hasMore }))
-      } catch (e) {
+      } catch {
         Taro.showToast({ title: '加载回复失败', icon: 'none' })
         fetchingRepliesRef.current.delete(parent.id)
         return  //+ 拉取失败不展开
@@ -297,7 +297,7 @@ const CommentSection = (props: CommentSectionProps) => {
       const { hasMore } = await onLoadMoreReplies(parentId)
       setRepliesHasMoreMap(prev => ({ ...prev, [parentId]: hasMore }))
       //+ 保持 expanded=true，新数据通过 initData 同步进来追加显示
-    } catch (e) {
+    } catch {
       Taro.showToast({ title: '加载回复失败', icon: 'none' })
     } finally {
       setRepliesLoadingMap(prev => ({ ...prev, [parentId]: false }))
@@ -310,7 +310,7 @@ const CommentSection = (props: CommentSectionProps) => {
     if (!onLoadMoreComments || loadingMore) return
     try {
       await onLoadMoreComments()
-    } catch (e) {
+    } catch {
       Taro.showToast({ title: '加载失败', icon: 'none' })
     }
   }, [onLoadMoreComments, loadingMore])
@@ -440,7 +440,7 @@ const CommentSection = (props: CommentSectionProps) => {
               //+ 收起状态：只显示 [展示更多]
               <span className='comment-expand-btn' onClick={() => handleExpand(parent)}>
                 {repliesLoading ? '加载中...' : '展示更多'}
-                {!repliesLoading && <ArrowDown className='comment-expand-icon'/>}
+                {!repliesLoading && <ArrowDown className='comment-expand-icon' />}
               </span>
             ) : (
               //+ 展开状态：[展示更多?] [收起] 并排，hasMoreReplies 时才显示左侧
@@ -451,11 +451,11 @@ const CommentSection = (props: CommentSectionProps) => {
                     onClick={() => handleLoadMoreReplies(parent.id)}
                   >
                     {repliesLoading ? '加载中...' : '展示更多'}
-                    {!repliesLoading && <ArrowDown className='comment-expand-icon'/>}
+                    {!repliesLoading && <ArrowDown className='comment-expand-icon' />}
                   </span>
                 )}
                 <span className='comment-expand-btn' onClick={() => toggleExpand(parent.id)}>
-                  收起<ArrowUp className='comment-expand-icon'/>
+                  收起<ArrowUp className='comment-expand-icon' />
                 </span>
               </>
             )}

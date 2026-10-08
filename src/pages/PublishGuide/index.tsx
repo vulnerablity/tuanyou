@@ -6,17 +6,18 @@ import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { Video } from '@tarojs/components'
-import { Button, TextArea, Input, Picker, Tabs } from '@nutui/nutui-react'
+import { Button, Input, Picker, Tabs } from '@nutui/nutui-react'
 import { IconFont } from '@nutui/icons-react'
 import HeaderNavBar from '@/components/HeaderNavBar'
 import RichEditor from '@/components/RichEditor'
 import { htmlToText, isHtmlEmpty } from '@/utils/html'
-import { createGuideAPI } from '@/apis/guide'
-import { uploadImagesAPI, uploadVideoAPI } from '@/apis/upload'
+import { createGuide } from '@/apis/guide'
+import { uploadImages, uploadVideo } from '@/apis/upload'
 import { fetchTags } from '@/store/modules/tag'
 import { CATEGORY_MAP } from '@/types'
 import type { RootState, AppDispatch } from '@/store'
 import { useAuthGuard } from '@/components/AuthRoute'
+import { routerNavigateBack, routerRedirectTo } from '@/router'
 import './index.less'
 
 //+ 最大图片数量（与笔记一致：1~5 张）
@@ -31,6 +32,9 @@ const MAX_CONTENT = 2000
 const MAX_ROUTE_DISTANCE = 30
 const MAX_ROUTE_DURATION = 30
 const MAX_ROUTE_TRANSPORT = 50
+
+//+ NutUI Picker onConfirm 第二参（选中值数组）结构类型，避免 any
+type PickerConfirmValue = (string | number | null)[]
 
 //+ 媒体类型：图片 或 视频（互斥）
 type MediaType = 'image' | 'video'
@@ -123,7 +127,7 @@ const PublishGuide = () => {
     setForm(prev => ({ ...prev, [field]: finalValue }))
   }
 
-  //+ 多图上传：选择图片 → uploadImagesAPI → 合并 URL
+  //+ 多图上传：选择图片 → uploadImages → 合并 URL
   const handleUploadImages = async () => {
     const remaining = MAX_IMAGES - form.images.length
     if (remaining <= 0) {
@@ -134,13 +138,13 @@ const PublishGuide = () => {
       const chooseRes = await Taro.chooseImage({ count: remaining, sizeType: ['compressed'] })
       const filePaths = chooseRes.tempFilePaths
       setUploading(true)
-      const res = await uploadImagesAPI(filePaths, 'note', MAX_IMAGES)
+      const res = await uploadImages(filePaths, 'note', MAX_IMAGES)
       let newUrls:string[]=[]
-      if(res.data.urls.length > remaining){
-        newUrls = res.data.urls.slice(0, remaining)
+      if(res.urls.length > remaining){
+        newUrls = res.urls.slice(0, remaining)
         Taro.showToast({ title: `最多上传${MAX_IMAGES}张图片`, icon: 'none' })
       }else{
-         newUrls = res.data.urls || []
+         newUrls = res.urls || []
       }
       if (newUrls.length > 0) {
         updateField('images', [...form.images, ...newUrls])
@@ -175,13 +179,9 @@ const PublishGuide = () => {
       })
       const filePath = chooseRes.tempFilePath
       setVideoUploading(true)
-      const res = await uploadVideoAPI(filePath, 'note')
-      if (res.code === 0 || res.code === 200) {
-        updateField('videoUrl', res.data.videoUrl)
-        setVideoCoverUrl(res.data.coverUrl)
-      } else {
-        Taro.showToast({ title: '视频上传失败', icon: 'none' })
-      }
+      const res = await uploadVideo(filePath, 'note')
+      updateField('videoUrl', res.videoUrl)
+      setVideoCoverUrl(res.coverUrl)
     } catch (err) {
       console.warn('[PublishGuide] 视频上传失败:', err)
       Taro.showToast({ title: '视频上传失败', icon: 'none' })
@@ -197,13 +197,13 @@ const PublishGuide = () => {
   }
 
   //+ 分类 Picker 确认
-  const handleCategoryConfirm = (_options: any, value: any[]) => {
+  const handleCategoryConfirm = (_options: unknown, value: PickerConfirmValue) => {
     updateField('category', Number(value[0]))
     setCategoryPickerVisible(false)
   }
 
   //+ 难度 Picker 确认
-  const handleDifficultyConfirm = (_options: any, value: any[]) => {
+  const handleDifficultyConfirm = (_options: unknown, value: PickerConfirmValue) => {
     updateField('difficulty', String(value[0] || ''))
     setDifficultyPickerVisible(false)
   }
@@ -281,7 +281,7 @@ const PublishGuide = () => {
       const submitImages: string[] =
         mediaType === 'video' ? (videoCoverUrl ? [videoCoverUrl] : []) : [...form.images]
 
-      const res = await createGuideAPI({
+      await createGuide({
         title: form.title.trim(),
         content: form.guideContent,
         images: submitImages,
@@ -294,85 +294,84 @@ const PublishGuide = () => {
         transport: form.transport.trim()
       })
 
-      if (res.code === 0 || res.code === 200) {
-        Taro.showToast({ title: '发布成功', icon: 'success' })
+      Taro.showToast({ title: '发布成功', icon: 'success' })
         setTimeout(() => {
           // 三级降级返回
           const pages = Taro.getCurrentPages()
           if (pages.length > 1) {
-            Taro.navigateBack({ delta: 1 }).catch(() => {
+            routerNavigateBack(1).catch(() => {
               if (typeof window !== 'undefined' && window.history.length > 1) {
                 window.history.back()
               } else {
-                Taro.redirectTo({ url: '/pages/Home/index' })
+                routerRedirectTo('HOME')
               }
             })
           } else {
             if (typeof window !== 'undefined' && window.history.length > 1) {
               window.history.back()
             } else {
-              Taro.redirectTo({ url: '/pages/Home/index' })
+              routerRedirectTo('HOME')
             }
           }
         }, 1500)
-      } else {
-        Taro.showToast({ title: res.message || '发布失败，请重试', icon: 'none' })
-      }
-    } catch (err: any) {
-      Taro.showToast({ title: err?.message || '发布失败，请重试', icon: 'none' })
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '发布失败，请重试'
+      Taro.showToast({ title: msg, icon: 'none' })
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="publish-guide-page">
-      <HeaderNavBar title="写攻略" backPageNum={1} fixed={false} cancel={true} />
+    <div className='publish-guide-page'>
+      <HeaderNavBar title='写攻略' backPageNum={1} fixed={false} cancel />
 
-      <div className="form-wrapper">
+      <div className='form-wrapper'>
         {/* 媒体类型切换：图片 / 视频（互斥） */}
         <Tabs
           value={activeTab}
           onChange={(v) => {
-            if (v === mediaType) {
-              setActiveTab(v as string)
+            const next = String(v)
+            if (next === mediaType) {
+              setActiveTab(next)
               return
             }
-            setMediaType(v as MediaType)
-            if (v === 'image') {
+            setMediaType(next as MediaType)
+            if (next === 'image') {
               updateField('videoUrl', '')
               setVideoCoverUrl('')
             } else {
               updateField('images', [])
             }
-            setActiveTab(v as string)
+            setActiveTab(next)
           }}
-          activeColor="#428a46"
-          className="media-type-switch"
+          activeColor='#428a46'
+          className='media-type-switch'
         >
-          <Tabs.TabPane title="图片" value={'image'} />
-          <Tabs.TabPane title="视频" value={'video'} />
+          <Tabs.TabPane title='图片' value='image' />
+          <Tabs.TabPane title='视频' value='video' />
         </Tabs>
 
         {/* 图片上传区（图片模式） */}
         {mediaType === 'image' && (
-          <div className="images-section">
-            <div className="section-label">
+          <div className='images-section'>
+            <div className='section-label'>
               添加图片（{form.images.length}/{MAX_IMAGES}）
             </div>
-            <div className="image-grid">
+            <div className='image-grid'>
               {form.images.map((url, index) => (
-                <div key={index} className="image-item">
+                <div key={index} className='image-item'>
                   <img src={url} alt={`图片${index + 1}`} />
-                  <div className="image-remove" onClick={() => handleRemoveImage(index)}>×</div>
+                  <div className='image-remove' onClick={() => handleRemoveImage(index)}>×</div>
                 </div>
               ))}
               {form.images.length < MAX_IMAGES && (
-                <div className="image-add" onClick={handleUploadImages}>
+                <div className='image-add' onClick={handleUploadImages}>
                   {uploading ? (
-                    <span className="uploading-text">上传中...</span>
+                    <span className='uploading-text'>上传中...</span>
                   ) : (
-                    <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
+                    <IconFont name='xiangji' fontClassName='iconfont' classPrefix='icon' />
                   )}
                 </div>
               )}
@@ -382,22 +381,22 @@ const PublishGuide = () => {
 
         {/* 视频上传区（视频模式） */}
         {mediaType === 'video' && (
-          <div className="video-section">
-            <div className="section-label">
+          <div className='video-section'>
+            <div className='section-label'>
               添加视频（{form.videoUrl ? 1 : 0}/1）
             </div>
-            <div className="video-grid">
+            <div className='video-grid'>
               {form.videoUrl ? (
-                <div className="video-item">
-                  <Video src={form.videoUrl} className="video-preview" controls muted />
-                  <div className="image-remove" onClick={handleRemoveVideo}>×</div>
+                <div className='video-item'>
+                  <Video src={form.videoUrl} className='video-preview' controls muted />
+                  <div className='image-remove' onClick={handleRemoveVideo}>×</div>
                 </div>
               ) : (
-                <div className="video-add" onClick={handleUploadVideo}>
+                <div className='video-add' onClick={handleUploadVideo}>
                   {videoUploading ? (
-                    <span className="uploading-text">上传中...</span>
+                    <span className='uploading-text'>上传中...</span>
                   ) : (
-                    <IconFont name="xiangji" fontClassName="iconfont" classPrefix="icon" />
+                    <IconFont name='xiangji' fontClassName='iconfont' classPrefix='icon' />
                   )}
                 </div>
               )}
@@ -406,28 +405,28 @@ const PublishGuide = () => {
         )}
 
         {/* 标题 */}
-        <div className="field-section">
-          <div className="field-label">标题</div>
+        <div className='field-section'>
+          <div className='field-label'>标题</div>
           <Input
-            className="field-input"
-            type="text"
-            placeholder="给你的攻略起个名字"
+            className='field-input'
+            type='text'
+            placeholder='给你的攻略起个名字'
             value={form.title}
             maxLength={MAX_TITLE}
             onChange={(v) => updateField('title', v)}
           />
-          <span className="field-count">{form.title.length}/{MAX_TITLE}</span>
+          <span className='field-count'>{form.title.length}/{MAX_TITLE}</span>
         </div>
 
         {/* 分类 - NutUI Picker */}
-        <div className="field-section" onClick={() => setCategoryPickerVisible(true)}>
-          <div className="field-label">分类</div>
+        <div className='field-section' onClick={() => setCategoryPickerVisible(true)}>
+          <div className='field-label'>分类</div>
           <div className={`field-picker-display ${!form.category ? 'placeholder' : ''}`}>
             {form.category ? CATEGORY_MAP[form.category] : '选择分类'}
           </div>
           <Picker
             visible={categoryPickerVisible}
-            title="选择分类"
+            title='选择分类'
             options={CATEGORY_OPTIONS}
             value={form.category ? [String(form.category)] : [String(CATEGORY_OPTIONS[0][0].value)]}
             onConfirm={handleCategoryConfirm}
@@ -438,41 +437,41 @@ const PublishGuide = () => {
 
         {/* 路线信息（攻略专属，4 行：距离/时长/难度/交通，与 field-section 风格一致，无背景） */}
         <div style={{ padding: '0.6rem 1.5rem 0' }}>
-          <div className="section-label">路线信息</div>
+          <div className='section-label'>路线信息</div>
         </div>
         {/* 距离 */}
-        <div className="field-section">
-          <div className="field-label">距离</div>
+        <div className='field-section'>
+          <div className='field-label'>距离</div>
           <Input
-            className="field-input"
-            type="text"
-            placeholder="例如：20km"
+            className='field-input'
+            type='text'
+            placeholder='例如：20km'
             maxLength={MAX_ROUTE_DISTANCE}
             value={form.distance}
             onChange={(v) => updateField('distance', v)}
           />
         </div>
         {/* 时长 */}
-        <div className="field-section">
-          <div className="field-label">时长</div>
+        <div className='field-section'>
+          <div className='field-label'>时长</div>
           <Input
-            className="field-input"
-            type="text"
-            placeholder="例如：6小时 / 2天1夜"
+            className='field-input'
+            type='text'
+            placeholder='例如：6小时 / 2天1夜'
             maxLength={MAX_ROUTE_DURATION}
             value={form.duration}
             onChange={(v) => updateField('duration', v)}
           />
         </div>
         {/* 难度：NutUI Picker */}
-        <div className="field-section" onClick={() => setDifficultyPickerVisible(true)}>
-          <div className="field-label">难度</div>
+        <div className='field-section' onClick={() => setDifficultyPickerVisible(true)}>
+          <div className='field-label'>难度</div>
           <div className={`field-picker-display ${!form.difficulty ? 'placeholder' : ''}`}>
             {form.difficulty || '选择难度'}
           </div>
           <Picker
             visible={difficultyPickerVisible}
-            title="选择难度"
+            title='选择难度'
             options={DIFFICULTY_OPTIONS}
             value={form.difficulty ? [form.difficulty] : [String(DIFFICULTY_OPTIONS[0][0].value)]}
             onConfirm={handleDifficultyConfirm}
@@ -481,12 +480,12 @@ const PublishGuide = () => {
           />
         </div>
         {/* 交通 */}
-        <div className="field-section">
-          <div className="field-label">交通</div>
+        <div className='field-section'>
+          <div className='field-label'>交通</div>
           <Input
-            className="field-input"
-            type="text"
-            placeholder="例如：高铁至XX站，包车至起点"
+            className='field-input'
+            type='text'
+            placeholder='例如：高铁至XX站，包车至起点'
             maxLength={MAX_ROUTE_TRANSPORT}
             value={form.transport}
             onChange={(v) => updateField('transport', v)}
@@ -494,42 +493,42 @@ const PublishGuide = () => {
         </div>
 
         {/* 攻略正文（所见即所得富文本） */}
-        <div className="field-section content column guide-section">
-          <div className="field-label guide-title">
+        <div className='field-section content column guide-section'>
+          <div className='field-label guide-title'>
             攻略内容
           </div>
           <RichEditor
             value={form.guideContent}
             onChange={(v) => updateField('guideContent', v)}
             maxLength={MAX_CONTENT}
-            minHeight="400px"
+            minHeight='400px'
           />
         </div>
 
         {/* 标签 */}
-        <div className="field-section column">
-          <div className="section-label">
+        <div className='field-section column'>
+          <div className='section-label'>
             添加标签（{form.tags.length}/{MAX_TAGS}）
           </div>
-          <div className="tag-list">
+          <div className='tag-list'>
             {tagLoading && tagOptions.length === 0 ? (
-              <span className="tag-loading">加载标签中...</span>
+              <span className='tag-loading'>加载标签中...</span>
             ) : tagOptions.map(tag => (
               <span
                 key={tag}
                 className={`tag ${form.tags.includes(tag) ? 'tag-active' : ''}`}
                 onClick={() => handleTagToggle(tag)}
               >
-                <span className="tag-icon">#</span>{tag}
+                <span className='tag-icon'>#</span>{tag}
               </span>
             ))}
           </div>
         </div>
 
         {/* 底部固定提交按钮 */}
-        <div className="submit-bar">
+        <div className='submit-bar'>
           <Button
-            type="primary"
+            type='primary'
             block
             loading={submitting}
             disabled={submitting}

@@ -1,6 +1,7 @@
 //+ 标签模块Mock数据和路由
 //+ 对应后端 /common/tags 接口（发布笔记/攻略时供用户选择标签）
 import { successResponse } from './utils'
+import type { MockHandler } from './utils'
 
 //+ 标签列表（与 PublishNote 原硬编码 ALL_TAGS 保持一致，确保选中态文案无变化）
 export const mockTags = [
@@ -44,7 +45,7 @@ export const mockTags = [
 ]
 
 //+ 标签Mock路由
-export const tagMockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const tagMockRoutes: Record<string, MockHandler> = {
   //+ 获取标签列表
   'GET /api/v1/common/tags': () => successResponse(mockTags)
 }

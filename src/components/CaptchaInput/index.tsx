@@ -26,15 +26,15 @@ const CaptchaInput = ({
   onRefresh,
 }: CaptchaInputProps) => {
   return (
-    <div className="auth-form-item auth-form-item-captcha">
+    <div className='auth-form-item auth-form-item-captcha'>
       {/* 验证码输入框：受控，值由父组件管理 */}
       <Input
         value={value}
         onChange={onChange}
-        placeholder="请输入图形验证码"
-        type="text"
+        placeholder='请输入图形验证码'
+        type='text'
         maxLength={6}
-        className="auth-input auth-input-captcha"
+        className='auth-input auth-input-captcha'
       />
       {/* 验证码图片区域：点击刷新；loading 时显示占位文案 */}
       <div
@@ -42,11 +42,11 @@ const CaptchaInput = ({
         onClick={onRefresh}
       >
         {loading ? (
-          <span className="captcha-loading-text">加载中...</span>
+          <span className='captcha-loading-text'>加载中...</span>
         ) : captchaImage ? (
-          <img src={captchaImage} alt="点击刷新验证码" className="captcha-img" />
+          <img src={captchaImage} alt='点击刷新验证码' className='captcha-img' />
         ) : (
-          <span className="captcha-loading-text">点击获取</span>
+          <span className='captcha-loading-text'>点击获取</span>
         )}
       </div>
     </div>

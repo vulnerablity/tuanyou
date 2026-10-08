@@ -4,7 +4,7 @@
 //+ 调用方通过 ref/captchaId 读取最新 captcha_id，在提交时回传后端
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Taro from '@tarojs/taro'
-import { getCaptchaAPI } from '@/apis/user'
+import { getCaptcha } from '@/apis/user'
 import type { CaptchaInfo } from '@/apis/user'
 
 export const useCaptcha = (autoFetch = true) => {
@@ -25,15 +25,15 @@ export const useCaptcha = (autoFetch = true) => {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await getCaptchaAPI()
-      const info: CaptchaInfo = res.data
+      const info: CaptchaInfo = await getCaptcha()
       setCaptchaImage(info.captcha_image)
       setCaptchaId(info.captcha_id)
       captchaIdRef.current = info.captcha_id
       return info
-    } catch (err: any) {
+    } catch (err) {
       //+ 不抛错给调用方，由 hook 内部统一 Toast
-      Taro.showToast({ title: err?.message || '获取验证码失败', icon: 'none' })
+      const msg = err instanceof Error ? err.message : '获取验证码失败'
+      Taro.showToast({ title: msg, icon: 'none' })
       return null
     } finally {
       setLoading(false)

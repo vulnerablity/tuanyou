@@ -1,10 +1,11 @@
 //+ 搜索模块Mock数据和路由（对接真实后端接口）
 //+ 热门搜索：GET /hot-searches
 //+ 全量搜索：GET /search，通过 type=content/activity 区分内容和活动
-import { createPageResponse, successResponse } from './utils'
+import type { FeedItem, ActivityListItem } from '@/types'
+import { createPageResponse, successResponse, toNumber } from './utils'
+import type { MockHandler, MockData } from './utils'
 import { mockFeed } from './home'
 import { mockActivities } from './activity'
-import type { FeedItem, ActivityListItem } from '@/types'
 
 //+ 热门搜索关键词
 export const mockHotKeywords = [
@@ -34,18 +35,18 @@ function filterActivitiesByKeyword(keyword: string): ActivityListItem[] {
 }
 
 //+ Mock路由映射：搜索模块（与真实后端接口对齐）
-export const searchMockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const searchMockRoutes: Record<string, MockHandler> = {
   //+ 全量搜索热度关键词
   //+ GET /hot-searches → data: string[]
   'GET /api/v1/hot-searches': () => successResponse(mockHotKeywords),
 
   //+ 全量搜索（统一接口，通过 type 区分内容/活动）
   //+ GET /search?keyword=xxx&type=content|activity&page=1&size=10
-  'GET /api/v1/search': (data) => {
-    const keyword = data?.keyword || ''
-    const type = data?.type || 'content'
-    const page = Number(data?.page) || 1
-    const size = Number(data?.size) || 10
+  'GET /api/v1/search': (data?: MockData) => {
+    const keyword = String(data?.keyword || '')
+    const type = String(data?.type || 'content')
+    const page = toNumber(data?.page, 1)
+    const size = toNumber(data?.size, 10)
 
     if (type === 'activity') {
       //+ 搜索活动

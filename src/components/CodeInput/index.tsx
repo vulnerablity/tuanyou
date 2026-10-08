@@ -24,15 +24,15 @@ const CodeInput = ({
   onSendCode,
 }: CodeInputProps) => {
   return (
-    <div className="auth-form-item auth-form-item-code">
+    <div className='auth-form-item auth-form-item-code'>
       {/* 验证码输入框：受控，值由父组件管理 */}
       <Input
         value={value}
         onChange={onChange}
-        placeholder="请输入验证码"
-        type="number"
+        placeholder='请输入验证码'
+        type='number'
         maxLength={6}
-        className="auth-input auth-input-code"
+        className='auth-input auth-input-code'
       />
       {/* 发送验证码按钮：绝对定位在输入框右侧（样式由各页面 less 控制） */}
       <div

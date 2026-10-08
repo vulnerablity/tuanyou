@@ -39,7 +39,10 @@ export const useSendCode = (scene: Scene) => {
       //+ 倒计时进行中不允许重复发送
       if (codeCountdown > 0) return
 
-      const result: any = await dispatch(fetchSendCode({ phone, scene }))
+      const result = (await dispatch(fetchSendCode({ phone, scene }))) as {
+        type: string
+        payload?: string
+      }
 
       if (result.type === 'user/fetchSendCode/fulfilled') {
         setCodeSent(true)

@@ -10,12 +10,24 @@ import UserCardModal from '@/components/UserCardModal'
 import { usePagedList } from '@/hooks/usePagedList'
 import { useToggleAction } from '@/hooks/useToggleAction'
 import { fetchFansList } from '@/store/modules/profile'
-import { toggleProfileFollowAPI } from '@/apis/profile'
+import { toggleFollow } from '@/apis/profile'
 import type { FanItem, UserPublic, PageResult } from '@/types'
 import type { AppDispatch } from '@/store'
 import { useAuthGuard } from '@/components/AuthRoute'
 //+ 复用 FollowList 的样式
 import '../FollowList/index.less'
+
+//+ 每页条数
+const PAGE_SIZE = 10
+
+//+ 失败时返回的空分页（rejected 动作无 payload；list 类型与 usePagedList 项类型一致）
+const emptyPageResult = <T,>(page: number, size: number): PageResult<T> => ({
+  list: [],
+  total: 0,
+  page,
+  size,
+  total_page: 0
+})
 
 //+ FanItem → UserPublic 转换（统一渲染使用 UserPublic）
 const toUserPublic = (item: FanItem): UserPublic => ({
@@ -40,13 +52,15 @@ const FollowerList = () => {
 
   //+ 统一分页 Hook（不自动 immediate，因为 useDidShow 触发第一页）
   const paged = usePagedList<UserPublic>({
-    size: 10,
+    size: PAGE_SIZE,
     fetcher: useCallback(
       async ({ page, size }) => {
         const action = await dispatch(fetchFansList({ page, size }))
         //+ 兼容 createAsyncThunk：成功则 payload 为 PageResult
-        const payload: PageResult<FanItem> | undefined = (action as any)?.payload
-        if (!payload) return { code: -1, message: '加载失败', data: { list: [], total: 0, page, size, total_page: 0 } }
+        if (!fetchFansList.fulfilled.match(action)) {
+          return { code: -1, message: '加载失败', data: emptyPageResult<UserPublic>(page, size) }
+        }
+        const payload = action.payload
         return {
           code: 0,
           data: {
@@ -64,7 +78,7 @@ const FollowerList = () => {
 
   //+ Toggle 操作通用 Hook：请求锁 + AbortController + 800ms 冷却 + loading 状态
   const { toggle, isLoading } = useToggleAction({
-    apiFn: useCallback((id: string, signal: AbortSignal) => toggleProfileFollowAPI(id, signal), [])
+    apiFn: useCallback((id: string, signal: AbortSignal) => toggleFollow(id, signal), [])
   })
 
   //+ 每次页面显示时加载第一页（实时）

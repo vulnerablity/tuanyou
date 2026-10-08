@@ -1,6 +1,37 @@
 //+ 笔记/攻略模块Mock数据和路由
-import { randomInt, randomItem, randomDate, createPageResponse, successResponse, errorResponse } from './utils'
+import type { Comment, Post } from '@/types'
+import { randomInt, randomItem, randomDate, createPageResponse, successResponse, errorResponse, toNumber } from './utils'
+import type { MockHandler, MockData } from './utils'
 import { mockUsers } from './user'
+
+//+ 评论原始模板形状（前端 Comment 形状；可缺 replyToName/canDelete，由 normalizeRawComment 补齐）
+type RawComment = {
+  id: string
+  member: { id: string; nickname: string; avatar: string }
+  content: string
+  likeCount: number
+  isLiked: boolean
+  replyToId: string | null
+  createdAt: string
+  replies?: RawComment[]
+}
+
+//+ 原始评论模板 → 真实 Comment 实体（补齐 canDelete/replyToName，递归处理二级回复）
+function normalizeRawComment(c: RawComment): Comment {
+  return {
+    id: c.id,
+    member: c.member,
+    content: c.content,
+    likeCount: c.likeCount,
+    isLiked: c.isLiked,
+    replyToId: c.replyToId,
+    replyToName: null,
+    createdAt: c.createdAt,
+    canDelete: false,
+    replyCount: c.replies?.length,
+    replies: c.replies && c.replies.length ? c.replies.map(normalizeRawComment) : undefined
+  }
+}
 
 //+ 分类列表（名称→ID映射）
 const CATEGORY_ID_MAP: Record<string, number> = {
@@ -62,8 +93,8 @@ const routeInfos = [
   { distance: '12km', duration: '1天', difficulty: '中等', transport: '自驾' }
 ]
 
-//+ 笔记详情模板
-export const mockNoteDetailPost: Record<string, any> = {
+//+ 笔记详情模板（真实 Post 实体）
+export const mockNoteDetailPost: Post = {
   
   "id": "1",
   "type": "note",
@@ -97,8 +128,8 @@ export const mockNoteDetailPost: Record<string, any> = {
 
 }
 
-//+ 笔记评论列表模板
-export const mockNoteCommentsPost: Record<string, any>[] =[
+//+ 笔记评论列表原始模板（前端 Comment 形状；缺省字段由 normalizeRawComment 补齐）
+const rawNoteComments: RawComment[] =[
     {
       "id": "1",
       "member": {
@@ -530,6 +561,9 @@ export const mockNoteCommentsPost: Record<string, any>[] =[
     }
   ]
 
+//+ 笔记评论列表（真实 Comment 实体，对外导出名保持不变）
+export const mockNoteCommentsPost: Comment[] = rawNoteComments.map(normalizeRawComment)
+
 
 //+ 生成笔记或攻略
 function generatePost(id: number, member: typeof mockUsers[0], isGuide: boolean) {
@@ -598,7 +632,7 @@ function generatePost(id: number, member: typeof mockUsers[0], isGuide: boolean)
 
 //+ 生成所有笔记和攻略数据
 let postId = 1
-export const mockPosts: ReturnType<typeof generatePost>[] = []
+export const mockPosts: Post[] = []
 
 //+ 共享自增ID（供攻略模块 mock 复用，避免跨模块修改 let 导出）
 export function getNextPostId() {
@@ -621,20 +655,20 @@ mockUsers.forEach(member => {
 })
 
 //+ Mock路由映射：笔记模块
-export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> = {
+export const noteMockRoutes: Record<string, MockHandler> = {
   //+ 获取笔记/攻略列表（瀑布流）
 
-  'GET /api/v1/notes': (data) => {
-    const page = data?.page || 1
-    const size = data?.size || 10
+  'GET /api/v1/notes': (data?: MockData) => {
+    const page = toNumber(data?.page, 1)
+    const size = toNumber(data?.size, 10)
     
     //+ 使用动态生成的mockPosts数据
     let filteredPosts = [...mockPosts]
     
     //+ 根据分类筛选
     const category = data?.category
-    if (category && category !== '全部') {
-      const categoryId = Number(category)
+    if (category !== undefined && category !== null && category !== '全部' && category !== '') {
+      const categoryId = toNumber(category, NaN)
       if (!Number.isNaN(categoryId)) {
         filteredPosts = filteredPosts.filter(n => n.category === categoryId)
       }
@@ -645,7 +679,7 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
     if (type && type !== '全部') {
       if (type === '视频') {
         //+ 视频筛选：有videoUrl的笔记
-        filteredPosts = filteredPosts.filter(n => n.videoUrl)
+        filteredPosts = filteredPosts.filter(n => !!n.videoUrl)
       } else {
         filteredPosts = filteredPosts.filter(n => n.type === type)
       }
@@ -663,21 +697,20 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
   },
 
   //+ 获取笔记详情
-  'GET /api/v1/notes/:id': (_, url) => {
-    const id = (url as string).split('/').pop() || '1'
+  'GET /api/v1/notes/:id': () => {
     const mockNote = mockNoteDetailPost
     if (mockNote) {
-      console.log("成功获取笔记详情",mockNote)
+
       return successResponse(mockNote)
     }
-    console.log("笔记不存在",id)
+
     return errorResponse('笔记不存在')
   },
 
   //+ 发布笔记
-  'POST /api/v1/notes': (data) => {
+  'POST /api/v1/notes': (data?: MockData) => {
     const authorUser = mockUsers[0]
-    const newPost = {
+    const newPost: Post = {
       id: String(postId++),
       type: 'note' as const,
       author: {
@@ -685,11 +718,11 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
         nickname: authorUser.nickname,
         avatar: authorUser.avatar
       },
-      title: data?.title || '新笔记',
-      coverImg: data?.images?.[0] || '',
-      images: data?.images || [],
-      videoUrl: data?.videoUrl || '',
-      content: data?.content || '',
+      title: String(data?.title || '新笔记'),
+      coverImg: (Array.isArray(data?.images) ? (data!.images as string[])[0] : '') || '',
+      images: Array.isArray(data?.images) ? (data!.images as string[]) : [],
+      videoUrl: String(data?.videoUrl || ''),
+      content: String(data?.content || ''),
       viewCount: 0,
       likeCount: 0,
       collectCount: 0,
@@ -697,20 +730,20 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
       isLiked: false,
       isFavorited: false,
       isFollowed: false,
-      category: data?.category || 1,
-      tags: data?.tags || [],
+      category: toNumber(data?.category, 1),
+      tags: Array.isArray(data?.tags) ? (data!.tags as string[]) : [],
       status: 1,
       publishTime: randomDate(0),
-      routeInfo: null as any,
+      routeInfo: undefined,
       isOwner: true
     }
-    mockPosts.unshift(newPost as any)
+    mockPosts.unshift(newPost)
     return successResponse(newPost)
   },
 
   //+ 笔记点赞/取消点赞
   'POST /api/v1/notes/:id/like': (_, url) => {
-    const id = (url as string).split('/')[2] || '1'
+    const id = (url || '').split('/')[2] || '1'
     const note = mockPosts.find(n => n.id === id)
     if (note) {
       note.isLiked = !note.isLiked
@@ -725,7 +758,7 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
 
   //+ 笔记收藏/取消收藏
   'POST /api/v1/notes/:id/favorite': (_, url) => {
-    const id = (url as string).split('/')[2] || '1'
+    const id = (url || '').split('/')[2] || '1'
     const note = mockPosts.find(n => n.id === id)
     if (note) {
       note.isFavorited = !note.isFavorited
@@ -739,7 +772,7 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
 
   //+ 获取笔记评论列表
   'GET /api/v1/notes/:id/comments': (_, url) => {
-    const id = (url as string).split('/').pop() || '1'
+    const id = (url || '').split('/').pop() || '1'
     const mockNote = mockPosts.find(n => n.id === id)
     if (mockNote) {
       return successResponse(mockNoteCommentsPost)
@@ -750,7 +783,7 @@ export const noteMockRoutes: Record<string, (data?: any, url?: string) => any> =
   //+ 删除笔记
   'DELETE /api/v1/notes/:id': (_, url) => {
     //+ URL 格式 /api/v1/notes/{id}，从路径第4段取 id
-    const id = (url as string).split('/')[4] || '1'
+    const id = (url || '').split('/')[4] || '1'
     const idx = mockPosts.findIndex(n => n.id === id)
     if (idx >= 0) {
       mockPosts.splice(idx, 1)

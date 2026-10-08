@@ -2,13 +2,13 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { setToken, clearToken } from '@/utils/token'
 import {
-  loginAPI,
-  getMemberInfoAPI,
-  registerAPI,
-  sendCodeAPI,
-  resetPasswordAPI,
-  logoutAPI,
-  toggleFollowAPI
+  login,
+  getMemberInfo,
+  register,
+  sendCode,
+  resetPassword,
+  logout as logoutApi,
+  toggleFollow as toggleFollowApi
 } from '@/apis/user'
 import type { User } from '@/types'
 
@@ -32,7 +32,6 @@ const initialState: UserState = {
   loading: false,
   error: null,
   followLoadingMap: {}
-  
 }
 
 //+ 发送验证码异步Action
@@ -42,23 +41,14 @@ export const fetchSendCode = createAsyncThunk(
   async (params: {
     phone: string
     scene: 'register' | 'login' | 'reset-pwd' | 'change-phone' | 'cancel-account'
-  }, { rejectWithValue }) => {
-    try {
-      const res = await sendCodeAPI(params)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '发送验证码失败')
-      }
-    } catch (error: any) {
-      //+ 响应拦截器透传的 ResponseData 或 Error
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  }) => {
+    return await sendCode(params)
   }
 )
 
 //+ 登录异步Action（支持密码登录和验证码登录）
-//+ 密码登录：需带 captchaId + captchaCode（图形验证码）；验证码登录：仅带短信 code
+//+ 密码登录：需带 captcha_id + captcha（图形验证码）；验证码登录：仅带短信 code
+//+ 成功后写入 token（业务错误由请求层抛 ApiError，action.error.message 携带提示）
 export const fetchLogin = createAsyncThunk(
   'user/fetchLogin',
   async (params: {
@@ -68,80 +58,42 @@ export const fetchLogin = createAsyncThunk(
     type?: 'password' | 'code'
     captcha_id?: string
     captcha?: string
-  }, { rejectWithValue }) => {
-    try {
-      const res = await loginAPI(params)
-
-      if (res.code === 0 || res.code === 200) {
-        //+ 响应字段 member（与API文档一致）
-        if (res.data.token) {
-          setToken(res.data.token)
-        }
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '登录失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
+  }) => {
+    const data = await login(params)
+    if (data.token) {
+      setToken(data.token)
     }
+    return data
   }
 )
 
 //+ 注册异步Action（新增 code + confirmPassword）
 export const fetchRegister = createAsyncThunk(
   'user/fetchRegister',
-  async (params: { phone: string; code: string; nickname: string; password: string; confirmPassword: string }, { rejectWithValue }) => {
-    try {
-      const res = await registerAPI(params)
-      if (res.code === 0 || res.code === 200) {
-        //+ 响应字段 member（与API文档一致）
-        if (res.data.token) {
-          setToken(res.data.token)
-        }
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '注册失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
+  async (params: { phone: string; code: string; nickname: string; password: string; confirmPassword: string }) => {
+    const data = await register(params)
+    if (data.token) {
+      setToken(data.token)
     }
+    return data
   }
 )
 
 //+ 重置密码异步Action
 export const fetchResetPassword = createAsyncThunk(
   'user/fetchResetPassword',
-  async (params: { phone: string; code: string; newPassword: string; confirmPassword: string }, { rejectWithValue }) => {
-    try {
-      const res = await resetPasswordAPI(params)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '重置密码失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (params: { phone: string; code: string; newPassword: string; confirmPassword: string }) => {
+    return await resetPassword(params)
   }
 )
 
 //+ 获取用户信息异步Action
 export const getUserInfo = createAsyncThunk(
   'user/getUserInfo',
-  async (_, { rejectWithValue }) => {
-    try {
-      //+ /user/profile 接口不存在，改用通用接口 /member/info 获取最新用户基础信息
-      //+ /member/info 返回 { id, nickname, avatar, role }，用于刷新全局 userInfo 的头像/昵称
-      const res = await getMemberInfoAPI()
-
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取用户信息失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async () => {
+    //+ /user/profile 接口不存在，改用通用接口 /member/info 获取最新用户基础信息
+    //+ /member/info 返回 { id, nickname, avatar, role }，用于刷新全局 userInfo 的头像/昵称
+    return await getMemberInfo()
   }
 )
 
@@ -149,36 +101,19 @@ export const getUserInfo = createAsyncThunk(
 //+ 无论成功/失败都清理本地状态（Settings 页统一跳转登录）
 export const fetchLogout = createAsyncThunk(
   'user/fetchLogout',
-  async (_, { rejectWithValue }) => {
-    try {
-      const res = await logoutAPI()
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '退出登录失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async () => {
+    return await logoutApi()
   }
 )
 
 //+ Q8：关注/取消关注（详情页作者关注按钮）
-//+ Pending 置 loading 防重复点击，Rejected 清理，Fulfilled 返回 isFollowed 给页面手动 patch（关注状态分散在各目标详情页/列表中）
+//+ Pending 置 loading 防重复点击，Rejected 清理，Fulfilled 返回 { userId, ...data } 给页面手动 patch
+//+ （关注状态分散在各目标详情页/列表中）；data 为 ToggleFollowResult
 export const toggleFollow = createAsyncThunk(
   'user/toggleFollow',
-  async (userId: string, { rejectWithValue, signal }) => {
-    try {
-      const res = await toggleFollowAPI(userId, signal)
-      if (res.code === 0 || res.code === 200) {
-        return { userId, ...(res.data || {}) }
-      } else {
-        return rejectWithValue(res.message || '操作失败')
-      }
-    } catch (error: any) {
-      if (error?.name === 'AbortError') return rejectWithValue('aborted')
-      return rejectWithValue(error?.message || '网络错误')
-    }
+  async (userId: string, { signal }) => {
+    const data = await toggleFollowApi(userId, signal)
+    return { userId, ...data }
   }
 )
 
@@ -214,7 +149,7 @@ const userSlice = createSlice({
       })
       .addCase(fetchSendCode.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ 登录
       .addCase(fetchLogin.pending, (state) => {
@@ -225,27 +160,25 @@ const userSlice = createSlice({
         state.loading = false
         state.isLoggedIn = true
         //+ 响应中的 member 字段映射到 userInfo（补齐完整 User 类型缺失字段）
-        //+ 登录返回的 member 为精简结构 {id, nickname, phone, avatar}，其余字段用默认值补齐
+        //+ 登录返回的 member 为精简结构 {id, nickname, phone, avatar, role}，其余字段用默认值补齐
         //+ 保证 SearchBar 头像立即可用 member.avatar，无需等待 getUserInfo() 返回
-        const raw = action.payload.member || action.payload.user || null
-        state.userInfo = raw
-          ? ({
-              id: raw.id ?? '',
-              phone: raw.phone ?? '',
-              nickname: raw.nickname ?? '',
-              avatar: raw.avatar ?? '',
-              bio: raw.bio ?? '',
-              bgImg: raw.bgImg ?? '',
-              memberType: raw.memberType ?? 1,
-              publishCount: raw.publishCount ?? 0,
-              followCount: raw.followCount ?? 0,
-              fansCount: raw.fansCount ?? 0,
-            } as UserInfo)
-          : null
+        const member = action.payload.member
+        state.userInfo = {
+          id: member.id,
+          phone: member.phone,
+          nickname: member.nickname,
+          avatar: member.avatar,
+          bio: '',
+          bgImg: '',
+          memberType: 1,
+          publishCount: 0,
+          followCount: 0,
+          fansCount: 0,
+        }
       })
       .addCase(fetchLogin.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ 注册
       .addCase(fetchRegister.pending, (state) => {
@@ -256,26 +189,24 @@ const userSlice = createSlice({
         state.loading = false
         state.isLoggedIn = true
         //+ 响应中的 member 字段映射到 userInfo（补齐完整 User 类型缺失字段，与登录逻辑一致）
-        //+ 注册返回的 member 为精简结构 {id, nickname, phone, avatar?}，其余字段用默认值补齐
-        const raw = action.payload.member || action.payload.user || null
-        state.userInfo = raw
-          ? ({
-              id: raw.id ?? '',
-              phone: raw.phone ?? '',
-              nickname: raw.nickname ?? '',
-              avatar: raw.avatar ?? '',
-              bio: raw.bio ?? '',
-              bgImg: raw.bgImg ?? '',
-              memberType: raw.memberType ?? 1,
-              publishCount: raw.publishCount ?? 0,
-              followCount: raw.followCount ?? 0,
-              fansCount: raw.fansCount ?? 0,
-            } as UserInfo)
-          : null
+        //+ 注册返回的 member 为精简结构 {id, nickname, phone, avatar?, role}，其余字段用默认值补齐
+        const member = action.payload.member
+        state.userInfo = {
+          id: member.id,
+          phone: member.phone,
+          nickname: member.nickname,
+          avatar: member.avatar,
+          bio: '',
+          bgImg: '',
+          memberType: 1,
+          publishCount: 0,
+          followCount: 0,
+          fansCount: 0,
+        }
       })
       .addCase(fetchRegister.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ 重置密码
       .addCase(fetchResetPassword.pending, (state) => {
@@ -287,7 +218,7 @@ const userSlice = createSlice({
       })
       .addCase(fetchResetPassword.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ 获取用户信息
       .addCase(getUserInfo.pending, (state) => {
@@ -312,12 +243,12 @@ const userSlice = createSlice({
           publishCount: state.userInfo?.publishCount ?? 0,
           followCount: state.userInfo?.followCount ?? 0,
           fansCount: state.userInfo?.fansCount ?? 0,
-        } as UserInfo
+        }
         state.isLoggedIn = true
       })
       .addCase(getUserInfo.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ 退出登录：无论成功/失败都清理本地状态（token + userInfo）
       .addCase(fetchLogout.fulfilled, (state) => {

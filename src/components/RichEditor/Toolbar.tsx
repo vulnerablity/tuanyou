@@ -8,7 +8,6 @@
  *                 且 click 阶段 focus 编辑区 + 恢复 touchstart 保存的选区
  *   - 所有场景的命令统一走 onClick 执行，避免遗漏
  */
-import React from 'react'
 import Taro from '@tarojs/taro'
 
 export type RichCommand =
@@ -46,11 +45,11 @@ export interface RichToolbarProps {
   buttons?: ToolbarButtonItem[]
 }
 
-const RichToolbar: React.FC<RichToolbarProps> = ({
+function RichToolbar({
   disabled = false,
   onCommand,
   buttons = DEFAULT_RICH_TOOLBAR,
-}) => {
+}: RichToolbarProps) {
   const isWeb = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
   /** 把 contentEditable 内的选区缓存到 window，供 click 阶段（focus 丢失后）恢复 */
@@ -66,7 +65,9 @@ const RichToolbar: React.FC<RichToolbarProps> = ({
             ? (startNode as HTMLElement).closest?.('[contenteditable="true"]')
             : (startNode.parentElement as HTMLElement | null)?.closest?.('[contenteditable="true"]')
         if (editorRoot) {
-          ;(window as any).__richeditor_saved_range__ = range.cloneRange()
+          //+ 缓存选区到 window（结构化类型，避免 window as any）
+          const w = window as unknown as { __richeditor_saved_range__?: Range }
+          w.__richeditor_saved_range__ = range.cloneRange()
         }
       }
     } catch (_) { /* ignore */ }
@@ -81,15 +82,15 @@ const RichToolbar: React.FC<RichToolbarProps> = ({
 
   return (
     <div
-      className="md-toolbar"
+      className='md-toolbar'
       style={{
         touchAction: 'manipulation',
-        WebkitTapHighlightColor: 'transparent' as any,
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
       {buttons.map((btn) => (
         <button
-          type="button"
+          type='button'
           key={btn.action}
           className={`md-tb-btn${disabled ? ' md-tb-btn-disabled' : ''}`}
           title={btn.title}

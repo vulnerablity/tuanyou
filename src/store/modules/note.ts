@@ -2,8 +2,15 @@
 //+ 说明：攻略相关逻辑已拆分到 src/store/modules/guide.ts，本模块仅处理笔记
 //+ 复用约定：与 guide.ts 保持结构对称，便于列表/详情/点赞/收藏逻辑复用
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import { getNotesAPI, toggleNoteLikeAPI, toggleNoteFavoriteAPI ,getNoteDetailAPI,getNoteCommentsAPI, deleteNoteAPI} from '@/apis/note'
-import type {Post,PageResult ,Comment} from '@/types'
+import {
+  getNotes,
+  toggleNoteLike,
+  toggleNoteFavorite,
+  getNoteDetail,
+  getNoteComments,
+  deleteNote as deleteNoteApi
+} from '@/apis/note'
+import type { Post, PageResult, Comment } from '@/types'
 
 //+ 笔记查询参数接口
 export interface NoteQueryParams {
@@ -52,110 +59,57 @@ const initialState: NoteState = {
   //+ 笔记评论列表
   comments: null,
 }
-//获取笔记详情异步Action
-export const fetchNoteDetail= createAsyncThunk(
+
+//+ 获取笔记详情异步Action
+export const fetchNoteDetail = createAsyncThunk(
   'note/fetchNoteDetail',
-  async (params: NoteDetailQueryParams, { rejectWithValue }) => {
-    try {
-      const res = await getNoteDetailAPI(params.id, params.type)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取笔记详情失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (params: NoteDetailQueryParams) => {
+    return await getNoteDetail(params.id, params.type)
   }
 )
 
 //+ 获取笔记列表异步Action
 export const fetchNotes = createAsyncThunk(
   'note/fetchNotes',
-  async (params: NoteQueryParams, { rejectWithValue }) => {
-    try {
-      const res = await getNotesAPI(params)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取笔记列表失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (params: NoteQueryParams) => {
+    return await getNotes(params)
   }
 )
 
 //+ 笔记点赞/取消点赞（攻略请使用 guide 模块的 toggleLike）
-//+ Pending 阶段做乐观更新（立即翻转 UI），Rejected 回滚，Fulfilled 用后端真实值校准
+//+ Pending 阶段做乐观更新（立即翻转 UI），Rejected 回滚（AbortError 除外），Fulfilled 用后端真实值校准
 export const toggleLike = createAsyncThunk(
   'note/toggleLike',
-  async (id: string, { rejectWithValue, signal }) => {
-    try {
-      const res = await toggleNoteLikeAPI(id, signal)
-      if (res.code === 0 || res.code === 200) {
-        return { id, ...(res.data || {}) }
-      } else {
-        return rejectWithValue(res.message || '操作失败')
-      }
-    } catch (error: any) {
-      //+ AbortController 主动取消不计入业务错误
-      if (error?.name === 'AbortError') return rejectWithValue('aborted')
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (id: string, { signal }) => {
+    const data = await toggleNoteLike(id, signal)
+    return { id, ...data }
   }
 )
 
 //+ 笔记收藏/取消收藏（攻略请使用 guide 模块的 toggleFavorite）
-//+ Pending 阶段做乐观更新，Rejected 回滚，Fulfilled 用后端真实值校准
+//+ Pending 阶段做乐观更新，Rejected 回滚（AbortError 除外），Fulfilled 用后端真实值校准
 export const toggleFavorite = createAsyncThunk(
   'note/toggleFavorite',
-  async (id: string, { rejectWithValue, signal }) => {
-    try {
-      const res = await toggleNoteFavoriteAPI(id, signal)
-      if (res.code === 0 || res.code === 200) {
-        return { id, ...(res.data || {}) }
-      } else {
-        return rejectWithValue(res.message || '操作失败')
-      }
-    } catch (error: any) {
-      if (error?.name === 'AbortError') return rejectWithValue('aborted')
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (id: string, { signal }) => {
+    const data = await toggleNoteFavorite(id, signal)
+    return { id, ...data }
   }
 )
 
 //+ 获取笔记评论列表异步Action
 export const fetchNoteComments = createAsyncThunk(
   'note/fetchNoteComments',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      const res = await getNoteCommentsAPI(id)
-      if (res.code === 0 || res.code === 200) {
-        return res.data
-      } else {
-        return rejectWithValue(res.message || '获取笔记评论列表失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (id: string) => {
+    return await getNoteComments(id)
   }
 )
 
 //+ 删除笔记异步Action
 export const deleteNote = createAsyncThunk(
   'note/deleteNote',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      const res = await deleteNoteAPI(id)
-      if (res.code === 0 || res.code === 200) {
-        return { id }
-      } else {
-        return rejectWithValue(res.message || '删除笔记失败')
-      }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '网络错误')
-    }
+  async (id: string) => {
+    await deleteNoteApi(id)
+    return { id }
   }
 )
 
@@ -210,9 +164,9 @@ const noteSlice = createSlice({
       })
       .addCase(fetchNotes.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
-      //+ 点赞：pending 阶段立即乐观翻转 UI，rejected 回滚，fulfilled 用后端值校准
+      //+ 点赞：pending 阶段立即乐观翻转 UI，rejected 回滚（AbortError 除外），fulfilled 用后端值校准
       .addCase(toggleLike.pending, (state, action) => {
         const id = action.meta.arg
         // 1. 乐观更新列表项
@@ -242,7 +196,8 @@ const noteSlice = createSlice({
         }
       })
       .addCase(toggleLike.rejected, (state, action) => {
-        if (action.payload === 'aborted') return //+ AbortController 主动丢弃，不做回滚
+        //+ AbortController 主动取消：丢弃过期响应，不做回滚
+        if (action.error.name === 'AbortError') return
         const id = action.meta.arg
         // 回滚：再翻转一次
         const note = state.notes.find(n => n.id === id)
@@ -255,7 +210,7 @@ const noteSlice = createSlice({
           state.noteDetail.likeCount = state.noteDetail.likeCount + (state.noteDetail.isLiked ? 1 : -1)
         }
       })
-      //+ 收藏：pending 乐观翻转，rejected 回滚，fulfilled 校准
+      //+ 收藏：pending 乐观翻转，rejected 回滚（AbortError 除外），fulfilled 校准
       .addCase(toggleFavorite.pending, (state, action) => {
         const id = action.meta.arg
         const note = state.notes.find(n => n.id === id)
@@ -274,7 +229,8 @@ const noteSlice = createSlice({
         }
       })
       .addCase(toggleFavorite.rejected, (state, action) => {
-        if (action.payload === 'aborted') return
+        //+ AbortController 主动取消：丢弃过期响应，不做回滚
+        if (action.error.name === 'AbortError') return
         const id = action.meta.arg
         const note = state.notes.find(n => n.id === id)
         if (note) note.isFavorited = !note.isFavorited
@@ -292,7 +248,7 @@ const noteSlice = createSlice({
       })
       .addCase(fetchNoteDetail.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       .addCase(fetchNoteComments.pending, (state) => {
         state.loading = true
@@ -304,7 +260,7 @@ const noteSlice = createSlice({
       })
       .addCase(fetchNoteComments.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload as string
+        state.error = action.error.message ?? '网络错误'
       })
       //+ 删除笔记
       .addCase(deleteNote.fulfilled, (state, action: PayloadAction<{ id: string }>) => {

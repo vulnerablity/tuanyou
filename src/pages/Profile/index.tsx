@@ -2,13 +2,15 @@
 //+ 数据来源：GET /personal（fetchProfileInfo）为主，state.user.userInfo 兜底，静态数据末位兜底
 //+ 标签使用习惯：NutUI 组件（Avatar/ArrowRight）+ 原生 HTML + IconFont 图标
 import { useSelector, useDispatch } from 'react-redux'
-import Taro, { useDidShow } from '@tarojs/taro'
+import { useDidShow } from '@tarojs/taro'
 import { ArrowRight } from '@nutui/icons-react'
 import { Ellipsis } from '@nutui/nutui-react'
 import Avatar from '@/components/Avatar'
 import { getUserInfo } from '@/store/modules/user'
 import { fetchProfileInfo } from '@/store/modules/profile'
 import type { RootState, AppDispatch } from '@/store'
+import { routerNavigateTo } from '@/router'
+import type { RouteKey } from '@/router'
 import { useAuthGuard } from '@/components/AuthRoute'
 import './index.less'
 
@@ -20,18 +22,25 @@ const fallbackUserData = {
   bgImg: 'https://picsum.photos/400/200?random=10',
 }
 
-//+ 功能入口列表
-const menuItems = [
-  { icon: 'icon-neirong', text: '我的内容', path: '/pages/Content/index' },
-  { icon: 'icon-shoucang', text: '我的收藏', path: '/pages/Favorite/index' },
-  { icon: 'icon-like', text: '我的点赞', path: '/pages/Like/index' },
-  { icon: 'icon-activity', text: '我的活动', path: '/pages/MyActivity/index' },
-  { icon: 'icon-shezhi', text: '设置', path: '/pages/Settings/index' },
+//+ 社交统计点击 → 目标路由键（内容/关注/粉丝）
+const STAT_ROUTES: Record<'notes' | 'following' | 'followers', RouteKey> = {
+  notes: 'CONTENT',
+  following: 'FOLLOW_LIST',
+  followers: 'FOLLOWER_LIST',
+}
+
+//+ 功能入口列表（route 走 @/router 包装跳转）
+const menuItems: { icon: string; text: string; route: RouteKey }[] = [
+  { icon: 'icon-neirong', text: '我的内容', route: 'CONTENT' },
+  { icon: 'icon-shoucang', text: '我的收藏', route: 'FAVORITE' },
+  { icon: 'icon-like', text: '我的点赞', route: 'LIKE' },
+  { icon: 'icon-activity', text: '我的活动', route: 'MY_ACTIVITY' },
+  { icon: 'icon-shezhi', text: '设置', route: 'SETTINGS' },
 ]
 
 const Profile = () => {
   useAuthGuard()
-  const dispatch = useDispatch<AppDispatch>()
+  const dispatch: AppDispatch = useDispatch<AppDispatch>()
   //+ profile.info（GET /personal）为主；user.userInfo（登录态）兜底
   const { userInfo, isLoggedIn } = useSelector((state: RootState) => state.user)
   const profileInfo = useSelector((state: RootState) => state.profile.info)
@@ -63,81 +72,69 @@ const Profile = () => {
   }
 
   //+ 点击社交数据跳转
-  const handleStatClick = (type: 'notes' | 'following' | 'followers') => {
-    const paths = {
-      notes: '/pages/Content/index',
-      following: '/pages/FollowList/index',
-      followers: '/pages/FollowerList/index',
-    }
-    Taro.navigateTo({ url: paths[type] })
+  const handleStatClick = (type: keyof typeof STAT_ROUTES) => {
+    routerNavigateTo(STAT_ROUTES[type])
   }
 
   //+ 点击功能入口跳转
-  const handleMenuClick = (path: string) => {
-    Taro.navigateTo({ url: path })
+  const handleMenuClick = (route: RouteKey) => {
+    routerNavigateTo(route)
   }
 
   //+ 点击编辑资料
   const handleEditProfile = () => {
-    Taro.navigateTo({ url: '/pages/EditProfile/index' })
+    routerNavigateTo('EDIT_PROFILE')
   }
 
   return (
-    <div className="profile-page">
+    <div className='profile-page'>
       {/* 顶部背景图 + 用户信息区 */}
-      <div className="user-header">
-        <div className="bg-image">
-          <img src={displayData.bgImg} alt="背景" />
-          <div className="bg-gradient"></div>
+      <div className='user-header'>
+        <div className='bg-image'>
+          <img src={displayData.bgImg} alt='背景' />
+          <div className='bg-gradient'></div>
         </div>
 
-        <div className="user-info">
-          <Avatar url={displayData.avatar} size="50" />
-          <div className="user-detail">
-              <Ellipsis className="nickname" content={displayData.nickname} rows={1} />
-              <Ellipsis className="signature" content={displayData.signature} rows={2} />
+        <div className='user-info'>
+          <Avatar url={displayData.avatar} size='50' />
+          <div className='user-detail'>
+              <Ellipsis className='nickname' content={displayData.nickname} rows={1} />
+              <Ellipsis className='signature' content={displayData.signature} rows={2} />
             </div>
 
-          <div className="edit-icon iconfont icon-bianji" onClick={handleEditProfile}></div>
-          {/* <div className="user-detail">
-            <div className="nickname-row">
-              <span className="nickname">{displayData.nickname}</span>
-              <span className="edit-icon iconfont icon-bianji" onClick={handleEditProfile}></span>
-            </div>
-            <div className="signature">{displayData.signature}</div>
-          </div> */}
+          <div className='edit-icon iconfont icon-bianji' onClick={handleEditProfile}></div>
         </div>
 
         {/* 社交数据 */}
-        <div className="social-stats">
-          <div className="stat-item" onClick={() => handleStatClick('notes')}>
-            <span className="stat-value">{socialStats.notes}</span>
-            <span className="stat-label">内容</span>
+        <div className='social-stats'>
+          <div className='stat-item' onClick={() => handleStatClick('notes')}>
+            <span className='stat-value'>{socialStats.notes}</span>
+            <span className='stat-label'>内容</span>
           </div>
-          <div className="stat-item" onClick={() => handleStatClick('following')}>
-            <span className="stat-value">{socialStats.following}</span>
-            <span className="stat-label">关注</span>
+          <div className='stat-item' onClick={() => handleStatClick('following')}>
+            <span className='stat-value'>{socialStats.following}</span>
+            <span className='stat-label'>关注</span>
           </div>
-          <div className="stat-item" onClick={() => handleStatClick('followers')}>
-            <span className="stat-value">{socialStats.followers}</span>
-            <span className="stat-label">粉丝</span>
+          <div className='stat-item' onClick={() => handleStatClick('followers')}>
+            <span className='stat-value'>{socialStats.followers}</span>
+            <span className='stat-label'>粉丝</span>
           </div>
         </div>
       </div>
 
       {/* 功能入口区 */}
-      <div className="menu-section">
-        {menuItems.map((item, index) => (
+      <div className='menu-section'>
+        {menuItems.map((item) => (
           <div
-            key={index}
-            className="menu-item"
-            onClick={() => handleMenuClick(item.path)}
+            key={item.route}
+            className='menu-item'
+            onClick={() => handleMenuClick(item.route)}
           >
-            <div className="menu-left">
+            <div className='menu-left'>
               <span className={`menu-icon iconfont ${item.icon}`}></span>
-              <span className="menu-text">{item.text}</span>
+              <span className='menu-text'>{item.text}</span>
             </div>
-            <ArrowRight className="menu-arrow" />
+            <ArrowRight className='menu-arrow' />
           </div>
         ))}
       </div>

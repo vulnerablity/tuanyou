@@ -1,4 +1,4 @@
-import { Avatar, SearchBar as NutSearchBar, Cell } from '@nutui/nutui-react'
+import { Avatar, SearchBar as NutSearchBar } from '@nutui/nutui-react'
 import { useSelector } from 'react-redux'
 import { routerNavigateTo } from '@/router'
 import type { RootState } from '@/store'
@@ -19,19 +19,19 @@ const SearchBar = () => {
   }
 
   return (
-    <div className="search-bar">
-      <div className="search-bar-left">途友</div>
+    <div className='search-bar'>
+      <div className='search-bar-left'>途友</div>
       {/* 外层可点击容器：保证整个搜索框区域点击都能跳转 */}
-      <div className="search-bar-trigger" onClick={handleSearchClick}>
+      <div className='search-bar-trigger' onClick={handleSearchClick}>
         <NutSearchBar
-          className="search-bar-input"
+          className='search-bar-input'
           readOnly
-          shape="round"
-          placeholder="搜索笔记、攻略、活动"
+          shape='round'
+          placeholder='搜索笔记、攻略、活动'
         />
       </div>
       <Avatar
-        size="25"
+        size='25'
         src={userInfo?.avatar || DEFAULT_AVATAR}
         alt={userInfo?.nickname || '途友用户'}
         onClick={() => {}}
