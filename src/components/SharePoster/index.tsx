@@ -228,7 +228,7 @@ function SharePoster({
       //+ 8. 底部品牌区
       ctx.fillStyle = '#1f2329'
       ctx.font = 'bold 32px sans-serif'
-      ctx.fillText('途游 · 发现你的下一个活动', 40, qrY + qrSize - 30)
+      ctx.fillText('团游 · 发现你的下一个活动', 40, qrY + qrSize - 30)
 
       //+ 9. 输出 base64
       //+ 移动端 toDataURL 可能因内存压力失败，加 try

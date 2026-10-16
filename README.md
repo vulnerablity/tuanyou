@@ -1,10 +1,10 @@
-# 途友 - 户外徒步社交 APP
+# 团游 - 户外徒步社交 APP
 
 > 探索自然，结伴前行
 
 ## 项目介绍
 
-途友是一款面向户外徒步爱好者的社交应用，提供笔记瀑布流、攻略、活动报名、组队互动、评论点赞关注、消息通知等功能。本项目基于 Taro 框架开发，一套代码支持 H5 与微信小程序双端运行。
+团游是一款面向户外徒步爱好者的社交应用，提供笔记瀑布流、攻略、活动报名、组队互动、评论点赞关注、消息通知等功能。本项目基于 Taro 框架开发，一套代码支持 H5 与微信小程序双端运行。
 
 目前后端尚未就绪，项目内置了**可插拔的 Mock 数据系统**：前端开发全程无需真实后端，切换一个环境变量即可无缝切到真实接口。
 
@@ -281,7 +281,7 @@ export function getNotes(params: NoteQueryParams): Promise<PageResult<Post>> {
 | `TARO_APP_ENV` | 当前运行环境 | `development` / `test` / `production` |
 | `TARO_APP_API_BASE` | 后端接口基础地址 | `http://192.168.10.7:84/api/v1` |
 | `TARO_APP_USE_MOCK` | 是否启用 Mock | dev=`true`，test/prod=`false` |
-| `TARO_APP_SITE_NAME` | 站点标识 | `tuyou-dev` |
+| `TARO_APP_SITE_NAME` | 站点标识 | `tuanyou-dev` |
 | `TARO_APP_LOG_LEVEL` | 日志级别 | `debug` / `info` / `warn` |
 | `TARO_APP_ASSET_BASE` | 静态资源 CDN 前缀 | 默认空 |
 

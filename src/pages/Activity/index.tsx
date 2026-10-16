@@ -140,7 +140,7 @@ const Activity = () => {
 
   return (
     <div className='activity-page'>
-      {/* 顶部导航：SearchBar（含"途友"标题 + 搜索 + 头像） */}
+      {/* 顶部导航：SearchBar（含"团游"标题 + 搜索 + 头像） */}
       <div className='activity-header'>
         <SearchBar />
       </div>

@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "./dist",
-  "projectname": "tuyou-web",
-  "description": "tuyou",
+  "projectname": "tuanyou-web",
+  "description": "tuanyou",
   "appid": "touristappid",
   "setting": {
     "urlCheck": true,

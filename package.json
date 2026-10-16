@@ -1,8 +1,8 @@
 {
-  "name": "tuyou-web",
+  "name": "tuanyou-web",
   "version": "1.0.0",
   "private": true,
-  "description": "tuyou",
+  "description": "tuanyou",
   "templateInfo": {
     "name": "default",
     "typescript": true,
