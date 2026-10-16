@@ -13,6 +13,7 @@ import type { RouteKey } from '@/router'
 import Tag from '@/components/Tag'
 import type { SlideItem } from '@/types'
 import dayjs from 'dayjs'
+import logo from '@/assets/logo.png'
 import './index.less'
 
 //+ 指示器样式
@@ -22,7 +23,7 @@ const indicatorTheme = {
 }
 
 //+ 兜底占位图（后端 cover 域名不可访问时回退，避免控制台刷屏）
-const FALLBACK_COVER = 'http://192.168.10.7:89/logo.png'
+const FALLBACK_COVER = logo
 
 //+ 轮播 type → 详情页路由键
 const TYPE_ROUTE_MAP: Record<SlideItem['type'], RouteKey> = {

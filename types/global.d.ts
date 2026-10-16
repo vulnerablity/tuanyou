@@ -33,6 +33,8 @@ declare namespace NodeJS {
     TARO_APP_SITE_NAME: string
     /** 是否启用 mock，环境变量里实际是字符串 */
     TARO_APP_ENABLE_MOCK: 'true' | 'false'
+    /** 真实请求失败是否降级 Mock，显式覆盖默认行为（联调自研后端时可设为 false） */
+    TARO_APP_ALLOW_MOCK_FALLBACK: 'true' | 'false'
     /** 日志级别 */
     TARO_APP_LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error'
   }

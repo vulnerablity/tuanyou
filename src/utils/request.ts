@@ -57,7 +57,13 @@ const isMock = process.env.TARO_APP_USE_MOCK === 'true'
 //+ 是否允许"真实请求失败 → 降级 Mock"：仅开发/测试环境允许
 //+ 生产环境（TARO_APP_ENV=production）一律不降级，让真实错误抛给业务层处理
 //+ 否则后端挂了前端会显示假数据（mockFeed/mockUsers 等），掩盖真实故障
-const allowFallbackToMock = process.env.TARO_APP_ENV !== 'production'
+//+ TARO_APP_ALLOW_MOCK_FALLBACK 可显式覆盖：联调自研后端时设为 false 关闭静默降级
+const fallbackFlag = process.env.TARO_APP_ALLOW_MOCK_FALLBACK
+const allowFallbackToMock = fallbackFlag === 'false'
+  ? false
+  : fallbackFlag === 'true'
+    ? true
+    : process.env.TARO_APP_ENV !== 'production'
 
 //+ 构造一个 AbortError（与浏览器原生行为一致）
 function createAbortError(): DOMException {

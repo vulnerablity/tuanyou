@@ -12,6 +12,7 @@ import type { AppDispatch } from '@/store'
 import { goAfterLogin, routerNavigateTo } from '@/router'
 import { useSendCode } from '@/hooks/useSendCode'
 import { useCaptcha } from '@/hooks/useCaptcha'
+import logo from '@/assets/logo.png'
 import CodeInput from '@/components/CodeInput'
 import CaptchaInput from '@/components/CaptchaInput'
 //+ 导入公共认证样式
@@ -134,7 +135,7 @@ const Login = () => {
     <div className='auth-container'>
       {/* logo */}
       <div className='auth-logo'>
-        <img src='http://192.168.10.7:89/logo.png' alt='logo' />
+        <img src={logo} alt='logo' />
         <p>探索自然，结伴前行</p>
       </div>
 

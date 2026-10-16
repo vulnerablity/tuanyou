@@ -41,6 +41,10 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
       "@tarojs/plugin-generator"
     ],
     defineConstants: {
+      //+ 兜底注入 TARO_APP_ALLOW_MOCK_FALLBACK：未在 .env 定义时注入空字符串
+      //+ 防止 DefinePlugin 不替换该变量导致浏览器端残留 process 引用（process is not defined）
+      //+ 此处读取的是构建时 Node 进程的 process.env（Taro 加载 config 前已注入 .env 值），.env 定义了则优先用 .env 的值
+      'process.env.TARO_APP_ALLOW_MOCK_FALLBACK': JSON.stringify(process.env.TARO_APP_ALLOW_MOCK_FALLBACK ?? ''),
     },
     copy: {
       patterns: [

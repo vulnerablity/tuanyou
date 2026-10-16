@@ -12,6 +12,7 @@ import { useSendCode } from '@/hooks/useSendCode'
 import CodeInput from '@/components/CodeInput'
 //+ 封装组件
 import HeaderNavBar from '@/components/HeaderNavBar'
+import logo from '@/assets/logo.png'
 //+ 导入公共认证样式
 import '@/styles/auth.less'
 import './index.less'
@@ -103,7 +104,7 @@ const Register = () => {
 
       {/* logo */}
       <div className='auth-logo'>
-        <img src='http://192.168.10.7:89/logo.png' alt='logo' />
+        <img src={logo} alt='logo' />
         <p>探索自然，结伴前行</p>
       </div>
 
