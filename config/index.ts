@@ -26,7 +26,7 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
   console.log('currentEnv', currentEnv)
 
   const baseConfig: UserConfigExport<'webpack5'> = {
-    projectName: 'tuyou-web',
+    projectName: 'tuanyou-web',
     date: '2026-7-21',
     designWidth: 750,
     deviceRatio: {

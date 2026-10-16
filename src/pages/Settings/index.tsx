@@ -28,7 +28,7 @@ const navigateItems: { key: string; label: string; icon: string; route: RouteKey
   { key: 'changePhone', label: '修改手机号', icon: 'icon-bianjiziliao', route: 'CHANGE_PHONE' },
   { key: 'privacy', label: '隐私设置', icon: 'icon-yinsishezhi', route: '' },
   { key: 'help', label: '帮助与反馈', icon: 'icon-bangzhuyufankui', route: '' },
-  { key: 'about', label: '关于途友', icon: 'icon-guanyu', route: '' },
+  { key: 'about', label: '关于团游', icon: 'icon-guanyu', route: '' },
 ]
 
 //+ 底部按钮配置
@@ -143,7 +143,7 @@ const Settings = () => {
 
         {/* 版本信息 */}
         <div className='version-info'>
-          <span>途友 v1.0.0</span>
+          <span>团游 v1.0.0</span>
         </div>
       </div>
 

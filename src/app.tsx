@@ -103,7 +103,7 @@ function App({ children }: PropsWithChildren<unknown>) {
     }
     //+ 监听 storage 事件（跨页面登出同步）
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'tuyou_token' && !e.newValue) {
+      if (e.key === 'tuanyou_token' && !e.newValue) {
         handleLogout()
       }
     }

@@ -36,7 +36,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: '途友',
+    navigationBarTitleText: '团游',
     navigationBarTextStyle: 'black'
   }
   

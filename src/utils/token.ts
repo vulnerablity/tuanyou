@@ -2,7 +2,7 @@
 import Taro from '@tarojs/taro'
 
 //+ Token存储的key
-const TOKEN_KEY = 'tuyou_token'
+const TOKEN_KEY = 'tuanyou_token'
 
 //+ 获取Token
 export function getToken(): string | null {

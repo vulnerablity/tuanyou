@@ -1,6 +1,6 @@
 //+ 全局消息弹窗组件（场景1：非消息页收到新消息）
 //+ 样式：白色半透明背景，居中，宽 80%，高度自适应
-//+ 内容：左上角 logo + 右侧"途友"文字 + 下方 SSE 推送内容（Ellipsis 2行）
+//+ 内容：左上角 logo + 右侧"团游"文字 + 下方 SSE 推送内容（Ellipsis 2行）
 //+ 交互：点击弹窗跳转消息页对应 Tab；3 秒后自动关闭
 //+ 防抖：store toastCooldown 控制 3 秒内不重复弹窗
 import { useEffect, useRef, useCallback } from 'react'
@@ -61,10 +61,10 @@ const MessageToast = () => {
   return (
     <div className='message-toast-mask' onClick={handleMaskClick}>
       <div className='message-toast' onClick={handleClick}>
-        {/* 左上角 logo + "途友" 文字 */}
+        {/* 左上角 logo + "团游" 文字 */}
         <div className='message-toast-header'>
-          {/* <img className='message-toast-logo' src='http://192.168.10.7:89/logo.png' alt='途友' /> */}
-          <span className='message-toast-brand'>途友</span>
+          {/* <img className='message-toast-logo' src='http://192.168.10.7:89/logo.png' alt='团游' /> */}
+          <span className='message-toast-brand'>团游</span>
         </div>
         {/* SSE 推送内容，Ellipsis 2行省略 */}
         <div className='message-toast-content'>

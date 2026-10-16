@@ -20,7 +20,7 @@ const SearchBar = () => {
 
   return (
     <div className='search-bar'>
-      <div className='search-bar-left'>途友</div>
+      <div className='search-bar-left'>团游</div>
       {/* 外层可点击容器：保证整个搜索框区域点击都能跳转 */}
       <div className='search-bar-trigger' onClick={handleSearchClick}>
         <NutSearchBar
@@ -33,7 +33,7 @@ const SearchBar = () => {
       <Avatar
         size='25'
         src={userInfo?.avatar || DEFAULT_AVATAR}
-        alt={userInfo?.nickname || '途友用户'}
+        alt={userInfo?.nickname || '团游用户'}
         onClick={() => {}}
       />
     </div>
