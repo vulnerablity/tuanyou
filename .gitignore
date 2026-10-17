@@ -1,9 +1,26 @@
+# ===== 通用 =====
+node_modules/
 dist/
+.DS_Store
+*.local
 deploy_versions/
 .temp/
 .rn_temp/
-node_modules/
-.DS_Store
-.swc
-*.local
+.swc/
 团游*
+
+# ===== Python backend =====
+backend/.venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/.coverage
+backend/htmlcov/
+backend/media/
+backend/*.log
